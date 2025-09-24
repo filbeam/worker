@@ -39,7 +39,7 @@ crons = ["*/1 * * * *"]  # Run every minute
 [env.mainnet.vars]
 ENVIRONMENT = "mainnet"
 RPC_URL = "https://api.node.glif.io/"
-FILECOIN_WARM_STORAGE_SERVICE_ADDRESS = "0xD9df508aC49161e1E0A8382a3c833728b89bED8C" # TODO
+FILECOIN_WARM_STORAGE_SERVICE_ADDRESS = "0x81DFD9813aDd354f03704F31419b0c6268d46232" # TODO
 
 [[env.mainnet.d1_databases]]
 binding = "DB"

@@ -39,21 +39,28 @@ Follow these steps to build and deploy the subgraph:
     goldsky login
     ```
 
-4.  **Generate Code:**
+4.  **Select network:**
+
+    ```bash
+    npm run select-calibnet
+    npm run select-mainnet
+    ```
+
+5.  **Generate Code:**
     The Graph CLI uses the `subgraph.yaml` manifest and GraphQL schema (`schema.graphql`) to generate AssemblyScript types.
 
     ```bash
     npm run codegen
     ```
 
-5.  **Build the Subgraph:**
+6.  **Build the Subgraph:**
     Compile your subgraph code into WebAssembly (WASM).
 
     ```bash
     npm run build
     ```
 
-6.  **Deploy to Goldsky:**
+7.  **Deploy to Goldsky:**
     Use the Goldsky CLI to deploy your built subgraph.
 
     ```bash
@@ -64,7 +71,7 @@ Follow these steps to build and deploy the subgraph:
     - Replace `<version>` with a version identifier (e.g., `v0.0.1`).
     - You can manage your deployments and find your subgraph details in the [Goldsky Dashboard](https://app.goldsky.com/). The deployment command will output the GraphQL endpoint URL for your subgraph upon successful completion. **Copy this URL**, as you will need it for the client.
 
-7.  **Tag the Subgraph (Optional):**
+8.  **Tag the Subgraph (Optional):**
     Tag the subgraph you deployed in step 6.
 
     ```bash
@@ -85,22 +92,29 @@ If you need to make changes to the subgraph's logic, schema, or configuration, f
 
 1.  **Modify Code:** Edit the relevant files:
     - `schema.graphql`: To change the data structure and entities being stored.
-    - `subgraph.yaml`: To update contract addresses, ABIs, start blocks, or event handlers.
+    - `subgraph-{calibnet|mainnet}.yaml`: To update contract addresses, ABIs, start blocks, or event handlers.
     - `src/*.ts`: To alter the logic that processes blockchain events and maps them to the defined schema entities.
 
-2.  **Regenerate Code:** After modifying the schema or manifest, always regenerate the AssemblyScript types:
+2.  **Select network:**
+
+    ```bash
+    npm run select-calibnet
+    npm run select-mainnet
+    ```
+
+3.  **Regenerate Code:** After modifying the schema or manifest, always regenerate the AssemblyScript types:
 
     ```bash
     graph codegen
     ```
 
-3.  **Rebuild:** Compile the updated subgraph code:
+4.  **Rebuild:** Compile the updated subgraph code:
 
     ```bash
     graph build
     ```
 
-4.  **Redeploy:** Deploy the new version to Goldsky. It's good practice to increment the version number:
+5.  **Redeploy:** Deploy the new version to Goldsky. It's good practice to increment the version number:
     ```bash
     goldsky subgraph deploy <your-subgraph-name>/<new-version>
     ```
@@ -113,10 +127,11 @@ If you need to make changes to the subgraph's logic, schema, or configuration, f
 
 ## Goldsky Pipelines
 
-### Apply updates
+### Create or update
 
 ```shell
 goldsky pipeline apply pipelines/alpha-calibnet.yaml
+goldsky pipeline apply pipelines/alpha-mainnet.yaml
 ```
 
 ## Further Information

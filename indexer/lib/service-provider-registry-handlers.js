@@ -132,10 +132,9 @@ export async function handleProviderRemoved(env, providerId) {
  */
 async function handleProviderServiceUrlUpdate(env, providerId, serviceUrl) {
   if (!validator.isURL(serviceUrl)) {
-    console.error('ServiceProviderRegistry.ProductAdded: Invalid Service URL', {
+    console.warn('ServiceProviderRegistry.ProductAdded: Invalid Service URL', {
       serviceUrl,
     })
-    return new Response('Bad Request', { status: 400 })
   }
 
   console.log(
