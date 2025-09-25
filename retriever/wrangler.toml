@@ -24,7 +24,7 @@ database_id = "8cc92155-16f6-426a-b782-2965e0daf101"
 ENVIRONMENT = "calibration "
 ORIGIN_CACHE_TTL = 86400
 CLIENT_CACHE_TTL = 31536000 
-DNS_ROOT = ".calibration.filcdn.io"
+DNS_ROOT = ".calibration.filbeam.io"
 
 [[env.calibration.d1_databases]]
 binding = "DB"
@@ -35,7 +35,7 @@ database_id = "78f15bbb-391f-4797-9016-a6cb86c0b9b8"
 ENVIRONMENT = "mainnet"
 ORIGIN_CACHE_TTL = 86400
 CLIENT_CACHE_TTL = 31536000 
-DNS_ROOT = ".filcdn.io"
+DNS_ROOT = ".filbeam.io"
 
 [[env.mainnet.d1_databases]]
 binding = "DB"

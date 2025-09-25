@@ -20,7 +20,7 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-const DNS_ROOT = '.filcdn.io'
+const DNS_ROOT = '.filbeam.io'
 env.DNS_ROOT = DNS_ROOT
 
 describe('retriever.fetch', () => {
@@ -60,22 +60,31 @@ describe('retriever.fetch', () => {
     }
   })
 
-  it('redirects to https://filcdn.com when no CID was provided', async () => {
+  it('redirects to https://filbeam.com when no CID was provided', async () => {
     const ctx = createExecutionContext()
     const req = new Request(`https://${defaultPayerAddress}${DNS_ROOT}/`)
     const res = await worker.fetch(req, env, ctx)
     await waitOnExecutionContext(ctx)
     expect(res.status).toBe(302)
-    expect(res.headers.get('Location')).toBe('https://filcdn.com/')
+    expect(res.headers.get('Location')).toBe('https://filbeam.com/')
   })
 
-  it('redirects to https://filcdn.com when no CID and no wallet address were provided', async () => {
+  it('redirects to https://filbeam.com when no CID and no wallet address were provided', async () => {
     const ctx = createExecutionContext()
     const req = new Request(`https://${DNS_ROOT.slice(1)}/`)
     const res = await worker.fetch(req, env, ctx)
     await waitOnExecutionContext(ctx)
     expect(res.status).toBe(302)
-    expect(res.headers.get('Location')).toBe('https://filcdn.com/')
+    expect(res.headers.get('Location')).toBe('https://filbeam.com/')
+  })
+
+  it('redirects to https://*.filcdn.io/* when old domain was used', async () => {
+    const ctx = createExecutionContext()
+    const req = new Request(`https://foo.filcdn.io/bar`)
+    const res = await worker.fetch(req, env, ctx)
+    await waitOnExecutionContext(ctx)
+    expect(res.status).toBe(301)
+    expect(res.headers.get('Location')).toBe(`https://foo.filbeam.io/bar`)
   })
 
   it('returns 405 for unsupported request methods', async () => {
@@ -97,7 +106,7 @@ describe('retriever.fetch', () => {
     await waitOnExecutionContext(ctx)
     expect(res.status).toBe(400)
     expect(await res.text()).toBe(
-      'Invalid hostname: filcdn.io. It must end with .filcdn.io.',
+      'Invalid hostname: filbeam.io. It must end with .filbeam.io.',
     )
   })
 
@@ -187,7 +196,7 @@ describe('retriever.fetch', () => {
     await waitOnExecutionContext(ctx)
     const csp = res.headers.get('Content-Security-Policy')
     expect(csp).toMatch(/^default-src 'self'/)
-    expect(csp).toContain('https://*.filcdn.io')
+    expect(csp).toContain('https://*.filbeam.io')
   })
 
   it('fetches the file from calibration service provider', async () => {

@@ -1,7 +1,7 @@
 // List of allowed hosts in the CSP <host-source> format:
 // https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy#host-source
 const ALLOWED_HOSTS = [
-  'https://*.filcdn.io',
+  'https://*.filbeam.io',
 
   // Other service serving content-addressable or static assets
   'https://*.w3s.link',

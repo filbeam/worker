@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { parseRequest } from '../lib/request.js'
 
-const DNS_ROOT = '.filcdn.io'
+const DNS_ROOT = '.filbeam.io'
 const TEST_WALLET = 'abc123'
 const TEST_CID = 'baga123'
 
@@ -32,9 +32,9 @@ describe('parseRequest', () => {
   })
 
   it('should return undefined for both if no params in path', () => {
-    const request = { url: 'https://filcdn.io' }
+    const request = { url: 'https://filbeam.io' }
     expect(() => parseRequest(request, { DNS_ROOT })).toThrowError(
-      'Invalid hostname: filcdn.io. It must end with .filcdn.io.',
+      'Invalid hostname: filbeam.io. It must end with .filbeam.io.',
     )
   })
 
