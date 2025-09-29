@@ -18,6 +18,7 @@ export async function handleFWSSDataSetCreated(
   const { CHAINALYSIS_API_KEY } = env
 
   const withCDN = payload.metadata_keys.includes('withCDN')
+  const withIPFSIndexing = payload.metadata_keys.includes('withIPFSIndexing')
 
   if (withCDN) {
     const isPayerSanctioned = await checkIfAddressIsSanctioned(payload.payer, {
@@ -43,10 +44,13 @@ export async function handleFWSSDataSetCreated(
         id,
         service_provider_id,
         payer_address,
-        with_cdn
+        with_cdn,
+        with_ipfs_indexing
       )
-      VALUES (?, ?, ?, ?)
-      ON CONFLICT DO NOTHING
+      VALUES (?, ?, ?, ?, ?)
+      ON CONFLICT DO UPDATE SET
+        with_cdn = excluded.with_cdn,
+        with_ipfs_indexing = excluded.with_ipfs_indexing
     `,
   )
     .bind(
@@ -54,6 +58,7 @@ export async function handleFWSSDataSetCreated(
       String(payload.provider_id),
       payload.payer.toLowerCase(),
       withCDN,
+      withIPFSIndexing,
     )
     .run()
 }

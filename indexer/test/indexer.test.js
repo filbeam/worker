@@ -352,6 +352,140 @@ describe('retriever.indexer', () => {
         .all()
       expect(dataSets.length).toBe(0)
     })
+
+    it('inserts a data set with both withCDN and withIPFSIndexing enabled', async () => {
+      const dataSetId = randomId()
+      const providerId = randomId()
+      const req = new Request('https://host/fwss/data-set-created', {
+        method: 'POST',
+        headers: {
+          [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+        },
+        body: JSON.stringify({
+          data_set_id: dataSetId,
+          payer: '0xPayerAddress',
+          provider_id: providerId,
+          metadata_keys: ['withCDN', 'withIPFSIndexing'],
+          metadata_values: ['', ''],
+        }),
+      })
+
+      mockCheckIfAddressIsSanctioned.mockResolvedValueOnce(false)
+      const res = await workerImpl.fetch(req, env, ctx, {
+        checkIfAddressIsSanctioned: mockCheckIfAddressIsSanctioned,
+      })
+      expect(res.status).toBe(200)
+      expect(await res.text()).toBe('OK')
+
+      const { results: dataSets } = await env.DB.prepare(
+        'SELECT * FROM data_sets WHERE id = ?',
+      )
+        .bind(dataSetId)
+        .all()
+
+      expect(dataSets.length).toBe(1)
+      expect(dataSets[0].id).toBe(dataSetId)
+      expect(dataSets[0].service_provider_id).toBe(providerId)
+      expect(dataSets[0].payer_address).toBe('0xPayerAddress'.toLowerCase())
+      expect(dataSets[0].with_cdn).toBe(1)
+      expect(dataSets[0].with_ipfs_indexing).toBe(1)
+    })
+
+    it('inserts a data set with neither withCDN nor withIPFSIndexing', async () => {
+      const dataSetId = randomId()
+      const providerId = randomId()
+      const req = new Request('https://host/fwss/data-set-created', {
+        method: 'POST',
+        headers: {
+          [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+        },
+        body: JSON.stringify({
+          data_set_id: dataSetId,
+          payer: '0xPayerAddress',
+          provider_id: providerId,
+          metadata_keys: [],
+          metadata_values: [],
+        }),
+      })
+
+      const res = await workerImpl.fetch(req, env, ctx, {
+        checkIfAddressIsSanctioned: mockCheckIfAddressIsSanctioned,
+      })
+      expect(res.status).toBe(200)
+      expect(await res.text()).toBe('OK')
+
+      const { results: dataSets } = await env.DB.prepare(
+        'SELECT * FROM data_sets WHERE id = ?',
+      )
+        .bind(dataSetId)
+        .all()
+
+      expect(dataSets.length).toBe(1)
+      expect(dataSets[0].id).toBe(dataSetId)
+      expect(dataSets[0].service_provider_id).toBe(providerId)
+      expect(dataSets[0].payer_address).toBe('0xPayerAddress'.toLowerCase())
+      expect(dataSets[0].with_cdn).toBe(0)
+      expect(dataSets[0].with_ipfs_indexing).toBe(0)
+    })
+
+    it('updates existing data set to enable both withCDN and withIPFSIndexing flags', async () => {
+      const dataSetId = randomId()
+      const providerId = randomId()
+
+      // First request: create data set with no metadata flags
+      let req = new Request('https://host/fwss/data-set-created', {
+        method: 'POST',
+        headers: {
+          [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+        },
+        body: JSON.stringify({
+          data_set_id: dataSetId,
+          payer: '0xPayerAddress',
+          provider_id: providerId,
+          metadata_keys: [],
+          metadata_values: [],
+        }),
+      })
+
+      let res = await workerImpl.fetch(req, env, ctx, {
+        checkIfAddressIsSanctioned: mockCheckIfAddressIsSanctioned,
+      })
+      expect(res.status).toBe(200)
+      expect(await res.text()).toBe('OK')
+
+      // Second request: update same data set with both flags
+      req = new Request('https://host/fwss/data-set-created', {
+        method: 'POST',
+        headers: {
+          [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+        },
+        body: JSON.stringify({
+          data_set_id: dataSetId,
+          payer: '0xPayerAddress',
+          provider_id: providerId,
+          metadata_keys: ['withCDN', 'withIPFSIndexing'],
+          metadata_values: ['', ''],
+        }),
+      })
+
+      mockCheckIfAddressIsSanctioned.mockResolvedValueOnce(false)
+      res = await workerImpl.fetch(req, env, ctx, {
+        checkIfAddressIsSanctioned: mockCheckIfAddressIsSanctioned,
+      })
+      expect(res.status).toBe(200)
+      expect(await res.text()).toBe('OK')
+
+      // Verify final state
+      const { results: dataSets } = await env.DB.prepare(
+        'SELECT * FROM data_sets WHERE id = ?',
+      )
+        .bind(dataSetId)
+        .all()
+
+      expect(dataSets.length).toBe(1)
+      expect(dataSets[0].with_cdn).toBe(1)
+      expect(dataSets[0].with_ipfs_indexing).toBe(1)
+    })
   })
 
   describe('POST /fwss/piece-added', () => {
@@ -475,6 +609,76 @@ describe('retriever.indexer', () => {
           id: '0',
         },
       ])
+    })
+
+    it('inserts a piece with ipfsRootCid metadata', async () => {
+      const dataSetId = randomId()
+      const ipfsRootCid =
+        'bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi'
+      const req = new Request('https://host/fwss/piece-added', {
+        method: 'POST',
+        headers: {
+          [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+        },
+        body: JSON.stringify({
+          data_set_id: dataSetId.toString(),
+          piece_id: '42',
+          piece_cid: TEST_CID_HEX,
+          metadata_keys: ['ipfsRootCID'],
+          metadata_values: [ipfsRootCid],
+        }),
+      })
+      const res = await workerImpl.fetch(req, env, CTX)
+      expect(res.status).toBe(200)
+      expect(await res.text()).toBe('OK')
+
+      const { results: pieces } = await env.DB.prepare(
+        'SELECT id, cid, ipfs_root_cid FROM pieces WHERE data_set_id = ? ORDER BY id',
+      )
+        .bind(dataSetId)
+        .all()
+      expect(pieces).toEqual([
+        {
+          id: '42',
+          cid: 'bafkzcibey3nqcc3d7ifp7bg6acsm3geafyb5dx26ughkimgdudg4qsxu7racjkzhcq',
+          ipfs_root_cid: ipfsRootCid,
+        },
+      ])
+    })
+
+    it('updates ipfsRootCid for existing piece', async () => {
+      const dataSetId = randomId()
+      const pieceId = '44'
+      const ipfsRootCid =
+        'bafybeihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku'
+
+      // The Piece was indexed before we added support for IPFS metadata
+      await withPieces(env, dataSetId, [pieceId], [TEST_CID_HEX], [null])
+
+      // Second request sent when we re-run the Goldsky pipeline
+      const req = new Request('https://host/fwss/piece-added', {
+        method: 'POST',
+        headers: {
+          [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+        },
+        body: JSON.stringify({
+          data_set_id: dataSetId.toString(),
+          piece_id: pieceId,
+          piece_cid: TEST_CID_HEX,
+          metadata_keys: ['ipfsRootCID'],
+          metadata_values: [ipfsRootCid],
+        }),
+      })
+      const res = await workerImpl.fetch(req, env, CTX)
+      expect(res.status).toBe(200)
+
+      const { results: pieces } = await env.DB.prepare(
+        'SELECT * FROM pieces WHERE data_set_id = ?',
+      )
+        .bind(dataSetId)
+        .all()
+      expect(pieces.length).toBe(1)
+      expect(pieces[0].ipfs_root_cid).toBe(ipfsRootCid)
     })
   })
 
@@ -808,17 +1012,24 @@ describe('POST /service-provider-registry/provider-removed', () => {
   })
 })
 
-async function withPieces(env, dataSetId, pieceIds, pieceCids) {
+async function withPieces(
+  env,
+  dataSetId,
+  pieceIds,
+  pieceCids,
+  ipfsRootCids = [],
+) {
   await env.DB.prepare(
     `
     INSERT INTO pieces (
       id,
       data_set_id,
-      cid
+      cid,
+      ipfs_root_cid
     )
     VALUES ${new Array(pieceIds.length)
       .fill(null)
-      .map(() => '(?, ?, ?)')
+      .map(() => '(?, ?, ?, ?)')
       .join(', ')}
     ON CONFLICT DO NOTHING
   `,
@@ -828,6 +1039,7 @@ async function withPieces(env, dataSetId, pieceIds, pieceCids) {
         String(pieceId),
         String(dataSetId),
         pieceCids[i],
+        ipfsRootCids[i] || null,
       ]),
     )
     .run()
