@@ -58,7 +58,7 @@ describe('getStorageProviderAndValidatePayer', () => {
 
   it('returns service provider for valid pieceCid', async () => {
     const dataSetId = 'test-set-1'
-    const pieceCid = 'test-cid-1'
+    const pieceCid = 'bafk4test'
     const payerAddress = '0x1234567890abcdef1234567890abcdef12345678'
 
     await env.DB.prepare(

@@ -1,8 +1,11 @@
 /**
- * Retrieves the file under the pieceCID from the constructed URL.
+ * Retrieves the IPFS content from the SP serving requests at the provided base
+ * URL.
  *
- * @param {string} baseUrl - The base URL to service provider serving the piece.
- * @param {string} pieceCid - The CID of the piece to retrieve.
+ * @param {string} baseUrl - The base URL of service provider.
+ * @param {string} ipfsRootCid - The IPFS Root CID to retrieve from.
+ * @param {string} ipfsSubpath - The subpath inside the UnixFS archive to
+ *   retrieve, e.g. `/favicon.ico`.
  * @param {number} [cacheTtl=86400] - Cache TTL in seconds (default: 86400).
  *   Default is `86400`
  * @param {object} [options] - Optional parameters.
@@ -15,13 +18,17 @@
  *
  *   - The response from the fetch request, the cache miss and the content length.
  */
-export async function retrieveFile(
+export async function retrieveIpfsContent(
   baseUrl,
-  pieceCid,
+  ipfsRootCid,
+  ipfsSubpath,
   cacheTtl = 86400,
   { signal } = {},
 ) {
-  const url = getRetrievalUrl(baseUrl, pieceCid)
+  // TODO: allow the caller to tweak Trustless GW parameters like `dag-scope` when requesting `format=car`.
+  // See https://specs.ipfs.tech/http-gateways/trustless-gateway/
+  // TODO: support `raw` format too, see https://github.com/filbeam/worker/issues/295
+  const url = getRetrievalUrl(baseUrl, ipfsRootCid, ipfsSubpath) + '?format=car'
   const response = await fetch(url, {
     cf: {
       cacheTtlByStatus: {
@@ -64,12 +71,13 @@ export async function measureStreamedEgress(reader) {
 
 /**
  * @param {string} serviceUrl
- * @param {string} pieceCid
+ * @param {string} rootCid
+ * @param {string} subpath
  * @returns {string}
  */
-export function getRetrievalUrl(serviceUrl, pieceCid) {
+export function getRetrievalUrl(serviceUrl, rootCid, subpath) {
   if (!serviceUrl.endsWith('/')) {
     serviceUrl += '/'
   }
-  return `${serviceUrl}piece/${pieceCid}`
+  return `${serviceUrl}ipfs/${rootCid}${subpath}`
 }

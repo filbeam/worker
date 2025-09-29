@@ -10,36 +10,39 @@ import { getBadBitsEntry } from '../lib/bad-bits-util'
  * @param {string} options.payerAddress
  * @param {string} options.pieceId
  */
-export async function withDataSetPieces(
+export async function withDataSetPiece(
   env,
   {
     serviceProviderId = 0,
     payerAddress = '0x1234567890abcdef1234567890abcdef12345608',
     pieceCid = 'bagaTEST',
+    ipfsRootCid = 'bafk4test',
     dataSetId = 0,
     withCDN = true,
+    withIpfsIndexing = true,
     pieceId = 0,
   } = {},
 ) {
   await env.DB.batch([
     env.DB.prepare(
       `
-      INSERT INTO data_sets (id, service_provider_id, payer_address, with_cdn)
-      VALUES (?, ?, ?, ?)
+      INSERT INTO data_sets (id, service_provider_id, payer_address, with_cdn, with_ipfs_indexing)
+      VALUES (?, ?, ?, ?, ?)
     `,
     ).bind(
       String(dataSetId),
       String(serviceProviderId),
       payerAddress.toLowerCase(),
       withCDN,
+      withIpfsIndexing,
     ),
 
     env.DB.prepare(
       `
-      INSERT INTO pieces (id, data_set_id, cid)
-      VALUES (?, ?, ?)
+      INSERT INTO pieces (id, data_set_id, cid, ipfs_root_cid)
+      VALUES (?, ?, ?, ?)
     `,
-    ).bind(String(pieceId), String(dataSetId), pieceCid),
+    ).bind(String(pieceId), String(dataSetId), pieceCid, ipfsRootCid ?? null),
   ])
 }
 

@@ -1,7 +1,7 @@
 import { isValidEthereumAddress } from '../lib/address.js'
 import { parseRequest } from '../lib/request.js'
 import {
-  retrieveFile as defaultRetrieveFile,
+  retrieveIpfsContent as defaultRetrieveIpfsContent,
   measureStreamedEgress,
 } from '../lib/retrieval.js'
 import {
@@ -31,12 +31,19 @@ export default {
    * @param {RetrieverEnv} env
    * @param {ExecutionContext} ctx
    * @param {object} options
-   * @param {typeof defaultRetrieveFile} [options.retrieveFile]
+   * @param {typeof defaultRetrieveIpfsContent} [options.retrieveIpfsContent]
    * @returns
    */
-  async fetch(request, env, ctx, { retrieveFile = defaultRetrieveFile } = {}) {
+  async fetch(
+    request,
+    env,
+    ctx,
+    { retrieveIpfsContent = defaultRetrieveIpfsContent } = {},
+  ) {
     try {
-      return await this._fetch(request, env, ctx, { retrieveFile })
+      return await this._fetch(request, env, ctx, {
+        retrieveIpfsContent,
+      })
     } catch (error) {
       return this._handleError(error)
     }
@@ -47,18 +54,26 @@ export default {
    * @param {RetrieverEnv} env
    * @param {ExecutionContext} ctx
    * @param {object} options
-   * @param {typeof defaultRetrieveFile} [options.retrieveFile]
+   * @param {typeof defaultRetrieveIpfsContent} [options.retrieveIpfsContent:]
    * @returns
    */
-  async _fetch(request, env, ctx, { retrieveFile = defaultRetrieveFile } = {}) {
+  async _fetch(
+    request,
+    env,
+    ctx,
+    { retrieveIpfsContent = defaultRetrieveIpfsContent } = {},
+  ) {
     httpAssert(
       ['GET', 'HEAD'].includes(request.method),
       405,
       'Method Not Allowed',
     )
-    if (URL.parse(request.url)?.pathname === '/') {
+
+    if (URL.parse(request.url)?.hostname === env.DNS_ROOT.slice(1)) {
+      // Accessing bare domain like "ipfs.filbeam.io" - redirect to filbeam.com
       return Response.redirect('https://filbeam.com/', 302)
     }
+
     if (URL.parse(request.url)?.hostname.endsWith('filcdn.io')) {
       return Response.redirect(
         request.url.replace('filcdn.io', 'filbeam.io'),
@@ -70,9 +85,11 @@ export default {
     const workerStartedAt = performance.now()
     const requestCountryCode = request.headers.get('CF-IPCountry')
 
-    const { payerWalletAddress, pieceCid } = parseRequest(request, env)
+    const { payerWalletAddress, ipfsRootCid, ipfsSubpath } = parseRequest(
+      request,
+      env,
+    )
 
-    httpAssert(payerWalletAddress && pieceCid, 400, 'Missing required fields')
     httpAssert(
       isValidEthereumAddress(payerWalletAddress),
       400,
@@ -85,8 +102,12 @@ export default {
 
       const [{ serviceProviderId, serviceUrl, dataSetId }, isBadBit] =
         await Promise.all([
-          getStorageProviderAndValidatePayer(env, payerWalletAddress, pieceCid),
-          findInBadBits(env, pieceCid),
+          getStorageProviderAndValidatePayer(
+            env,
+            payerWalletAddress,
+            ipfsRootCid,
+          ),
+          findInBadBits(env, ipfsRootCid),
         ])
 
       httpAssert(
@@ -101,9 +122,10 @@ export default {
         `Unsupported Service Provider: ${serviceProviderId}`,
       )
 
-      const { response: originResponse, cacheMiss } = await retrieveFile(
+      const { response: originResponse, cacheMiss } = await retrieveIpfsContent(
         serviceUrl,
-        pieceCid,
+        ipfsRootCid,
+        ipfsSubpath,
         env.ORIGIN_CACHE_TTL,
         { signal: request.signal },
       )

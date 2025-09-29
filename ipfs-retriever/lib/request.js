@@ -7,8 +7,9 @@ import { httpAssert } from './http-assert.js'
  * @param {object} options
  * @param {string} options.DNS_ROOT
  * @returns {{
- *   payerWalletAddress?: string
- *   pieceCid?: string
+ *   payerWalletAddress: string
+ *   ipfsRootCid: string
+ *   ipfsSubpath: string
  * }}
  */
 export function parseRequest(request, { DNS_ROOT }) {
@@ -21,15 +22,16 @@ export function parseRequest(request, { DNS_ROOT }) {
     `Invalid hostname: ${url.hostname}. It must end with ${DNS_ROOT}.`,
   )
 
-  const payerWalletAddress = url.hostname.slice(0, -DNS_ROOT.length)
-  const [pieceCid] = url.pathname.split('/').filter(Boolean)
+  const rootCidAndPayer = url.hostname.slice(0, -DNS_ROOT.length)
+  const [ipfsRootCid, payerWalletAddress] = rootCidAndPayer.split('-')
 
-  httpAssert(pieceCid, 404, 'Missing required path element: `/{CID}`')
   httpAssert(
-    pieceCid.startsWith('baga') || pieceCid.startsWith('bafk'),
-    404,
-    `Invalid CID: ${pieceCid}. It is not a valid CommP (v1 or v2).`,
+    ipfsRootCid && payerWalletAddress,
+    400,
+    `The hostname must be in the format: {IpfsRootCID}-{PayerWalletAddress}${DNS_ROOT}`,
   )
 
-  return { payerWalletAddress, pieceCid }
+  const ipfsSubpath = url.pathname || '/'
+
+  return { payerWalletAddress, ipfsRootCid, ipfsSubpath }
 }

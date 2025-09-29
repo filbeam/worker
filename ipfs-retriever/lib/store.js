@@ -78,7 +78,7 @@ export async function logRetrievalResult(env, params) {
  *   binding
  * @param {string} payerAddress - The address of the client paying for the
  *   request
- * @param {string} pieceCid - The piece CID to look up
+ * @param {string} ipfsRootCid - The IPFS Root CID to look up
  * @returns {Promise<{
  *   serviceProviderId: string
  *   serviceUrl: string
@@ -88,10 +88,10 @@ export async function logRetrievalResult(env, params) {
 export async function getStorageProviderAndValidatePayer(
   env,
   payerAddress,
-  pieceCid,
+  ipfsRootCid,
 ) {
   const query = `
-   SELECT pieces.data_set_id, data_sets.service_provider_id, data_sets.payer_address, data_sets.with_cdn, service_providers.service_url, wallet_details.is_sanctioned
+   SELECT pieces.data_set_id, data_sets.service_provider_id, data_sets.payer_address, data_sets.with_cdn, data_sets.with_ipfs_indexing, service_providers.service_url, wallet_details.is_sanctioned
    FROM pieces
    LEFT OUTER JOIN data_sets
      ON pieces.data_set_id = data_sets.id
@@ -99,7 +99,7 @@ export async function getStorageProviderAndValidatePayer(
      ON data_sets.service_provider_id = service_providers.id
    LEFT OUTER JOIN wallet_details
      ON data_sets.payer_address = wallet_details.address
-   WHERE pieces.cid = ?
+   WHERE pieces.ipfs_root_cid = ?
  `
 
   const results = /**
@@ -108,18 +108,19 @@ export async function getStorageProviderAndValidatePayer(
    *   data_set_id: string
    *   payer_address: string | undefined
    *   with_cdn: number | undefined
+   *   with_ipfs_indexing: number | undefined
    *   service_url: string | undefined
    *   is_sanctioned: number | undefined
    * }[]}
    */ (
     /** @type {any[]} */ (
-      (await env.DB.prepare(query).bind(pieceCid).all()).results
+      (await env.DB.prepare(query).bind(ipfsRootCid).all()).results
     )
   )
   httpAssert(
     results && results.length > 0,
     404,
-    `Piece_cid '${pieceCid}' does not exist or may not have been indexed yet.`,
+    `IPFS Root CID '${ipfsRootCid}' does not exist or may not have been indexed yet.`,
   )
 
   const withServiceProvider = results.filter(
@@ -128,7 +129,7 @@ export async function getStorageProviderAndValidatePayer(
   httpAssert(
     withServiceProvider.length > 0,
     404,
-    `Piece_cid '${pieceCid}' exists but has no associated service provider.`,
+    `IPFS Root CID '${ipfsRootCid}' exists but has no associated service provider.`,
   )
 
   const withPaymentRail = withServiceProvider.filter(
@@ -138,7 +139,7 @@ export async function getStorageProviderAndValidatePayer(
   httpAssert(
     withPaymentRail.length > 0,
     402,
-    `There is no Filecoin Warm Storage Service deal for payer '${payerAddress}' and piece_cid '${pieceCid}'.`,
+    `There is no Filecoin Warm Storage Service deal for payer '${payerAddress}' and IPFS Root CID '${ipfsRootCid}'.`,
   )
 
   const withCDN = withPaymentRail.filter(
@@ -147,23 +148,32 @@ export async function getStorageProviderAndValidatePayer(
   httpAssert(
     withCDN.length > 0,
     402,
-    `The Filecoin Warm Storage Service deal for payer '${payerAddress}' and piece_cid '${pieceCid}' has withCDN=false.`,
+    `The Filecoin Warm Storage Service deal for payer '${payerAddress}' and IPFS Root CID '${ipfsRootCid}' has withCDN=false.`,
   )
 
-  const withPayerNotSanctioned = withPaymentRail.filter(
+  const withIpfsIndexing = withCDN.filter((row) => row.with_ipfs_indexing === 1)
+  httpAssert(
+    withIpfsIndexing.length > 0,
+    402,
+    `The Filecoin Warm Storage Service deal for payer '${payerAddress}' and IPFS Root CID '${ipfsRootCid}' has withIpfsIndexing=false.`,
+  )
+
+  const withPayerNotSanctioned = withIpfsIndexing.filter(
     (row) => !row.is_sanctioned,
   )
   httpAssert(
     withPayerNotSanctioned.length > 0,
     403,
-    `Wallet '${payerAddress}' is sanctioned and cannot retrieve piece_cid '${pieceCid}'.`,
+    `Wallet '${payerAddress}' is sanctioned and cannot retrieve IPFS Root CID '${ipfsRootCid}'.`,
   )
 
-  const withApprovedProvider = withCDN.filter((row) => row.service_url)
+  const withApprovedProvider = withPayerNotSanctioned.filter(
+    (row) => row.service_url,
+  )
   httpAssert(
     withApprovedProvider.length > 0,
     404,
-    `No approved service provider found for payer '${payerAddress}' and piece_cid '${pieceCid}'.`,
+    `No approved service provider found for payer '${payerAddress}' and IPFS Root CID '${ipfsRootCid}'.`,
   )
 
   const {
@@ -177,7 +187,7 @@ export async function getStorageProviderAndValidatePayer(
   httpAssert(serviceUrl, 500, 'should never happen')
 
   console.log(
-    `Looked up Data set ID '${dataSetId}' and service provider id '${serviceProviderId}' for piece_cid '${pieceCid}' and payer '${payerAddress}'. Service URL: ${serviceUrl}`,
+    `Looked up Data set ID '${dataSetId}' and service provider id '${serviceProviderId}' for IPFS Root CID '${ipfsRootCid}' and payer '${payerAddress}'. Service URL: ${serviceUrl}`,
   )
 
   return { serviceProviderId, serviceUrl, dataSetId }

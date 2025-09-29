@@ -6,10 +6,7 @@ import {
   updateDataSetStats,
 } from '../lib/store.js'
 import { env } from 'cloudflare:test'
-import {
-  withDataSetPieces,
-  withApprovedProvider,
-} from './test-data-builders.js'
+import { withDataSetPiece, withApprovedProvider } from './test-data-builders.js'
 
 describe('logRetrievalResult', () => {
   it('inserts a log into local D1 via logRetrievalResult and verifies it', async () => {
@@ -25,13 +22,13 @@ describe('logRetrievalResult', () => {
     })
 
     const readOutput = await env.DB.prepare(
-      `SELECT 
+      `SELECT
         data_set_id,
         response_status,
         egress_bytes,
         cache_miss,
         request_country_code
-      FROM retrieval_logs 
+      FROM retrieval_logs
       WHERE data_set_id = '${DATA_SET_ID}'`,
     ).all()
     const result = readOutput.results
@@ -56,31 +53,31 @@ describe('getStorageProviderAndValidatePayer', () => {
     })
   })
 
-  it('returns service provider for valid pieceCid', async () => {
+  it('returns service provider for valid ipfsRootCid', async () => {
     const dataSetId = 'test-set-1'
-    const pieceCid = 'test-cid-1'
+    const ipfsRootCid = 'bafk4test'
     const payerAddress = '0x1234567890abcdef1234567890abcdef12345678'
 
     await env.DB.prepare(
-      'INSERT INTO data_sets (id, service_provider_id, payer_address, with_cdn) VALUES (?, ?, ?, ?)',
+      'INSERT INTO data_sets (id, service_provider_id, payer_address, with_cdn, with_ipfs_indexing) VALUES (?, ?, ?, ?, ?)',
     )
-      .bind(dataSetId, APPROVED_SERVICE_PROVIDER_ID, payerAddress, true)
+      .bind(dataSetId, APPROVED_SERVICE_PROVIDER_ID, payerAddress, true, true)
       .run()
     await env.DB.prepare(
-      'INSERT INTO pieces (id, data_set_id, cid) VALUES (?, ?, ?)',
+      'INSERT INTO pieces (id, data_set_id, cid, ipfs_root_cid) VALUES (?, ?, ?, ?)',
     )
-      .bind('piece-1', dataSetId, pieceCid)
+      .bind('piece-1', dataSetId, 'baga4piece', ipfsRootCid)
       .run()
 
     const result = await getStorageProviderAndValidatePayer(
       env,
       payerAddress,
-      pieceCid,
+      ipfsRootCid,
     )
     assert.strictEqual(result.serviceProviderId, APPROVED_SERVICE_PROVIDER_ID)
   })
 
-  it('throws error if pieceCid not found', async () => {
+  it('throws error if ipfsRootCid not found', async () => {
     const payerAddress = '0x1234567890abcdef1234567890abcdef12345678'
     await assert.rejects(
       async () =>
@@ -100,11 +97,11 @@ describe('getStorageProviderAndValidatePayer', () => {
 
     await env.DB.prepare(
       `
-      INSERT INTO pieces (id, data_set_id, cid)
-      VALUES (?, ?, ?)
+      INSERT INTO pieces (id, data_set_id, cid, ipfs_root_cid)
+      VALUES (?, ?, ?, ?)
     `,
     )
-      .bind('piece-1', dataSetId, cid)
+      .bind('piece-1', dataSetId, `bagatestpiece`, cid)
       .run()
 
     await assert.rejects(
@@ -130,8 +127,8 @@ describe('getStorageProviderAndValidatePayer', () => {
         true,
       ),
       env.DB.prepare(
-        'INSERT INTO pieces (id, data_set_id, cid) VALUES (?, ?, ?)',
-      ).bind('piece-2', dataSetId, cid),
+        'INSERT INTO pieces (id, data_set_id, cid, ipfs_root_cid) VALUES (?, ?, ?, ?)',
+      ).bind('piece-2', dataSetId, 'bagatest', cid),
     ])
 
     await assert.rejects(
@@ -152,8 +149,8 @@ describe('getStorageProviderAndValidatePayer', () => {
         'INSERT INTO data_sets (id, service_provider_id, payer_address, with_cdn) VALUES (?, ?, ?, ?)',
       ).bind(dataSetId, serviceProviderId, payerAddress, false),
       env.DB.prepare(
-        'INSERT INTO pieces (id, data_set_id, cid) VALUES (?, ?, ?)',
-      ).bind('piece-2', dataSetId, cid),
+        'INSERT INTO pieces (id, data_set_id, cid, ipfs_root_cid) VALUES (?, ?, ?, ?)',
+      ).bind('piece-2', dataSetId, 'bagatest', cid),
     ])
 
     await assert.rejects(
@@ -170,11 +167,11 @@ describe('getStorageProviderAndValidatePayer', () => {
 
     await env.DB.batch([
       env.DB.prepare(
-        'INSERT INTO data_sets (id, service_provider_id, payer_address, with_cdn) VALUES (?, ?, ?, ?)',
-      ).bind(dataSetId, APPROVED_SERVICE_PROVIDER_ID, payerAddress, true),
+        'INSERT INTO data_sets (id, service_provider_id, payer_address, with_cdn, with_ipfs_indexing) VALUES (?, ?, ?, ?, ?)',
+      ).bind(dataSetId, APPROVED_SERVICE_PROVIDER_ID, payerAddress, true, true),
       env.DB.prepare(
-        'INSERT INTO pieces (id, data_set_id, cid) VALUES (?, ?, ?)',
-      ).bind('piece-3', dataSetId, cid),
+        'INSERT INTO pieces (id, data_set_id, cid, ipfs_root_cid) VALUES (?, ?, ?, ?)',
+      ).bind('piece-3', dataSetId, 'bagatest', cid),
     ])
 
     const result = await getStorageProviderAndValidatePayer(
@@ -185,10 +182,10 @@ describe('getStorageProviderAndValidatePayer', () => {
 
     assert.strictEqual(result.serviceProviderId, APPROVED_SERVICE_PROVIDER_ID)
   })
-  it('returns the service provider first in the ordering when multiple service providers share the same pieceCid', async () => {
+  it('returns the service provider first in the ordering when multiple service providers share the same ipfsRootCid', async () => {
     const dataSetId1 = 'data-set-a'
     const dataSetId2 = 'data-set-b'
-    const pieceCid = 'shared-piece-cid'
+    const ipfsRootCid = 'shared-ipfs-cid'
     const payerAddress = '0x1234567890abcdef1234567890abcdef12345678'
     const serviceProviderId1 = 'service-provider-a'
     const serviceProviderId2 = 'service-provicer-b'
@@ -200,11 +197,11 @@ describe('getStorageProviderAndValidatePayer', () => {
       id: serviceProviderId2,
     })
 
-    // Insert both owners into separate sets with the same pieceCid
+    // Insert both owners into separate sets with the same ipfsRootCid
     await env.DB.prepare(
-      'INSERT INTO data_sets (id, service_provider_id, payer_address, with_cdn) VALUES (?, ?, ?, ?)',
+      'INSERT INTO data_sets (id, service_provider_id, payer_address, with_cdn, with_ipfs_indexing) VALUES (?, ?, ?, ?, ?)',
     )
-      .bind(dataSetId1, serviceProviderId1, payerAddress, true)
+      .bind(dataSetId1, serviceProviderId1, payerAddress, true, true)
       .run()
 
     await env.DB.prepare(
@@ -213,24 +210,24 @@ describe('getStorageProviderAndValidatePayer', () => {
       .bind(dataSetId2, serviceProviderId2, payerAddress, true)
       .run()
 
-    // Insert same pieceCid for both sets
+    // Insert same ipfsRootCid for both sets
     await env.DB.prepare(
-      'INSERT INTO pieces (id, data_set_id, cid) VALUES (?, ?, ?)',
+      'INSERT INTO pieces (id, data_set_id, cid, ipfs_root_cid) VALUES (?, ?, ?, ?)',
     )
-      .bind('piece-a', dataSetId1, pieceCid)
+      .bind('piece-a', dataSetId1, 'bagatest', ipfsRootCid)
       .run()
 
     await env.DB.prepare(
-      'INSERT INTO pieces (id, data_set_id, cid) VALUES (?, ?, ?)',
+      'INSERT INTO pieces (id, data_set_id, cid, ipfs_root_cid) VALUES (?, ?, ?, ?)',
     )
-      .bind('piece-b', dataSetId2, pieceCid)
+      .bind('piece-b', dataSetId2, 'bagatest', ipfsRootCid)
       .run()
 
     // Should return only the serviceProviderId1 which is the first in the ordering
     const result = await getStorageProviderAndValidatePayer(
       env,
       payerAddress,
-      pieceCid,
+      ipfsRootCid,
     )
     assert.strictEqual(result.serviceProviderId, serviceProviderId1)
   })
@@ -238,7 +235,7 @@ describe('getStorageProviderAndValidatePayer', () => {
   it('ignores owners that are not approved by Filecoin Warm Storage Service', async () => {
     const dataSetId1 = '0'
     const dataSetId2 = '1'
-    const pieceCid = 'shared-piece-cid'
+    const ipfsRootCid = 'shared-piece-cid'
     const payerAddress = '0x1234567890abcdef1234567890abcdef12345678'
     const serviceProviderId1 = '0'
     const serviceProviderId2 = '1'
@@ -251,27 +248,27 @@ describe('getStorageProviderAndValidatePayer', () => {
     // NOTE: the second provider is not registered as an approved provider
 
     // Important: we must insert the unapproved provider first!
-    await withDataSetPieces(env, {
+    await withDataSetPiece(env, {
       payerAddress,
       serviceProviderId: serviceProviderId2,
       dataSetId: dataSetId2,
       withCDN: true,
-      pieceCid,
+      ipfsRootCid,
     })
 
-    await withDataSetPieces(env, {
+    await withDataSetPiece(env, {
       payerAddress,
       serviceProviderId: serviceProviderId1,
       dataSetId: dataSetId1,
       withCDN: true,
-      pieceCid,
+      ipfsRootCid,
     })
 
     // Should return service provider 1 because service provider 2 is not approved
     const result = await getStorageProviderAndValidatePayer(
       env,
       payerAddress,
-      pieceCid,
+      ipfsRootCid,
     )
     assert.deepStrictEqual(result, {
       dataSetId: dataSetId1,
@@ -286,7 +283,7 @@ describe('updateDataSetStats', () => {
     const DATA_SET_ID = 'test-data-set-1'
     const EGRESS_BYTES = 123456
 
-    await withDataSetPieces(env, {
+    await withDataSetPiece(env, {
       dataSetId: DATA_SET_ID,
     })
     await updateDataSetStats(env, {
@@ -295,7 +292,7 @@ describe('updateDataSetStats', () => {
     })
 
     const { results: insertResults } = await env.DB.prepare(
-      `SELECT id, total_egress_bytes_used 
+      `SELECT id, total_egress_bytes_used
        FROM data_sets
        WHERE id = ?`,
     )
@@ -316,8 +313,8 @@ describe('updateDataSetStats', () => {
     })
 
     const { results: updateResults } = await env.DB.prepare(
-      `SELECT id, total_egress_bytes_used 
-       FROM data_sets 
+      `SELECT id, total_egress_bytes_used
+       FROM data_sets
        WHERE id = ?`,
     )
       .bind(DATA_SET_ID)
