@@ -1,5 +1,4 @@
 name: alpha-mainnet
-version: 6
 resource_size: s
 apiVersion: 3
 sources:
@@ -20,7 +19,7 @@ sources:
     subgraphs:
       - name: filbeam-alpha-mainnet
         version: 1.0.0
-    name: pieces_added
+    name: piece_added
   filbeam__service_terminated:
     type: subgraph_entity
     subgraphs:
@@ -37,7 +36,7 @@ sources:
     type: subgraph_entity
     subgraphs:
       - name: filbeam-alpha-mainnet
-        version: 1.1.0
+        version: 1.0.0
     name: pieces_removed
   filbeam__cdn_service_terminated:
     type: subgraph_entity
@@ -71,7 +70,7 @@ sinks:
     secret_name: WEBHOOK_SECRET_CMBHIZHPO0
     one_row_per_request: true
     from: source__service_provider_registry__product_added
-  sink__fwss__pieces_added:
+  sink__fwss__piece_added:
     url: https://index.filcdn.io/fwss/piece-added
     type: webhook
     secret_name: WEBHOOK_SECRET_CMBHIZHPO0
