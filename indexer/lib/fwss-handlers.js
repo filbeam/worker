@@ -49,7 +49,6 @@ export async function handleFWSSDataSetCreated(
       )
       VALUES (?, ?, ?, ?, ?)
       ON CONFLICT DO UPDATE SET
-        with_cdn = excluded.with_cdn,
         with_ipfs_indexing = excluded.with_ipfs_indexing
     `,
   )

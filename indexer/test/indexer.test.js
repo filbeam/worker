@@ -428,12 +428,19 @@ describe('retriever.indexer', () => {
       expect(dataSets[0].with_ipfs_indexing).toBe(0)
     })
 
-    it('updates existing data set to enable both withCDN and withIPFSIndexing flags', async () => {
+    it('updates existing data set to capture withIPFSIndexing flags', async () => {
       const dataSetId = randomId()
-      const providerId = randomId()
+      const serviceProviderId = randomId()
 
-      // First request: create data set with no metadata flags
-      let req = new Request('https://host/fwss/data-set-created', {
+      // The DataSet was indexed before we added support for IPFS metadata
+      await withDataSet(env, {
+        dataSetId,
+        serviceProviderId,
+        payerAddress: '0xPayerAddress',
+      })
+
+      // Second request sent when we re-run the Goldsky pipeline
+      const req = new Request('https://host/fwss/data-set-created', {
         method: 'POST',
         headers: {
           [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
@@ -441,35 +448,14 @@ describe('retriever.indexer', () => {
         body: JSON.stringify({
           data_set_id: dataSetId,
           payer: '0xPayerAddress',
-          provider_id: providerId,
-          metadata_keys: [],
-          metadata_values: [],
-        }),
-      })
-
-      let res = await workerImpl.fetch(req, env, ctx, {
-        checkIfAddressIsSanctioned: mockCheckIfAddressIsSanctioned,
-      })
-      expect(res.status).toBe(200)
-      expect(await res.text()).toBe('OK')
-
-      // Second request: update same data set with both flags
-      req = new Request('https://host/fwss/data-set-created', {
-        method: 'POST',
-        headers: {
-          [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
-        },
-        body: JSON.stringify({
-          data_set_id: dataSetId,
-          payer: '0xPayerAddress',
-          provider_id: providerId,
+          provider_id: serviceProviderId,
           metadata_keys: ['withCDN', 'withIPFSIndexing'],
           metadata_values: ['', ''],
         }),
       })
 
       mockCheckIfAddressIsSanctioned.mockResolvedValueOnce(false)
-      res = await workerImpl.fetch(req, env, ctx, {
+      const res = await workerImpl.fetch(req, env, ctx, {
         checkIfAddressIsSanctioned: mockCheckIfAddressIsSanctioned,
       })
       expect(res.status).toBe(200)
@@ -483,7 +469,6 @@ describe('retriever.indexer', () => {
         .all()
 
       expect(dataSets.length).toBe(1)
-      expect(dataSets[0].with_cdn).toBe(1)
       expect(dataSets[0].with_ipfs_indexing).toBe(1)
     })
   })
@@ -1139,19 +1124,32 @@ describe('POST /fwss/service-terminated', () => {
 
 async function withDataSet(
   env,
-  { dataSetId = randomId(), withCDN = true, serviceProviderId, payerAddress },
+  {
+    dataSetId = randomId(),
+    withCDN = true,
+    withIPFSIndexing = false,
+    serviceProviderId,
+    payerAddress,
+  },
 ) {
   await env.DB.prepare(
     `
     INSERT INTO data_sets (
       id,
       with_cdn,
+      with_ipfs_indexing,
       service_provider_id,
       payer_address
     )
-    VALUES (?, ?, ?, ?)`,
+    VALUES (?, ?, ?, ?, ?)`,
   )
-    .bind(String(dataSetId), withCDN, serviceProviderId, payerAddress)
+    .bind(
+      String(dataSetId),
+      withCDN,
+      withIPFSIndexing,
+      serviceProviderId,
+      payerAddress,
+    )
     .run()
 
   return dataSetId
