@@ -8,6 +8,7 @@
   "workspaces": [
     "bad-bits",
     "indexer",
+    "ipfs-retriever",
     "piece-retriever",
     "terminator"
   ],

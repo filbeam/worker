@@ -1,0 +1,16 @@
+{
+  "name": "@filbeam/ipfs-retriever",
+  "version": "1.0.0",
+  "private": true,
+  "description": "FilBeam IPFS Retrieval Worker",
+  "author": "Space Meridian <filbeam@meridian.space>",
+  "type": "module",
+  "main": "bin/indexer.js",
+  "scripts": {
+    "build:types": "wrangler types",
+    "deploy:calibration": "wrangler deploy --env calibration",
+    "deploy:mainnet": "wrangler deploy --env mainnet",
+    "start": "wrangler d1 migrations apply dev-db --local --env dev --cwd ../db && wrangler dev --env dev",
+    "test": "wrangler d1 migrations apply test-db --local --cwd ../db && vitest run"
+  }
+}
