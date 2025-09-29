@@ -1,9 +1,9 @@
 {
-  "name": "@filcdn/retriever",
+  "name": "@filbeam/retriever",
   "version": "1.0.0",
   "private": true,
-  "description": "FilCDN Retrieval Worker",
-  "author": "Space Meridian <filcdn@meridian.space>",
+  "description": "FilBeam Retrieval Worker",
+  "author": "Space Meridian <filbeam@meridian.space>",
   "type": "module",
   "main": "bin/indexer.js",
   "scripts": {

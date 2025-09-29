@@ -1,4 +1,4 @@
-# FilCDN Cloudflare Worker
+# FilBeam Cloudflare Worker
 
 [Cloudflare worker](https://developers.cloudflare.com/workers/) used to retrieve
 and cache from the Filecoin PDP Service Providers.

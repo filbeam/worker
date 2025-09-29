@@ -1,9 +1,9 @@
 {
-  "name": "@filcdn/monorepo",
+  "name": "@filbeam/monorepo",
   "version": "1.0.0",
   "private": true,
-  "description": "FilCDN Cloudflare Workers Monorepo",
-  "author": "Space Meridian <filcdn@meridian.space>",
+  "description": "FilBeam Cloudflare Workers Monorepo",
+  "author": "Space Meridian <filbeam@meridian.space>",
   "type": "module",
   "workspaces": [
     "bad-bits",
