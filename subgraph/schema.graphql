@@ -1,18 +1,60 @@
-type PiecesAdded @entity(immutable: true) {
-  id: Bytes!
-  setId: String! # uint256
-  pieceIds: [String!]! # uint256[]
-  pieceCids: [String!]!
+type DataSetCreated @entity(immutable: true) {
+  id: ID!
+  dataSetId: String! # uint256
+  providerId: String! # uint256
+  pdpRailId: String! # uint256
+  cacheMissRailId: String! # uint256
+  cdnRailId: String! # uint256
+  payer: String # address
+  serviceProvider: String # address
+  payee: String # address
+  metadataKeys: [String!]
+  metadataValues: [String!]
   blockNumber: BigInt!
   blockTimestamp: BigInt!
-  transactionHash: Bytes!
+  transactionHash: String!
+}
+
+type PieceAdded @entity(immutable: true) {
+  id: ID!
+  dataSetId: String! # uint256
+  pieceId: String! # uint256
+  pieceCid: String! # Bytes serialised as hex (0x...)
+  metadataKeys: [String!]
+  metadataValues: [String!]
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: String!
 }
 
 type PiecesRemoved @entity(immutable: true) {
-  id: Bytes!
-  setId: String! # uint256
+  id: ID!
+  dataSetId: String! # uint256
   pieceIds: [String!]! # uint256[]
   blockNumber: BigInt!
   blockTimestamp: BigInt!
-  transactionHash: Bytes!
+  transactionHash: String!
+}
+
+type ServiceTerminated @entity(immutable: true) {
+  id: ID!
+  caller: String!
+  dataSetId: String! # uint256
+  pdpRailId: String! # uint256
+  cacheMissRailId: String! # uint256
+  cdnRailId: String! # uint256
+  blockNumber: BigInt!
+  timestamp: BigInt!
+  transactionHash: String!
+}
+
+type CdnServiceTerminated @entity(immutable: true) {
+  id: ID!
+  caller: String!
+  dataSetId: String! # uint256
+  cacheMissRailId: String! # uint256
+  cdnRailId: String! # uint256
+  blockNumber: BigInt!
+  timestamp: BigInt!
+  transactionHash: String!
 }

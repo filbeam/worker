@@ -3,10 +3,10 @@ version: 6
 resource_size: s
 apiVersion: 3
 sources:
-  source__fwss__data_set_created:
+  filbeam__data_set_created:
     type: subgraph_entity
     subgraphs:
-      - name: fwss-alpha-calibnet
+      - name: filbeam-alpha-calibnet
         version: 1.0.0
     name: data_set_created
   source__service_provider_registry__product_added:
@@ -15,16 +15,16 @@ sources:
       - name: service-provider-registry-alpha-calibnet
         version: 1.0.0
     name: product_added
-  source__pdp__pieces_added:
+  filbeam__piece_added:
     type: subgraph_entity
     subgraphs:
-      - name: pdp-verifier-alpha-calibnet
-        version: 1.1.0
+      - name: filbeam-alpha-calibnet
+        version: 1.0.0
     name: pieces_added
-  source__fwss__service_terminated:
+  filbeam__service_terminated:
     type: subgraph_entity
     subgraphs:
-      - name: fwss-alpha-calibnet
+      - name: filbeam-alpha-calibnet
         version: 1.0.0
     name: service_terminated
   source__service_provider_registry__product_updated:
@@ -33,16 +33,16 @@ sources:
       - name: service-provider-registry-alpha-calibnet
         version: 1.0.0
     name: product_updated
-  source__pdp__pieces_removed:
+  filbeam__pieces_removed:
     type: subgraph_entity
     subgraphs:
-      - name: pdp-verifier-alpha-calibnet
+      - name: filbeam-alpha-calibnet
         version: 1.1.0
     name: pieces_removed
-  source_fwss_cdn_service_terminated:
+  filbeam__cdn_service_terminated:
     type: subgraph_entity
     subgraphs:
-      - name: fwss-alpha-calibnet
+      - name: filbeam-alpha-calibnet
         version: 1.0.0
     name: cdn_service_terminated
   source__service_provider_registry__product_removed:
@@ -64,25 +64,25 @@ sinks:
     type: webhook
     secret_name: WEBHOOK_SECRET_CMBHIZHPO0
     one_row_per_request: true
-    from: source__fwss__data_set_created
+    from: filbeam__data_set_created
   sink__service_provider_registry__product_added:
     url: https://index.calibration.filcdn.io/service-provider-registry/product-added
     type: webhook
     secret_name: WEBHOOK_SECRET_CMBHIZHPO0
     one_row_per_request: true
     from: source__service_provider_registry__product_added
-  sink__pdp__pieces_added:
-    url: https://index.calibration.filcdn.io/pdp-verifier/pieces-added
+  sink__fwss__pieces_added:
+    url: https://index.calibration.filcdn.io/fwss/piece-added
     type: webhook
     secret_name: WEBHOOK_SECRET_CMBHIZHPO0
     one_row_per_request: true
-    from: source__pdp__pieces_added
+    from: filbeam__piece_added
   sink__fwss__service_terminated:
     url: https://index.calibration.filcdn.io/fwss/service-terminated
     type: webhook
     secret_name: WEBHOOK_SECRET_CMBHIZHPO0
     one_row_per_request: true
-    from: source__fwss__service_terminated
+    from: filbeam__service_terminated
   sink__service_provider_registry__product_updated:
     url: https://index.calibration.filcdn.io/service-provider-registry/product-updated
     type: webhook
@@ -94,13 +94,13 @@ sinks:
     type: webhook
     secret_name: WEBHOOK_SECRET_CMBHIZHPO0
     one_row_per_request: true
-    from: source__pdp__pieces_removed
+    from: filbeam__pieces_removed
   sink_fwss_cdn_service_terminated:
     url: https://index.calibration.filcdn.io/fwss/cdn-service-terminated
     type: webhook
     secret_name: WEBHOOK_SECRET_CMBHIZHPO0
     one_row_per_request: true
-    from: source_fwss_cdn_service_terminated
+    from: filbeam__cdn_service_terminated
   sink__service_provider_registry__product_removed:
     url: https://index.calibration.filcdn.io/service-provider-registry/product-removed
     type: webhook
