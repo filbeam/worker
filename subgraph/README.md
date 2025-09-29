@@ -93,7 +93,6 @@ Follow these steps to build and deploy the subgraph:
 If you need to make changes to the subgraph's logic, schema, or configuration, follow these general steps:
 
 1.  **Modify Code:** Edit the relevant files:
-
     - `schema.graphql`: To change the data structure and entities being stored.
     - `subgraph-{calibnet|mainnet}.yaml`: To update contract addresses, ABIs, start blocks, or event handlers.
     - `src/*.ts`: To alter the logic that processes blockchain events and maps them to the defined schema entities.
