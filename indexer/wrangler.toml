@@ -17,7 +17,7 @@ database_id = "8cc92155-16f6-426a-b782-2965e0daf100"
 ENVIRONMENT = "dev"
 WALLET_SCREENING_BATCH_SIZE = 1
 WALLET_SCREENING_STALE_THRESHOLD_MS = 86400000 # one day
-GOLDSKY_SUBGRAPH_URL="https://api.goldsky.com/api/public/project_cmb91qc80slyu01wca6e2eupl/subgraphs/fwss-alpha-calibnet/1.0.0/gn"
+GOLDSKY_SUBGRAPH_URL="https://api.goldsky.com/api/public/project_cmb91qc80slyu01wca6e2eupl/subgraphs/filbeam-alpha-calibnet/1.0.0/gn"
 
 [[env.dev.d1_databases]]
 binding = "DB"
@@ -28,7 +28,7 @@ database_id = "8cc92155-16f6-426a-b782-2965e0daf101"
 ENVIRONMENT = "calibration"
 WALLET_SCREENING_BATCH_SIZE = 1
 WALLET_SCREENING_STALE_THRESHOLD_MS = 86400000 # one day
-GOLDSKY_SUBGRAPH_URL="https://api.goldsky.com/api/public/project_cmb91qc80slyu01wca6e2eupl/subgraphs/fwss-alpha-calibnet/1.0.0/gn"
+GOLDSKY_SUBGRAPH_URL="https://api.goldsky.com/api/public/project_cmb91qc80slyu01wca6e2eupl/subgraphs/filbeam-alpha-calibnet/1.0.0/gn"
 
 [[env.calibration.d1_databases]]
 binding = "DB"
@@ -51,7 +51,7 @@ max_batch_timeout = 30
 ENVIRONMENT = "mainnet"
 WALLET_SCREENING_BATCH_SIZE = 10
 WALLET_SCREENING_STALE_THRESHOLD_MS = 21600000 # 6 hours
-GOLDSKY_SUBGRAPH_URL="https://api.goldsky.com/api/public/project_cmb91qc80slyu01wca6e2eupl/subgraphs/fwss-alpha-mainnet/0.0.0/gn"
+GOLDSKY_SUBGRAPH_URL="https://api.goldsky.com/api/public/project_cmb91qc80slyu01wca6e2eupl/subgraphs/filbeam-alpha-mainnet/1.0.0/gn"
 
 [[env.mainnet.d1_databases]]
 binding = "DB"

@@ -33,7 +33,7 @@ typechain-types
 # Hardhat files
 cache
 
-tests/.bin/pdp-verifier.wasm
+tests/.bin
 tests/.latest.json
 
 subgraph.yaml

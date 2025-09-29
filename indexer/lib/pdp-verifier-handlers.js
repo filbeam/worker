@@ -1,29 +1,20 @@
 /**
  * @param {Env} env
- * @param {number | string} dataSetId
- * @param {(number | string)[]} pieceIds
- * @param {string[]} pieceCids
+ * @param {string} dataSetId
+ * @param {string} pieceId
+ * @param {string} pieceCid
  */
-export async function insertDataSetPieces(env, dataSetId, pieceIds, pieceCids) {
+export async function insertDataSetPiece(env, dataSetId, pieceId, pieceCid) {
   await env.DB.prepare(
     `INSERT INTO pieces (
       id,
       data_set_id,
       cid
-    ) VALUES ${new Array(pieceIds.length)
-      .fill(null)
-      .map(() => '(?, ?, ?)')
-      .join(', ')}
-      ON CONFLICT DO NOTHING
+    ) VALUES (?, ?, ?)
+    ON CONFLICT DO NOTHING
     `,
   )
-    .bind(
-      ...pieceIds.flatMap((pieceId, i) => [
-        String(pieceId),
-        String(dataSetId),
-        pieceCids[i],
-      ]),
-    )
+    .bind(pieceId, dataSetId, pieceCid)
     .run()
 }
 
