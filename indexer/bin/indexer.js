@@ -13,6 +13,7 @@ import {
   removeDataSetPieces,
   insertDataSetPiece,
 } from '../lib/pdp-verifier-handlers.js'
+import { handleFilBeamUsageReported } from '../lib/filbeam-handlers.js'
 import { screenWallets } from '../lib/wallet-screener.js'
 import { CID } from 'multiformats/cid'
 
@@ -195,6 +196,29 @@ export default {
     } else if (pathname === '/service-provider-registry/provider-removed') {
       const { provider_id: providerId } = payload
       return await handleProviderRemoved(env, providerId)
+    } else if (pathname === '/filbeam/usage-reported') {
+      // Validate required fields
+      if (
+        !payload.data_set_id ||
+        !(
+          typeof payload.data_set_id === 'number' ||
+          typeof payload.data_set_id === 'string'
+        ) ||
+        payload.new_epoch === undefined ||
+        typeof payload.new_epoch !== 'number' ||
+        payload.cdn_bytes_used === undefined ||
+        payload.cache_miss_bytes_used === undefined
+      ) {
+        console.error('FilBeam.UsageReported: Invalid payload', payload)
+        return new Response('Bad Request: Invalid payload', { status: 400 })
+      }
+
+      console.log(
+        `FilBeam usage reported (data_set_id=${payload.data_set_id}, new_epoch=${payload.new_epoch}, ` +
+          `cdn_bytes_used=${payload.cdn_bytes_used}, cache_miss_bytes_used=${payload.cache_miss_bytes_used})`,
+      )
+
+      return await handleFilBeamUsageReported(env, payload)
     } else {
       return new Response('Not Found', { status: 404 })
     }

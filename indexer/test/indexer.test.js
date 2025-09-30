@@ -925,6 +925,155 @@ describe('POST /fwss/service-terminated', () => {
   })
 })
 
+describe('POST /filbeam/usage-reported', () => {
+  it('validates required fields', async () => {
+    const testCases = [
+      { payload: {}, expectedError: 'Invalid payload' },
+      { payload: { data_set_id: '1' }, expectedError: 'Invalid payload' },
+      {
+        payload: { data_set_id: '1', new_epoch: 100 },
+        expectedError: 'Invalid payload',
+      },
+      {
+        payload: { data_set_id: '1', new_epoch: 100, cdn_bytes_used: '1000' },
+        expectedError: 'Invalid payload',
+      },
+      {
+        payload: {
+          new_epoch: 100,
+          cdn_bytes_used: '1000',
+          cache_miss_bytes_used: '500',
+        },
+        expectedError: 'Invalid payload',
+      },
+      {
+        payload: {
+          data_set_id: '1',
+          new_epoch: '100',
+          cdn_bytes_used: '1000',
+          cache_miss_bytes_used: '500',
+        },
+        expectedError: 'Invalid payload',
+      }, // new_epoch must be number
+    ]
+
+    for (const { payload, expectedError } of testCases) {
+      const req = new Request('https://host/filbeam/usage-reported', {
+        method: 'POST',
+        headers: {
+          [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+        },
+        body: JSON.stringify(payload),
+      })
+      const res = await workerImpl.fetch(req, env)
+      expect(res.status).toBe(400)
+      expect(await res.text()).toContain(expectedError)
+    }
+  })
+
+  it('accepts valid payload with string data_set_id', async () => {
+    const dataSetId = await withDataSet(env, {
+      withCDN: true,
+      serviceProviderId: '1',
+      payerAddress: '0xPayerAddress',
+    })
+
+    const req = new Request('https://host/filbeam/usage-reported', {
+      method: 'POST',
+      headers: {
+        [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+      },
+      body: JSON.stringify({
+        data_set_id: dataSetId,
+        new_epoch: 100,
+        cdn_bytes_used: '1000',
+        cache_miss_bytes_used: '500',
+      }),
+    })
+
+    const res = await workerImpl.fetch(req, env)
+    expect(res.status).toBe(200)
+    expect(await res.text()).toBe('OK')
+
+    // Verify the epoch was updated
+    const result = await env.DB.prepare(
+      'SELECT last_reported_epoch FROM data_sets WHERE id = ?',
+    )
+      .bind(dataSetId)
+      .first()
+    expect(result.last_reported_epoch).toBe(100)
+  })
+
+  it('accepts valid payload with numeric data_set_id', async () => {
+    const dataSetId = '123'
+    await withDataSet(env, {
+      dataSetId,
+      withCDN: true,
+      serviceProviderId: '1',
+      payerAddress: '0xPayerAddress',
+    })
+
+    const req = new Request('https://host/filbeam/usage-reported', {
+      method: 'POST',
+      headers: {
+        [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+      },
+      body: JSON.stringify({
+        data_set_id: 123, // Numeric
+        new_epoch: 150,
+        cdn_bytes_used: '2000',
+        cache_miss_bytes_used: '1000',
+      }),
+    })
+
+    const res = await workerImpl.fetch(req, env)
+    expect(res.status).toBe(200)
+    expect(await res.text()).toBe('OK')
+
+    // Verify the epoch was updated
+    const result = await env.DB.prepare(
+      'SELECT last_reported_epoch FROM data_sets WHERE id = ?',
+    )
+      .bind(dataSetId)
+      .first()
+    expect(result.last_reported_epoch).toBe(150)
+  })
+
+  it('returns 400 when new_epoch is not greater than last_reported_epoch', async () => {
+    const dataSetId = await withDataSet(env, {
+      withCDN: true,
+      serviceProviderId: '1',
+      payerAddress: '0xPayerAddress',
+    })
+
+    // First update to set last_reported_epoch to 100
+    await env.DB.prepare(
+      'UPDATE data_sets SET last_reported_epoch = ? WHERE id = ?',
+    )
+      .bind(100, dataSetId)
+      .run()
+
+    const req = new Request('https://host/filbeam/usage-reported', {
+      method: 'POST',
+      headers: {
+        [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+      },
+      body: JSON.stringify({
+        data_set_id: dataSetId,
+        new_epoch: 100, // Same as current
+        cdn_bytes_used: '1000',
+        cache_miss_bytes_used: '500',
+      }),
+    })
+
+    const res = await workerImpl.fetch(req, env)
+    expect(res.status).toBe(400)
+    expect(await res.text()).toContain(
+      'must be greater than last_reported_epoch',
+    )
+  })
+})
+
 async function withDataSet(
   env,
   { dataSetId = randomId(), withCDN = true, serviceProviderId, payerAddress },
