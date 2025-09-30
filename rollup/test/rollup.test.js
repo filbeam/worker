@@ -1,6 +1,10 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { applyD1Migrations, env as testEnv } from 'cloudflare:test'
-import { withDataSet } from './test-helpers.js'
+import {
+  withDataSet,
+  withRetrievalLog,
+  filecoinEpochToTimestamp,
+} from './test-helpers.js'
 import { aggregateUsageData, prepareBatchData } from '../lib/rollup.js'
 
 describe('rollup', () => {
@@ -21,46 +25,46 @@ describe('rollup', () => {
         await withDataSet(env, { id: id2, lastReportedEpoch: 99 })
 
         // Create timestamps for specific epochs
-        const epoch100Timestamp = 100 * 30 + 1598306400
-        const epoch101Timestamp = 101 * 30 + 1598306400
+        const epoch100Timestamp = filecoinEpochToTimestamp(100)
+        const epoch101Timestamp = filecoinEpochToTimestamp(101)
 
         // Add retrieval logs for dataset 1
-        await env.DB.prepare(
-          `INSERT INTO retrieval_logs (timestamp, data_set_id, response_status, egress_bytes, cache_miss)
-           VALUES (datetime(?, 'unixepoch'), ?, 200, 1000, 0)`,
-        )
-          .bind(epoch100Timestamp + 10, id1)
-          .run()
+        await withRetrievalLog(env, {
+          timestamp: epoch100Timestamp + 10,
+          dataSetId: id1,
+          egressBytes: 1000,
+          cacheMiss: 0,
+        })
 
-        await env.DB.prepare(
-          `INSERT INTO retrieval_logs (timestamp, data_set_id, response_status, egress_bytes, cache_miss)
-           VALUES (datetime(?, 'unixepoch'), ?, 200, 2000, 0)`,
-        )
-          .bind(epoch100Timestamp + 20, id1)
-          .run()
+        await withRetrievalLog(env, {
+          timestamp: epoch100Timestamp + 20,
+          dataSetId: id1,
+          egressBytes: 2000,
+          cacheMiss: 0,
+        })
 
-        await env.DB.prepare(
-          `INSERT INTO retrieval_logs (timestamp, data_set_id, response_status, egress_bytes, cache_miss)
-           VALUES (datetime(?, 'unixepoch'), ?, 200, 500, 1)`,
-        )
-          .bind(epoch100Timestamp + 15, id1)
-          .run()
+        await withRetrievalLog(env, {
+          timestamp: epoch100Timestamp + 15,
+          dataSetId: id1,
+          egressBytes: 500,
+          cacheMiss: 1,
+        })
 
         // Add retrieval logs for dataset 2
-        await env.DB.prepare(
-          `INSERT INTO retrieval_logs (timestamp, data_set_id, response_status, egress_bytes, cache_miss)
-           VALUES (datetime(?, 'unixepoch'), ?, 200, 3000, 1)`,
-        )
-          .bind(epoch100Timestamp + 25, id2)
-          .run()
+        await withRetrievalLog(env, {
+          timestamp: epoch100Timestamp + 25,
+          dataSetId: id2,
+          egressBytes: 3000,
+          cacheMiss: 1,
+        })
 
         // Add logs outside the range (should not be included)
-        await env.DB.prepare(
-          `INSERT INTO retrieval_logs (timestamp, data_set_id, response_status, egress_bytes, cache_miss)
-           VALUES (datetime(?, 'unixepoch'), ?, 200, 9999, 0)`,
-        )
-          .bind(epoch101Timestamp + 10, id1)
-          .run()
+        await withRetrievalLog(env, {
+          timestamp: epoch101Timestamp + 10,
+          dataSetId: id1,
+          egressBytes: 9999,
+          cacheMiss: 0,
+        })
 
         // Call with targetEpoch = 100 to get data up to epoch 100
         const usageData = await aggregateUsageData(env.DB, 100)
@@ -78,41 +82,52 @@ describe('rollup', () => {
         })
       })
 
-      it('should filter out non-200 responses and null egress_bytes', async () => {
+      it('should include non-200 responses but filter out null egress_bytes', async () => {
         const id = `filter-${Date.now()}`
         // Set last_reported_epoch to 99 so data for epoch 100 will be included
         await withDataSet(env, { id, lastReportedEpoch: 99 })
 
-        const epochTimestamp = 100 * 30 + 1598306400
+        const epochTimestamp = filecoinEpochToTimestamp(100)
 
         // Add various types of logs WITHIN epoch 100 (not at the boundary)
-        await env.DB.prepare(
-          `INSERT INTO retrieval_logs (timestamp, data_set_id, response_status, egress_bytes, cache_miss)
-           VALUES (datetime(?, 'unixepoch'), ?, 404, 1000, 0)`,
-        )
-          .bind(epochTimestamp + 10, id)
-          .run()
+        await withRetrievalLog(env, {
+          timestamp: epochTimestamp + 10,
+          dataSetId: id,
+          responseStatus: 404,
+          egressBytes: 1000,
+          cacheMiss: 0,
+        })
 
-        await env.DB.prepare(
-          `INSERT INTO retrieval_logs (timestamp, data_set_id, response_status, egress_bytes, cache_miss)
-           VALUES (datetime(?, 'unixepoch'), ?, 200, NULL, 0)`,
-        )
-          .bind(epochTimestamp + 20, id)
-          .run()
+        await withRetrievalLog(env, {
+          timestamp: epochTimestamp + 20,
+          dataSetId: id,
+          responseStatus: 200,
+          egressBytes: null,
+          cacheMiss: 0,
+        })
 
-        await env.DB.prepare(
-          `INSERT INTO retrieval_logs (timestamp, data_set_id, response_status, egress_bytes, cache_miss)
-           VALUES (datetime(?, 'unixepoch'), ?, 200, 500, 0)`,
-        )
-          .bind(epochTimestamp + 25, id) // Changed from +30 to +25 to keep it within epoch 100
-          .run()
+        await withRetrievalLog(env, {
+          timestamp: epochTimestamp + 25,
+          dataSetId: id,
+          responseStatus: 200,
+          egressBytes: 500,
+          cacheMiss: 0,
+        })
+
+        await withRetrievalLog(env, {
+          timestamp: epochTimestamp + 28,
+          dataSetId: id,
+          responseStatus: 500,
+          egressBytes: 300,
+          cacheMiss: 1,
+        })
 
         // Call with targetEpoch = 100 to get data up to epoch 100
         const usageData = await aggregateUsageData(env.DB, 100)
 
         expect(usageData.get(id)).toEqual({
-          cdnBytes: 500, // Only the valid 200 response
-          cacheMissBytes: 0,
+          cdnBytes: 1500, // 404 (1000) + 200 (500) responses with cache_miss=0
+          cacheMissBytes: 300, // 500 response with cache_miss=1
           epoch: 100,
         })
       })
@@ -130,16 +145,16 @@ describe('rollup', () => {
         await withDataSet(env, { id: id3, lastReportedEpoch: 99 }) // Should be included (99 < 100)
         await withDataSet(env, { id: id4, lastReportedEpoch: 100 }) // Should NOT be included (100 >= 100)
 
-        const epoch100Timestamp = 100 * 30 + 1598306400
+        const epoch100Timestamp = filecoinEpochToTimestamp(100)
 
         // Add logs for all datasets in epoch 100
         for (const id of [id1, id2, id3, id4]) {
-          await env.DB.prepare(
-            `INSERT INTO retrieval_logs (timestamp, data_set_id, response_status, egress_bytes, cache_miss)
-             VALUES (datetime(?, 'unixepoch'), ?, 200, 1000, 0)`,
-          )
-            .bind(epoch100Timestamp + 10, id)
-            .run()
+          await withRetrievalLog(env, {
+            timestamp: epoch100Timestamp + 10,
+            dataSetId: id,
+            egressBytes: 1000,
+            cacheMiss: 0,
+          })
         }
 
         // Call with targetEpoch = 100 to get data up to epoch 100
