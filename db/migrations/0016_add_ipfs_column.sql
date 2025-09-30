@@ -1,0 +1,2 @@
+ALTER TABLE data_sets ADD COLUMN with_ipfs_indexing BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE pieces ADD COLUMN ipfs_root_cid STRING;
