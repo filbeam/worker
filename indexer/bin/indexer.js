@@ -119,7 +119,7 @@ export default {
       const pieceCid = rootCidObj.toString()
 
       const ipfsRootCidIndex = payload.metadata_keys.indexOf('ipfsRootCID')
-      const ipfsRootCidValue =
+      const ipfsRootCid =
         ipfsRootCidIndex === -1
           ? null
           : payload.metadata_values[ipfsRootCidIndex]
@@ -135,7 +135,7 @@ export default {
         payload.data_set_id,
         pieceId,
         pieceCid,
-        ipfsRootCidValue,
+        ipfsRootCid,
       )
 
       return new Response('OK', { status: 200 })

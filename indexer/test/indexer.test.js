@@ -427,50 +427,6 @@ describe('retriever.indexer', () => {
       expect(dataSets[0].with_cdn).toBe(0)
       expect(dataSets[0].with_ipfs_indexing).toBe(0)
     })
-
-    it('updates existing data set to capture withIPFSIndexing flags', async () => {
-      const dataSetId = randomId()
-      const serviceProviderId = randomId()
-
-      // The DataSet was indexed before we added support for IPFS metadata
-      await withDataSet(env, {
-        dataSetId,
-        serviceProviderId,
-        payerAddress: '0xPayerAddress',
-      })
-
-      // Second request sent when we re-run the Goldsky pipeline
-      const req = new Request('https://host/fwss/data-set-created', {
-        method: 'POST',
-        headers: {
-          [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
-        },
-        body: JSON.stringify({
-          data_set_id: dataSetId,
-          payer: '0xPayerAddress',
-          provider_id: serviceProviderId,
-          metadata_keys: ['withCDN', 'withIPFSIndexing'],
-          metadata_values: ['', ''],
-        }),
-      })
-
-      mockCheckIfAddressIsSanctioned.mockResolvedValueOnce(false)
-      const res = await workerImpl.fetch(req, env, ctx, {
-        checkIfAddressIsSanctioned: mockCheckIfAddressIsSanctioned,
-      })
-      expect(res.status).toBe(200)
-      expect(await res.text()).toBe('OK')
-
-      // Verify final state
-      const { results: dataSets } = await env.DB.prepare(
-        'SELECT * FROM data_sets WHERE id = ?',
-      )
-        .bind(dataSetId)
-        .all()
-
-      expect(dataSets.length).toBe(1)
-      expect(dataSets[0].with_ipfs_indexing).toBe(1)
-    })
   })
 
   describe('POST /fwss/piece-added', () => {
@@ -629,41 +585,6 @@ describe('retriever.indexer', () => {
           ipfs_root_cid: ipfsRootCid,
         },
       ])
-    })
-
-    it('updates ipfsRootCid for existing piece', async () => {
-      const dataSetId = randomId()
-      const pieceId = '44'
-      const ipfsRootCid =
-        'bafybeihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku'
-
-      // The Piece was indexed before we added support for IPFS metadata
-      await withPieces(env, dataSetId, [pieceId], [TEST_CID_HEX], [null])
-
-      // Second request sent when we re-run the Goldsky pipeline
-      const req = new Request('https://host/fwss/piece-added', {
-        method: 'POST',
-        headers: {
-          [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
-        },
-        body: JSON.stringify({
-          data_set_id: dataSetId.toString(),
-          piece_id: pieceId,
-          piece_cid: TEST_CID_HEX,
-          metadata_keys: ['ipfsRootCID'],
-          metadata_values: [ipfsRootCid],
-        }),
-      })
-      const res = await workerImpl.fetch(req, env, CTX)
-      expect(res.status).toBe(200)
-
-      const { results: pieces } = await env.DB.prepare(
-        'SELECT * FROM pieces WHERE data_set_id = ?',
-      )
-        .bind(dataSetId)
-        .all()
-      expect(pieces.length).toBe(1)
-      expect(pieces[0].ipfs_root_cid).toBe(ipfsRootCid)
     })
   })
 
