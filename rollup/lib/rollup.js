@@ -20,7 +20,6 @@ export async function aggregateUsageData(db, targetEpoch) {
     INNER JOIN data_sets ds ON rl.data_set_id = ds.id
     WHERE CAST((strftime('%s', rl.timestamp) - 1598306400) / 30 AS INTEGER) > COALESCE(ds.last_reported_epoch, -1)
       AND CAST((strftime('%s', rl.timestamp) - 1598306400) / 30 AS INTEGER) <= ?
-      AND rl.response_status = 200
       AND rl.egress_bytes IS NOT NULL
     GROUP BY rl.data_set_id
     HAVING max_epoch <= ?

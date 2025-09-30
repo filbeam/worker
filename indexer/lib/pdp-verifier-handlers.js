@@ -3,18 +3,26 @@
  * @param {string} dataSetId
  * @param {string} pieceId
  * @param {string} pieceCid
+ * @param {string | null} ipfsRootCid
  */
-export async function insertDataSetPiece(env, dataSetId, pieceId, pieceCid) {
+export async function insertDataSetPiece(
+  env,
+  dataSetId,
+  pieceId,
+  pieceCid,
+  ipfsRootCid,
+) {
   await env.DB.prepare(
     `INSERT INTO pieces (
       id,
       data_set_id,
-      cid
-    ) VALUES (?, ?, ?)
+      cid,
+      ipfs_root_cid
+    ) VALUES (?, ?, ?, ?)
     ON CONFLICT DO NOTHING
     `,
   )
-    .bind(pieceId, dataSetId, pieceCid)
+    .bind(pieceId, dataSetId, pieceCid, ipfsRootCid)
     .run()
 }
 

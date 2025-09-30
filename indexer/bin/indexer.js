@@ -119,13 +119,25 @@ export default {
       const rootCidObj = CID.decode(cidBytes)
       const pieceCid = rootCidObj.toString()
 
+      const ipfsRootCidIndex = payload.metadata_keys.indexOf('ipfsRootCID')
+      const ipfsRootCid =
+        ipfsRootCidIndex === -1
+          ? null
+          : payload.metadata_values[ipfsRootCidIndex]
+
       console.log(
         `New piece (piece_id=${pieceId}, piece_cid=${pieceCid}, data_set_id=${payload.data_set_id} metadata_keys=[${payload.metadata_keys.join(', ')}], metadata_values=[${payload.metadata_values.join(
           ', ',
         )}])`,
       )
 
-      await insertDataSetPiece(env, payload.data_set_id, pieceId, pieceCid)
+      await insertDataSetPiece(
+        env,
+        payload.data_set_id,
+        pieceId,
+        pieceCid,
+        ipfsRootCid,
+      )
 
       return new Response('OK', { status: 200 })
     } else if (pathname === '/pdp-verifier/pieces-removed') {
