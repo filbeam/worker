@@ -25,26 +25,28 @@ describe('rollup', () => {
         await withDataSet(env, { id: id2, lastReportedEpoch: 99 })
 
         // Create timestamps for specific epochs
+        const epoch99imestamp = filecoinEpochToTimestamp(99)
         const epoch100Timestamp = filecoinEpochToTimestamp(100)
         const epoch101Timestamp = filecoinEpochToTimestamp(101)
 
-        // Add retrieval logs for dataset 1
+        // Outside the range (should not be included)
         await withRetrievalLog(env, {
-          timestamp: epoch100Timestamp + 10,
+          timestamp: epoch99imestamp,
           dataSetId: id1,
           egressBytes: 1000,
           cacheMiss: 0,
         })
 
+        // Add retrieval logs for dataset 1
         await withRetrievalLog(env, {
-          timestamp: epoch100Timestamp + 20,
+          timestamp: epoch100Timestamp,
           dataSetId: id1,
           egressBytes: 2000,
           cacheMiss: 0,
         })
 
         await withRetrievalLog(env, {
-          timestamp: epoch100Timestamp + 15,
+          timestamp: epoch100Timestamp,
           dataSetId: id1,
           egressBytes: 500,
           cacheMiss: 1,
@@ -52,7 +54,7 @@ describe('rollup', () => {
 
         // Add retrieval logs for dataset 2
         await withRetrievalLog(env, {
-          timestamp: epoch100Timestamp + 25,
+          timestamp: epoch100Timestamp,
           dataSetId: id2,
           egressBytes: 3000,
           cacheMiss: 1,
@@ -60,7 +62,7 @@ describe('rollup', () => {
 
         // Add logs outside the range (should not be included)
         await withRetrievalLog(env, {
-          timestamp: epoch101Timestamp + 10,
+          timestamp: epoch101Timestamp,
           dataSetId: id1,
           egressBytes: 9999,
           cacheMiss: 0,
@@ -70,7 +72,7 @@ describe('rollup', () => {
         const usageData = await aggregateUsageData(env.DB, 100)
 
         expect(usageData.get(id1)).toEqual({
-          cdnBytes: 3000, // 1000 + 2000 from cache hits
+          cdnBytes: 2000, // 2000 from cache hits
           cacheMissBytes: 500, // 500 from cache miss
           epoch: 100,
         })
@@ -91,7 +93,7 @@ describe('rollup', () => {
 
         // Add various types of logs WITHIN epoch 100 (not at the boundary)
         await withRetrievalLog(env, {
-          timestamp: epochTimestamp + 10,
+          timestamp: epochTimestamp,
           dataSetId: id,
           responseStatus: 404,
           egressBytes: 1000,
@@ -99,7 +101,7 @@ describe('rollup', () => {
         })
 
         await withRetrievalLog(env, {
-          timestamp: epochTimestamp + 20,
+          timestamp: epochTimestamp,
           dataSetId: id,
           responseStatus: 200,
           egressBytes: null,
@@ -107,7 +109,7 @@ describe('rollup', () => {
         })
 
         await withRetrievalLog(env, {
-          timestamp: epochTimestamp + 25,
+          timestamp: epochTimestamp,
           dataSetId: id,
           responseStatus: 200,
           egressBytes: 500,
@@ -115,7 +117,7 @@ describe('rollup', () => {
         })
 
         await withRetrievalLog(env, {
-          timestamp: epochTimestamp + 28,
+          timestamp: epochTimestamp,
           dataSetId: id,
           responseStatus: 500,
           egressBytes: 300,
