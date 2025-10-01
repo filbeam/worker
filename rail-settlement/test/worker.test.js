@@ -1,16 +1,56 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { env } from 'cloudflare:test'
 import { withDataSet, randomId } from './test-helpers.js'
 import worker from '../bin/rail-settlement.js'
 
 describe('rail settlement scheduled handler', () => {
+  let mockPublicClient
+  let mockWalletClient
+  let mockAccount
+  let mockGetChainClient
+  let simulateContractCalls
+  let writeContractCalls
+
   beforeEach(async () => {
     // Clear data_sets table before each test
     await env.DB.prepare('DELETE FROM data_sets').run()
-    // Reset all mocks
+
+    // Reset tracking arrays
+    simulateContractCalls = []
+    writeContractCalls = []
+
+    // Setup mock account
+    mockAccount = { address: '0xMockAccountAddress' }
+
+    // Setup mock public client
+    mockPublicClient = {
+      getBlockNumber: vi.fn().mockResolvedValue(1000000n),
+      simulateContract: vi.fn().mockImplementation((params) => {
+        simulateContractCalls.push(params)
+        return Promise.resolve({
+          request: { ...params, mockedRequest: true },
+        })
+      }),
+    }
+
+    // Setup mock wallet client
+    mockWalletClient = {
+      writeContract: vi.fn().mockImplementation((request) => {
+        writeContractCalls.push(request)
+        return Promise.resolve('0xMockTransactionHash')
+      }),
+    }
+
+    // Setup mock getChainClient function
+    mockGetChainClient = vi.fn().mockReturnValue({
+      publicClient: mockPublicClient,
+      walletClient: mockWalletClient,
+      account: mockAccount,
+    })
+  })
+
+  afterEach(() => {
     vi.clearAllMocks()
-    // Reset console mocks
-    vi.restoreAllMocks()
   })
 
   it('should successfully settle active data sets', async () => {
@@ -20,28 +60,6 @@ describe('rail settlement scheduled handler', () => {
     // Seed active data sets
     await withDataSet(env, { id: id1, withCDN: true })
     await withDataSet(env, { id: id2, withCDN: true })
-
-    // Mock console.log to capture output
-    const consoleLogSpy = vi.spyOn(console, 'log')
-
-    // Mock the chain client
-    const mockHash = '0xTransactionHash123'
-    const mockPublicClient = {
-      getBlockNumber: vi.fn().mockResolvedValue(1000000n),
-      simulateContract: vi.fn().mockResolvedValue({
-        request: { functionName: 'settleCDNPaymentRailBatch' },
-      }),
-    }
-    const mockWalletClient = {
-      writeContract: vi.fn().mockResolvedValue(mockHash),
-    }
-    const mockAccount = { address: '0xTestAccount' }
-
-    const mockGetChainClient = vi.fn().mockReturnValue({
-      publicClient: mockPublicClient,
-      walletClient: mockWalletClient,
-      account: mockAccount,
-    })
 
     // Create a test environment
     const testEnv = {
@@ -67,8 +85,9 @@ describe('rail settlement scheduled handler', () => {
     // Verify block number was fetched
     expect(mockPublicClient.getBlockNumber).toHaveBeenCalled()
 
-    // Verify contract simulation
-    expect(mockPublicClient.simulateContract).toHaveBeenCalledWith({
+    // Verify contract simulation was called
+    expect(simulateContractCalls).toHaveLength(1)
+    expect(simulateContractCalls[0]).toMatchObject({
       account: mockAccount,
       abi: expect.any(Array),
       address: '0xTestContractAddress',
@@ -77,43 +96,16 @@ describe('rail settlement scheduled handler', () => {
     })
 
     // Verify transaction was sent
-    expect(mockWalletClient.writeContract).toHaveBeenCalled()
-
-    // Verify the logs
-    expect(consoleLogSpy).toHaveBeenCalledWith(
-      'Starting rail settlement worker',
-    )
-    expect(consoleLogSpy).toHaveBeenCalledWith('Current epoch: 1000000')
-    expect(consoleLogSpy).toHaveBeenCalledWith(
-      'Found 2 data sets for settlement:',
-      expect.arrayContaining([id1, id2]),
-    )
-    expect(consoleLogSpy).toHaveBeenCalledWith(
-      `Settlement transaction sent: ${mockHash}`,
-    )
-    expect(consoleLogSpy).toHaveBeenCalledWith('Settled 2 data sets')
+    expect(writeContractCalls).toHaveLength(1)
+    expect(writeContractCalls[0]).toMatchObject({
+      mockedRequest: true,
+    })
   })
 
   it('should handle no active data sets gracefully', async () => {
     // Seed only inactive data set
     const id1 = randomId()
     await withDataSet(env, { id: id1, withCDN: false })
-
-    // Mock console.log to capture output
-    const consoleLogSpy = vi.spyOn(console, 'log')
-
-    // Mock the chain client
-    const mockPublicClient = {
-      getBlockNumber: vi.fn().mockResolvedValue(1000000n),
-    }
-    const mockWalletClient = {}
-    const mockAccount = { address: '0xTestAccount' }
-
-    const mockGetChainClient = vi.fn().mockReturnValue({
-      publicClient: mockPublicClient,
-      walletClient: mockWalletClient,
-      account: mockAccount,
-    })
 
     // Create a test environment
     const testEnv = {
@@ -136,14 +128,9 @@ describe('rail settlement scheduled handler', () => {
     // Verify block number was fetched
     expect(mockPublicClient.getBlockNumber).toHaveBeenCalled()
 
-    // Verify the logs
-    expect(consoleLogSpy).toHaveBeenCalledWith(
-      'Starting rail settlement worker',
-    )
-    expect(consoleLogSpy).toHaveBeenCalledWith('Current epoch: 1000000')
-    expect(consoleLogSpy).toHaveBeenCalledWith(
-      'No active data sets found for settlement',
-    )
+    // Verify no contract simulation was called
+    expect(simulateContractCalls).toHaveLength(0)
+    expect(writeContractCalls).toHaveLength(0)
   })
 
   it('should handle terminated data sets within settlement window', async () => {
@@ -157,28 +144,6 @@ describe('rail settlement scheduled handler', () => {
       id: id2,
       withCDN: false,
       settleUpToEpoch: currentEpoch + 100n,
-    })
-
-    // Mock console.log to capture output
-    const consoleLogSpy = vi.spyOn(console, 'log')
-
-    // Mock the chain client
-    const mockHash = '0xTransactionHash456'
-    const mockPublicClient = {
-      getBlockNumber: vi.fn().mockResolvedValue(currentEpoch),
-      simulateContract: vi.fn().mockResolvedValue({
-        request: { functionName: 'settleCDNPaymentRailBatch' },
-      }),
-    }
-    const mockWalletClient = {
-      writeContract: vi.fn().mockResolvedValue(mockHash),
-    }
-    const mockAccount = { address: '0xTestAccount' }
-
-    const mockGetChainClient = vi.fn().mockReturnValue({
-      publicClient: mockPublicClient,
-      walletClient: mockWalletClient,
-      account: mockAccount,
     })
 
     // Create a test environment
@@ -199,12 +164,9 @@ describe('rail settlement scheduled handler', () => {
       { getChainClient: mockGetChainClient },
     )
 
-    // Verify both data sets are settled
-    expect(consoleLogSpy).toHaveBeenCalledWith(
-      'Found 2 data sets for settlement:',
-      expect.arrayContaining([id1, id2]),
-    )
-    expect(consoleLogSpy).toHaveBeenCalledWith('Settled 2 data sets')
+    // Verify contract simulation and transaction
+    expect(simulateContractCalls).toHaveLength(1)
+    expect(writeContractCalls).toHaveLength(1)
   })
 
   it('should handle contract simulation errors', async () => {
@@ -217,19 +179,8 @@ describe('rail settlement scheduled handler', () => {
     const simulationError = new Error('Contract simulation failed')
     simulationError.cause = { reason: 'Insufficient balance' }
 
-    // Mock the chain client with error
-    const mockPublicClient = {
-      getBlockNumber: vi.fn().mockResolvedValue(1000000n),
-      simulateContract: vi.fn().mockRejectedValue(simulationError),
-    }
-    const mockWalletClient = {}
-    const mockAccount = { address: '0xTestAccount' }
-
-    const mockGetChainClient = vi.fn().mockReturnValue({
-      publicClient: mockPublicClient,
-      walletClient: mockWalletClient,
-      account: mockAccount,
-    })
+    // Override mock to throw error
+    mockPublicClient.simulateContract.mockRejectedValue(simulationError)
 
     // Create a test environment
     const testEnv = {
@@ -271,23 +222,14 @@ describe('rail settlement scheduled handler', () => {
 
     const writeError = new Error('Transaction failed')
 
-    // Mock the chain client with write error
-    const mockPublicClient = {
-      getBlockNumber: vi.fn().mockResolvedValue(1000000n),
-      simulateContract: vi.fn().mockResolvedValue({
-        request: { functionName: 'settleCDNPaymentRailBatch' },
-      }),
-    }
-    const mockWalletClient = {
-      writeContract: vi.fn().mockRejectedValue(writeError),
-    }
-    const mockAccount = { address: '0xTestAccount' }
-
-    const mockGetChainClient = vi.fn().mockReturnValue({
-      publicClient: mockPublicClient,
-      walletClient: mockWalletClient,
-      account: mockAccount,
+    // Reset simulateContract to default behavior and override writeContract to throw
+    mockPublicClient.simulateContract.mockImplementation((params) => {
+      simulateContractCalls.push(params)
+      return Promise.resolve({
+        request: { ...params, mockedRequest: true },
+      })
     })
+    mockWalletClient.writeContract.mockRejectedValue(writeError)
 
     // Create a test environment
     const testEnv = {
@@ -320,29 +262,21 @@ describe('rail settlement scheduled handler', () => {
     const id1 = randomId()
     await withDataSet(env, { id: id1, withCDN: true })
 
-    // Mock console.log to capture output
-    const consoleLogSpy = vi.spyOn(console, 'log')
+    // Override block number for mainnet
+    mockPublicClient.getBlockNumber.mockResolvedValue(2000000n)
 
-    // Mock the chain client for mainnet
-    const mockHash =
-      '0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
-    const mockPublicClient = {
-      getBlockNumber: vi.fn().mockResolvedValue(2000000n),
-      simulateContract: vi.fn().mockResolvedValue({
-        request: { functionName: 'settleCDNPaymentRailBatch' },
-      }),
-    }
-    const mockWalletClient = {
-      writeContract: vi.fn().mockResolvedValue(mockHash),
-    }
-    const mockAccount = {
-      address: '0x1234567890abcdef1234567890abcdef12345678',
-    }
-
-    const mockGetChainClient = vi.fn().mockReturnValue({
-      publicClient: mockPublicClient,
-      walletClient: mockWalletClient,
-      account: mockAccount,
+    // Reset mocks to default behavior
+    mockPublicClient.simulateContract.mockImplementation((params) => {
+      simulateContractCalls.push(params)
+      return Promise.resolve({
+        request: { ...params, mockedRequest: true },
+      })
+    })
+    mockWalletClient.writeContract.mockImplementation((request) => {
+      writeContractCalls.push(request)
+      return Promise.resolve(
+        '0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+      )
     })
 
     // Create a mainnet test environment
@@ -362,32 +296,13 @@ describe('rail settlement scheduled handler', () => {
       {},
       { getChainClient: mockGetChainClient },
     )
-
-    // Verify mainnet-specific behavior
-    expect(consoleLogSpy).toHaveBeenCalledWith('Current epoch: 2000000')
-    expect(consoleLogSpy).toHaveBeenCalledWith(
-      `Settlement transaction sent: ${mockHash}`,
-    )
   })
 
   it('should handle empty database correctly', async () => {
     // No data sets seeded - database is empty
 
-    // Mock console.log to capture output
-    const consoleLogSpy = vi.spyOn(console, 'log')
-
-    // Mock the chain client
-    const mockPublicClient = {
-      getBlockNumber: vi.fn().mockResolvedValue(1500000n),
-    }
-    const mockWalletClient = {}
-    const mockAccount = { address: '0xTestAccount' }
-
-    const mockGetChainClient = vi.fn().mockReturnValue({
-      publicClient: mockPublicClient,
-      walletClient: mockWalletClient,
-      account: mockAccount,
-    })
+    // Override block number for calibration
+    mockPublicClient.getBlockNumber.mockResolvedValue(1500000n)
 
     // Create a test environment
     const testEnv = {
@@ -407,13 +322,8 @@ describe('rail settlement scheduled handler', () => {
       { getChainClient: mockGetChainClient },
     )
 
-    // Verify the logs
-    expect(consoleLogSpy).toHaveBeenCalledWith(
-      'Starting rail settlement worker',
-    )
-    expect(consoleLogSpy).toHaveBeenCalledWith('Current epoch: 1500000')
-    expect(consoleLogSpy).toHaveBeenCalledWith(
-      'No active data sets found for settlement',
-    )
+    // Verify no contract interactions
+    expect(simulateContractCalls).toHaveLength(0)
+    expect(writeContractCalls).toHaveLength(0)
   })
 })

@@ -19,8 +19,12 @@ export default {
    * @param {ExecutionContext} _ctx
    * @param {{ getChainClient?: Function }} [options]
    */
-  async scheduled(_controller, env, _ctx, options = {}) {
-    const { getChainClient = defaultGetChainClient } = options
+  async scheduled(
+    _controller,
+    env,
+    _ctx,
+    { getChainClient = defaultGetChainClient } = {},
+  ) {
     console.log('Starting rail settlement worker')
 
     try {
