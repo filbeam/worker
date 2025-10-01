@@ -11,17 +11,26 @@ export async function aggregateUsageData(db, targetEpoch) {
   // Query aggregates total usage data between last_reported_epoch and targetEpoch
   // Returns sum of CDN bytes, cache-miss bytes, and max epoch for each dataset
   const query = `
+    WITH retrieval_logs_with_epoch AS (
+      SELECT
+        rl.data_set_id,
+        rl.cache_miss,
+        rl.egress_bytes,
+        CAST((strftime('%s', rl.timestamp) - 1598306400) / 30 AS INTEGER) as epoch
+      FROM retrieval_logs rl
+      WHERE rl.egress_bytes IS NOT NULL
+    )
     SELECT
-      rl.data_set_id,
-      SUM(CASE WHEN rl.cache_miss = 0 THEN rl.egress_bytes ELSE 0 END) as cdn_bytes,
-      SUM(CASE WHEN rl.cache_miss = 1 THEN rl.egress_bytes ELSE 0 END) as cache_miss_bytes,
-      MAX(CAST((strftime('%s', rl.timestamp) - 1598306400) / 30 AS INTEGER)) as max_epoch
-    FROM retrieval_logs rl
-    INNER JOIN data_sets ds ON rl.data_set_id = ds.id
-    WHERE CAST((strftime('%s', rl.timestamp) - 1598306400) / 30 AS INTEGER) > COALESCE(ds.last_reported_epoch, -1)
-      AND CAST((strftime('%s', rl.timestamp) - 1598306400) / 30 AS INTEGER) <= ?
-      AND rl.egress_bytes IS NOT NULL
-    GROUP BY rl.data_set_id
+      rle.data_set_id,
+      SUM(CASE WHEN rle.cache_miss = 0 THEN rle.egress_bytes ELSE 0 END) as cdn_bytes,
+      SUM(CASE WHEN rle.cache_miss = 1 THEN rle.egress_bytes ELSE 0 END) as cache_miss_bytes,
+      MAX(rle.epoch) as max_epoch
+    FROM retrieval_logs_with_epoch rle
+    INNER JOIN data_sets ds ON rle.data_set_id = ds.id
+    WHERE rle.epoch > COALESCE(ds.last_reported_epoch, -1)
+      AND rle.epoch <= ?
+      AND rle.egress_bytes IS NOT NULL
+    GROUP BY rle.data_set_id
     HAVING max_epoch <= ?
   `
 
