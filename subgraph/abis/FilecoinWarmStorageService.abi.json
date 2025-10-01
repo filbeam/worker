@@ -13,12 +13,12 @@
         "internalType": "address"
       },
       {
-        "name": "_usdfcTokenAddress",
+        "name": "_usdfc",
         "type": "address",
-        "internalType": "address"
+        "internalType": "contract IERC20Metadata"
       },
       {
-        "name": "_filCDNBeneficiaryAddress",
+        "name": "_filBeamBeneficiaryAddress",
         "type": "address",
         "internalType": "address"
       },
@@ -255,7 +255,7 @@
   },
   {
     "type": "function",
-    "name": "filCDNBeneficiaryAddress",
+    "name": "filBeamBeneficiaryAddress",
     "inputs": [],
     "outputs": [
       {
@@ -331,7 +331,7 @@
           {
             "name": "tokenAddress",
             "type": "address",
-            "internalType": "address"
+            "internalType": "contract IERC20"
           },
           {
             "name": "epochsPerMonth",
@@ -358,7 +358,7 @@
         "internalType": "uint256"
       },
       {
-        "name": "_filCDNControllerAddress",
+        "name": "_filBeamControllerAddress",
         "type": "address",
         "internalType": "address"
       },
@@ -681,6 +681,29 @@
   },
   {
     "type": "function",
+    "name": "settleCDNPaymentRails",
+    "inputs": [
+      {
+        "name": "dataSetId",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "cdnAmount",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "cacheMissAmount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "storageProviderChanged",
     "inputs": [
       {
@@ -735,7 +758,30 @@
   },
   {
     "type": "function",
-    "name": "transferFilCDNController",
+    "name": "topUpCDNPaymentRails",
+    "inputs": [
+      {
+        "name": "dataSetId",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "cdnAmount",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "cacheMissAmount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "transferFilBeamController",
     "inputs": [
       {
         "name": "newController",
@@ -798,7 +844,7 @@
       {
         "name": "",
         "type": "address",
-        "internalType": "address"
+        "internalType": "contract IERC20Metadata"
       }
     ],
     "stateMutability": "view"
@@ -871,6 +917,31 @@
       }
     ],
     "stateMutability": "view"
+  },
+  {
+    "type": "event",
+    "name": "CDNPaymentRailsToppedUp",
+    "inputs": [
+      {
+        "name": "dataSetId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "cdnAmount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "cacheMissAmount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
   },
   {
     "type": "event",
@@ -1078,7 +1149,7 @@
   },
   {
     "type": "event",
-    "name": "FilCDNControllerChanged",
+    "name": "FilBeamControllerChanged",
     "inputs": [
       {
         "name": "oldController",
@@ -1564,18 +1635,7 @@
   },
   {
     "type": "error",
-    "name": "FilCDNPaymentAlreadyTerminated",
-    "inputs": [
-      {
-        "name": "dataSetId",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ]
-  },
-  {
-    "type": "error",
-    "name": "FilCDNServiceNotConfigured",
+    "name": "FilBeamServiceNotConfigured",
     "inputs": [
       {
         "name": "dataSetId",
@@ -1850,7 +1910,7 @@
   },
   {
     "type": "error",
-    "name": "OnlyFilCDNControllerAllowed",
+    "name": "OnlyFilBeamControllerAllowed",
     "inputs": [
       {
         "name": "expected",
@@ -1929,11 +1989,6 @@
       },
       {
         "name": "pdpEndEpoch",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "cdnEndEpoch",
         "type": "uint256",
         "internalType": "uint256"
       }
