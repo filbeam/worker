@@ -23,6 +23,7 @@ import { findInBadBits } from '../lib/bad-bits-util.js'
  *   CLIENT_CACHE_TTL: 31536000
  *   DNS_ROOT: '.localhost' | '.calibration.filbeam.io' | '.filbeam.io'
  *   DB: D1Database
+ *   KV: KVNamespace
  * }} RetrieverEnv
  */
 export default {
@@ -83,23 +84,41 @@ export default {
       // Timestamp to measure file retrieval performance (from cache and from SP)
       const fetchStartedAt = performance.now()
 
-      const [{ serviceProviderId, serviceUrl, dataSetId }, isBadBit] =
-        await Promise.all([
-          getStorageProviderAndValidatePayer(env, payerWalletAddress, pieceCid),
-          findInBadBits(env, pieceCid),
-        ])
+      const indexCacheKey = `${payerWalletAddress}/${pieceCid}`
+      let [dataSetId, serviceUrl] =
+        (await env.KV.get(indexCacheKey, {
+          type: 'json',
+        })) ?? []
 
-      httpAssert(
-        !isBadBit,
-        404,
-        'The requested CID was flagged by the Bad Bits Denylist at https://badbits.dwebops.pub',
-      )
+      if (!serviceUrl) {
+        let serviceProviderId
+        let isBadBit
+        ;[{ serviceProviderId, serviceUrl, dataSetId }, isBadBit] =
+          await Promise.all([
+            getStorageProviderAndValidatePayer(
+              env,
+              payerWalletAddress,
+              pieceCid,
+            ),
+            findInBadBits(env, pieceCid),
+          ])
 
-      httpAssert(
-        serviceProviderId,
-        404,
-        `Unsupported Service Provider: ${serviceProviderId}`,
-      )
+        httpAssert(
+          !isBadBit,
+          404,
+          'The requested CID was flagged by the Bad Bits Denylist at https://badbits.dwebops.pub',
+        )
+
+        httpAssert(
+          serviceProviderId,
+          404,
+          `Unsupported Service Provider: ${serviceProviderId}`,
+        )
+
+        ctx.waitUntil(
+          env.KV.put(indexCacheKey, JSON.stringify([dataSetId, serviceUrl])),
+        )
+      }
 
       const { response: originResponse, cacheMiss } = await retrieveFile(
         serviceUrl,

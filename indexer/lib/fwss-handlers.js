@@ -78,4 +78,27 @@ export async function handleFWSSServiceTerminated(env, payload) {
   )
     .bind(String(payload.data_set_id))
     .run()
+  await clearDataSetIndexCache(env, payload.data_set_id)
+}
+
+/**
+ * @param {Env} env
+ * @param {string | number} dataSetId
+ */
+async function clearDataSetIndexCache(env, dataSetId) {
+  const { results } = await env.DB.prepare(
+    `
+      SELECT data_sets.payer_address AS payerAddress, pieces.cid AS pieceCID
+      FROM data_sets
+      INNER JOIN pieces ON pieces.data_set_id = data_sets.id
+      WHERE data_sets.id = ?
+    `,
+  )
+    .bind(String(dataSetId))
+    .run()
+  await Promise.all(
+    results.map(async ({ payerAddress, pieceCID }) => {
+      await env.KV.delete(`${payerAddress}/${pieceCID}`)
+    }),
+  )
 }

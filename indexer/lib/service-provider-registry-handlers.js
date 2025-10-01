@@ -95,6 +95,7 @@ export async function handleProductRemoved(env, providerId, productType) {
   if (result.meta.changes === 0) {
     return new Response('Provider Not Found', { status: 404 })
   }
+  await clearServiceProviderIndexCache(env, providerId)
   return new Response('OK', { status: 200 })
 }
 
@@ -121,6 +122,7 @@ export async function handleProviderRemoved(env, providerId) {
   if (result.meta.changes === 0) {
     return new Response('Provider Not Found', { status: 404 })
   }
+  await clearServiceProviderIndexCache(env, providerId)
   return new Response('OK', { status: 200 })
 }
 
@@ -154,5 +156,28 @@ async function handleProviderServiceUrlUpdate(env, providerId, serviceUrl) {
   )
     .bind(String(providerId), serviceUrl)
     .run()
+  await clearServiceProviderIndexCache(env, providerId)
   return new Response('OK', { status: 200 })
+}
+
+/**
+ * @param {Env} env
+ * @param {string | number} providerId
+ */
+async function clearServiceProviderIndexCache(env, providerId) {
+  const { results } = await env.DB.prepare(
+    `
+      SELECT data_sets.payer_address AS payerAddress, pieces.cid AS pieceCID
+      FROM data_sets
+      INNER JOIN pieces ON pieces.data_set_id = data_sets.id
+      WHERE data_sets.service_provider_id = ?
+    `,
+  )
+    .bind(String(providerId))
+    .run()
+  await Promise.all(
+    results.map(async ({ payerAddress, pieceCID }) => {
+      await env.KV.delete(`${payerAddress}/${pieceCID}`)
+    }),
+  )
 }
