@@ -4,7 +4,12 @@
  * @param {D1Database} db
  * @param {number} targetEpoch - Target epoch to aggregate data up to
  * @returns {Promise<
- *   Map<string, { cdnBytes: number; cacheMissBytes: number; epoch: number }>
+ *   {
+ *     data_set_id: string
+ *     cdn_bytes: number
+ *     cache_miss_bytes: number
+ *     max_epoch: number
+ *   }[]
  * >}
  */
 export async function aggregateUsageData(db, targetEpoch) {
@@ -34,27 +39,23 @@ export async function aggregateUsageData(db, targetEpoch) {
     HAVING max_epoch <= ?
   `
 
-  const result = await db.prepare(query).bind(targetEpoch, targetEpoch).all()
+  const { results } = await db
+    .prepare(query)
+    .bind(targetEpoch, targetEpoch)
+    .all()
 
-  const usageMap = new Map()
-  for (const row of result.results) {
-    usageMap.set(row.data_set_id, {
-      cdnBytes: row.cdn_bytes || 0,
-      cacheMissBytes: row.cache_miss_bytes || 0,
-      epoch: row.max_epoch,
-    })
-  }
-
-  return usageMap
+  return results
 }
 
 /**
  * Prepare batch data for FilBeam contract call
  *
- * @param {Map<
- *   string,
- *   { cdnBytes: number; cacheMissBytes: number; epoch: number }
- * >} usageData
+ * @param {{
+ *   data_set_id: string
+ *   cdn_bytes: number
+ *   cache_miss_bytes: number
+ *   max_epoch: number
+ * }[]} usageData
  * @returns {{
  *   dataSetIds: string[]
  *   epochs: number[]
@@ -68,16 +69,16 @@ export function prepareBatchData(usageData) {
   const cdnBytesUsed = []
   const cacheMissBytesUsed = []
 
-  for (const [dataSetId, usage] of usageData) {
+  for (const usage of usageData) {
     // Skip datasets with zero usage
-    if (usage.cdnBytes === 0 && usage.cacheMissBytes === 0) {
+    if (usage.cdn_bytes === 0 && usage.cache_miss_bytes === 0) {
       continue
     }
 
-    dataSetIds.push(dataSetId)
-    epochs.push(usage.epoch)
-    cdnBytesUsed.push(BigInt(usage.cdnBytes))
-    cacheMissBytesUsed.push(BigInt(usage.cacheMissBytes))
+    dataSetIds.push(usage.data_set_id)
+    epochs.push(usage.max_epoch)
+    cdnBytesUsed.push(BigInt(usage.cdn_bytes))
+    cacheMissBytesUsed.push(BigInt(usage.cache_miss_bytes))
   }
 
   return {

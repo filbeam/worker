@@ -33,12 +33,12 @@ export default {
       // Aggregate usage data for all datasets that need reporting
       const allUsageData = await aggregateUsageData(env.DB, Number(targetEpoch))
 
-      if (allUsageData.size === 0) {
+      if (allUsageData.length === 0) {
         console.log('No usage data to report')
         return
       }
 
-      console.log(`Found usage data for ${allUsageData.size} datasets`)
+      console.log(`Found usage data for ${allUsageData.length} datasets`)
 
       // Prepare batch data for contract call
       const batchData = prepareBatchData(allUsageData)

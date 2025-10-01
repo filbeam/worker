@@ -71,16 +71,20 @@ describe('rollup', () => {
         // Call with targetEpoch = 100 to get data up to epoch 100
         const usageData = await aggregateUsageData(env.DB, 100)
 
-        expect(usageData.get(id1)).toEqual({
-          cdnBytes: 2000, // 2000 from cache hits
-          cacheMissBytes: 500, // 500 from cache miss
-          epoch: 100,
+        const usage1 = usageData.find((u) => u.data_set_id === id1)
+        expect(usage1).toEqual({
+          data_set_id: id1,
+          cdn_bytes: 2000, // 2000 from cache hits
+          cache_miss_bytes: 500, // 500 from cache miss
+          max_epoch: 100,
         })
 
-        expect(usageData.get(id2)).toEqual({
-          cdnBytes: 0,
-          cacheMissBytes: 3000,
-          epoch: 100,
+        const usage2 = usageData.find((u) => u.data_set_id === id2)
+        expect(usage2).toEqual({
+          data_set_id: id2,
+          cdn_bytes: 0,
+          cache_miss_bytes: 3000,
+          max_epoch: 100,
         })
       })
 
@@ -127,10 +131,12 @@ describe('rollup', () => {
         // Call with targetEpoch = 100 to get data up to epoch 100
         const usageData = await aggregateUsageData(env.DB, 100)
 
-        expect(usageData.get(id)).toEqual({
-          cdnBytes: 1500, // 404 (1000) + 200 (500) responses with cache_miss=0
-          cacheMissBytes: 300, // 500 response with cache_miss=1
-          epoch: 100,
+        const usage = usageData.find((u) => u.data_set_id === id)
+        expect(usage).toEqual({
+          data_set_id: id,
+          cdn_bytes: 1500, // 404 (1000) + 200 (500) responses with cache_miss=0
+          cache_miss_bytes: 300, // 500 response with cache_miss=1
+          max_epoch: 100,
         })
       })
 
@@ -163,16 +169,18 @@ describe('rollup', () => {
         const usageData = await aggregateUsageData(env.DB, 100)
 
         // Should have data for id1, id2, id3 but NOT id4
-        expect(usageData.has(id1)).toBe(true)
-        expect(usageData.has(id2)).toBe(true)
-        expect(usageData.has(id3)).toBe(true)
-        expect(usageData.has(id4)).toBe(false)
+        expect(usageData.find((u) => u.data_set_id === id1)).toBeTruthy()
+        expect(usageData.find((u) => u.data_set_id === id2)).toBeTruthy()
+        expect(usageData.find((u) => u.data_set_id === id3)).toBeTruthy()
+        expect(usageData.find((u) => u.data_set_id === id4)).toBeFalsy()
 
         // Verify the data for included datasets
-        expect(usageData.get(id1)).toEqual({
-          cdnBytes: 1000,
-          cacheMissBytes: 0,
-          epoch: 100,
+        const usage1 = usageData.find((u) => u.data_set_id === id1)
+        expect(usage1).toEqual({
+          data_set_id: id1,
+          cdn_bytes: 1000,
+          cache_miss_bytes: 0,
+          max_epoch: 100,
         })
       })
     })
@@ -180,11 +188,26 @@ describe('rollup', () => {
 
   describe('prepareBatchData', () => {
     it('should prepare batch data for contract call', () => {
-      const usageData = new Map([
-        ['1', { cdnBytes: 1000, cacheMissBytes: 500, epoch: 100 }],
-        ['2', { cdnBytes: 2000, cacheMissBytes: 0, epoch: 100 }],
-        ['3', { cdnBytes: 0, cacheMissBytes: 3000, epoch: 100 }],
-      ])
+      const usageData = [
+        {
+          data_set_id: '1',
+          cdn_bytes: 1000,
+          cache_miss_bytes: 500,
+          max_epoch: 100,
+        },
+        {
+          data_set_id: '2',
+          cdn_bytes: 2000,
+          cache_miss_bytes: 0,
+          max_epoch: 100,
+        },
+        {
+          data_set_id: '3',
+          cdn_bytes: 0,
+          cache_miss_bytes: 3000,
+          max_epoch: 100,
+        },
+      ]
 
       const batchData = prepareBatchData(usageData)
 
@@ -197,11 +220,21 @@ describe('rollup', () => {
     })
 
     it('should filter out datasets with zero usage', () => {
-      const usageData = new Map([
-        ['1', { cdnBytes: 1000, cacheMissBytes: 500, epoch: 100 }],
-        ['2', { cdnBytes: 0, cacheMissBytes: 0, epoch: 100 }], // Zero usage
-        ['3', { cdnBytes: 0, cacheMissBytes: 3000, epoch: 100 }],
-      ])
+      const usageData = [
+        {
+          data_set_id: '1',
+          cdn_bytes: 1000,
+          cache_miss_bytes: 500,
+          max_epoch: 100,
+        },
+        { data_set_id: '2', cdn_bytes: 0, cache_miss_bytes: 0, max_epoch: 100 }, // Zero usage
+        {
+          data_set_id: '3',
+          cdn_bytes: 0,
+          cache_miss_bytes: 3000,
+          max_epoch: 100,
+        },
+      ]
 
       const batchData = prepareBatchData(usageData)
 
@@ -212,7 +245,7 @@ describe('rollup', () => {
     })
 
     it('should handle empty usage data', () => {
-      const usageData = new Map()
+      const usageData = []
       const batchData = prepareBatchData(usageData)
 
       expect(batchData).toEqual({
