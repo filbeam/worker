@@ -64,18 +64,23 @@ export async function handleFWSSDataSetCreated(
 /**
  * Handle Filecoin Warm Storage Service service termination
  *
- * @param {Env} env
+ * @param {{ DEFAULT_LOCKUP_PERIOD?: number; DB: D1Database }} env
  * @param {any} payload
+ * @param {bigint} currentEpoch - The current block height (epoch)
  * @throws {Error}
  */
-export async function handleFWSSServiceTerminated(env, payload) {
+export async function handleFWSSServiceTerminated(env, payload, currentEpoch) {
+  const DEFAULT_LOCKUP_PERIOD = BigInt(env.DEFAULT_LOCKUP_PERIOD || 86400) // 30 days in epochs
+  const settleUpToEpoch = currentEpoch + DEFAULT_LOCKUP_PERIOD
+
   await env.DB.prepare(
     `
       UPDATE data_sets
-      SET with_cdn = false
+      SET with_cdn = false,
+          settle_up_to_epoch = ?
       WHERE id = ?
     `,
   )
-    .bind(String(payload.data_set_id))
+    .bind(String(settleUpToEpoch), String(payload.data_set_id))
     .run()
 }

@@ -5,4 +5,5 @@ export default defineWorkspace([
   'retriever',
   'bad-bits',
   'terminator',
+  'rail-settlement',
 ])
