@@ -1,4 +1,4 @@
-import { getChainClient } from '../lib/chain.js'
+import { getChainClient as defaultGetChainClient } from '../lib/chain.js'
 import { abi } from '../lib/filbeam.js'
 import { aggregateUsageData, prepareBatchData } from '../lib/rollup.js'
 
@@ -17,8 +17,14 @@ export default {
    * @param {any} _controller
    * @param {RollupEnv} env
    * @param {ExecutionContext} _ctx
+   * @param {{ getChainClient?: typeof defaultGetChainClient }} [options]
    */
-  async scheduled(_controller, env, _ctx) {
+  async scheduled(
+    _controller,
+    env,
+    _ctx,
+    { getChainClient = defaultGetChainClient } = {},
+  ) {
     console.log('Starting rollup worker scheduled run')
 
     try {
