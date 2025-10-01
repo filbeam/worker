@@ -71,6 +71,13 @@ describe('rollup', () => {
           cacheMiss: 0,
         })
 
+        await withRetrievalLog(env, {
+          timestamp: epoch101Timestamp,
+          dataSetId: '2',
+          egressBytes: 9999,
+          cacheMiss: 0,
+        })
+
         // Call with targetEpoch = 100 to get data up to epoch 100
         const usageData = await aggregateUsageData(env.DB, 100)
 
@@ -154,7 +161,7 @@ describe('rollup', () => {
         // Add logs for all datasets in epoch 100
         for (const id of ['1', '2', '3', '4']) {
           await withRetrievalLog(env, {
-            timestamp: epoch100Timestamp + 10,
+            timestamp: epoch100Timestamp,
             dataSetId: id,
             egressBytes: 1000,
             cacheMiss: 0,
