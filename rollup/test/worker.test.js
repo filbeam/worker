@@ -1,0 +1,351 @@
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { applyD1Migrations, env as testEnv } from 'cloudflare:test'
+import {
+  withDataSet,
+  withRetrievalLog,
+  filecoinEpochToTimestamp,
+} from './test-helpers.js'
+import worker from '../bin/rollup.js'
+
+describe('rollup worker scheduled entrypoint', () => {
+  let env
+  let mockGetChainClient
+  let mockPublicClient
+  let mockWalletClient
+  let mockAccount
+  let simulateContractCalls
+  let writeContractCalls
+
+  beforeEach(async () => {
+    env = {
+      ...testEnv,
+      ENVIRONMENT: 'dev',
+      RPC_URL: 'https://mock-rpc.example.com',
+      FILBEAM_CONTRACT_ADDRESS: '0xMockFilBeamAddress',
+      FILBEAM_CONTROLLER_ADDRESS_PRIVATE_KEY: '0xMockPrivateKey',
+      GENESIS_BLOCK_TIMESTAMP: '1598306400',
+    }
+
+    await applyD1Migrations(env.DB, env.TEST_MIGRATIONS)
+
+    // Reset mock tracking arrays
+    simulateContractCalls = []
+    writeContractCalls = []
+
+    // Create mock chain client
+    mockAccount = { address: '0xMockAccountAddress' }
+
+    mockPublicClient = {
+      getBlockNumber: vi.fn().mockResolvedValue(101n),
+      simulateContract: vi.fn().mockImplementation((params) => {
+        simulateContractCalls.push(params)
+        return Promise.resolve({
+          request: { ...params, mockedRequest: true },
+        })
+      }),
+    }
+
+    mockWalletClient = {
+      writeContract: vi.fn().mockImplementation((request) => {
+        writeContractCalls.push(request)
+        return Promise.resolve('0xMockTransactionHash')
+      }),
+    }
+
+    mockGetChainClient = vi.fn().mockReturnValue({
+      publicClient: mockPublicClient,
+      walletClient: mockWalletClient,
+      account: mockAccount,
+    })
+  })
+
+  afterEach(async () => {
+    await env.DB.exec('DELETE FROM retrieval_logs;')
+    await env.DB.exec('DELETE FROM data_sets;')
+    vi.clearAllMocks()
+  })
+
+  it('should report usage data for multiple datasets', async () => {
+    // Setup: Create datasets with usage data
+    await withDataSet(env, { id: '1', lastReportedEpoch: 99 })
+    await withDataSet(env, { id: '2', lastReportedEpoch: 98 })
+
+    const epoch100Timestamp = filecoinEpochToTimestamp(100)
+
+    // Add retrieval logs for dataset 1
+    await withRetrievalLog(env, {
+      timestamp: epoch100Timestamp,
+      dataSetId: '1',
+      egressBytes: 2000,
+      cacheMiss: 0,
+    })
+    await withRetrievalLog(env, {
+      timestamp: epoch100Timestamp,
+      dataSetId: '1',
+      egressBytes: 500,
+      cacheMiss: 1,
+    })
+
+    // Add retrieval logs for dataset 2
+    await withRetrievalLog(env, {
+      timestamp: epoch100Timestamp,
+      dataSetId: '2',
+      egressBytes: 3000,
+      cacheMiss: 0,
+    })
+    await withRetrievalLog(env, {
+      timestamp: epoch100Timestamp,
+      dataSetId: '2',
+      egressBytes: 1000,
+      cacheMiss: 1,
+    })
+
+    // Execute scheduled function with mocked chain client
+    await worker.scheduled(null, env, null, {
+      getChainClient: mockGetChainClient,
+    })
+
+    // Verify chain client was created with correct environment
+    expect(mockGetChainClient).toHaveBeenCalledWith(env)
+
+    // Verify block number was fetched
+    expect(mockPublicClient.getBlockNumber).toHaveBeenCalled()
+
+    // Verify contract simulation was called with correct parameters
+    expect(simulateContractCalls).toHaveLength(1)
+    const simulateCall = simulateContractCalls[0]
+    expect(simulateCall.address).toBe(env.FILBEAM_CONTRACT_ADDRESS)
+    expect(simulateCall.functionName).toBe('reportUsageRollupBatch')
+    expect(simulateCall.args[0]).toEqual(['1', '2']) // dataSetIds
+    expect(simulateCall.args[1]).toEqual([100, 100]) // epochs
+    expect(simulateCall.args[2]).toEqual([2000n, 3000n]) // cdnBytesUsed
+    expect(simulateCall.args[3]).toEqual([500n, 1000n]) // cacheMissBytesUsed
+    expect(simulateCall.account).toBe(mockAccount)
+
+    // Verify transaction was written
+    expect(writeContractCalls).toHaveLength(1)
+    expect(writeContractCalls[0].mockedRequest).toBe(true)
+  })
+
+  it('should handle when no usage data exists', async () => {
+    // Setup: Create dataset but with no retrieval logs
+    await withDataSet(env, { id: '1', lastReportedEpoch: 99 })
+
+    // Execute scheduled function
+    await worker.scheduled(null, env, null, {
+      getChainClient: mockGetChainClient,
+    })
+
+    // Verify chain client was created and block number fetched
+    expect(mockGetChainClient).toHaveBeenCalledWith(env)
+    expect(mockPublicClient.getBlockNumber).toHaveBeenCalled()
+
+    // Verify no contract calls were made
+    expect(simulateContractCalls).toHaveLength(0)
+    expect(writeContractCalls).toHaveLength(0)
+  })
+
+  it('should filter out datasets with zero usage', async () => {
+    // Setup: Create datasets with mixed usage
+    await withDataSet(env, { id: '1', lastReportedEpoch: 99 })
+    await withDataSet(env, { id: '2', lastReportedEpoch: 99 })
+    await withDataSet(env, { id: '3', lastReportedEpoch: 99 })
+
+    const epoch100Timestamp = filecoinEpochToTimestamp(100)
+
+    // Dataset 1: Has usage
+    await withRetrievalLog(env, {
+      timestamp: epoch100Timestamp,
+      dataSetId: '1',
+      egressBytes: 1000,
+      cacheMiss: 0,
+    })
+
+    // Dataset 2: No retrieval logs (zero usage)
+
+    // Dataset 3: Has usage
+    await withRetrievalLog(env, {
+      timestamp: epoch100Timestamp,
+      dataSetId: '3',
+      egressBytes: 2000,
+      cacheMiss: 1,
+    })
+
+    // Execute scheduled function
+    await worker.scheduled(null, env, null, {
+      getChainClient: mockGetChainClient,
+    })
+
+    // Verify only datasets with non-zero usage are reported
+    expect(simulateContractCalls).toHaveLength(1)
+    const simulateCall = simulateContractCalls[0]
+    expect(simulateCall.args[0]).toEqual(['1', '3']) // Only datasets 1 and 3
+    expect(simulateCall.args[1]).toEqual([100, 100])
+    expect(simulateCall.args[2]).toEqual([1000n, 0n]) // cdnBytesUsed
+    expect(simulateCall.args[3]).toEqual([0n, 2000n]) // cacheMissBytesUsed
+  })
+
+  it('should not report datasets that are already up to date', async () => {
+    // Setup: Create datasets with different last_reported_epoch values
+    await withDataSet(env, { id: '1', lastReportedEpoch: 99 }) // Should be included
+    await withDataSet(env, { id: '2', lastReportedEpoch: 100 }) // Should NOT be included (already reported)
+
+    const epoch100Timestamp = filecoinEpochToTimestamp(100)
+
+    // Add retrieval logs for both datasets
+    for (const id of ['1', '2']) {
+      await withRetrievalLog(env, {
+        timestamp: epoch100Timestamp,
+        dataSetId: id,
+        egressBytes: 1000,
+        cacheMiss: 0,
+      })
+    }
+
+    // Execute scheduled function
+    await worker.scheduled(null, env, null, {
+      getChainClient: mockGetChainClient,
+    })
+
+    // Verify only dataset 1 is reported (dataset 2 is already up to date)
+    expect(simulateContractCalls).toHaveLength(1)
+    const simulateCall = simulateContractCalls[0]
+    expect(simulateCall.args[0]).toEqual(['1']) // Only dataset 1
+  })
+
+  it('should handle contract simulation errors', async () => {
+    // Setup: Create dataset with usage data
+    await withDataSet(env, { id: '1', lastReportedEpoch: 99 })
+    const epoch100Timestamp = filecoinEpochToTimestamp(100)
+    await withRetrievalLog(env, {
+      timestamp: epoch100Timestamp,
+      dataSetId: '1',
+      egressBytes: 1000,
+      cacheMiss: 0,
+    })
+
+    // Make simulateContract throw an error
+    mockPublicClient.simulateContract.mockRejectedValue(
+      new Error('Contract simulation failed'),
+    )
+
+    // Execute scheduled function and expect it to throw
+    await expect(
+      worker.scheduled(null, env, null, { getChainClient: mockGetChainClient }),
+    ).rejects.toThrow('Contract simulation failed')
+
+    // Verify transaction was not written
+    expect(writeContractCalls).toHaveLength(0)
+  })
+
+  it('should handle transaction write errors', async () => {
+    // Setup: Create dataset with usage data
+    await withDataSet(env, { id: '1', lastReportedEpoch: 99 })
+    const epoch100Timestamp = filecoinEpochToTimestamp(100)
+    await withRetrievalLog(env, {
+      timestamp: epoch100Timestamp,
+      dataSetId: '1',
+      egressBytes: 1000,
+      cacheMiss: 0,
+    })
+
+    // Make writeContract throw an error
+    mockWalletClient.writeContract.mockRejectedValue(
+      new Error('Transaction failed'),
+    )
+
+    // Execute scheduled function and expect it to throw
+    await expect(
+      worker.scheduled(null, env, null, { getChainClient: mockGetChainClient }),
+    ).rejects.toThrow('Transaction failed')
+
+    // Verify simulation was called
+    expect(simulateContractCalls).toHaveLength(1)
+  })
+
+  it('should calculate correct target epoch', async () => {
+    // Setup: Mock different block numbers to verify epoch calculation
+    mockPublicClient.getBlockNumber.mockResolvedValue(105n)
+
+    await withDataSet(env, { id: '1', lastReportedEpoch: 99 })
+
+    // Add logs for multiple epochs
+    for (let epoch = 100; epoch <= 104; epoch++) {
+      await withRetrievalLog(env, {
+        timestamp: filecoinEpochToTimestamp(epoch),
+        dataSetId: '1',
+        egressBytes: 1000,
+        cacheMiss: 0,
+      })
+    }
+
+    // Execute scheduled function
+    await worker.scheduled(null, env, null, {
+      getChainClient: mockGetChainClient,
+    })
+
+    // Verify it reports up to epoch 104 (currentEpoch - 1)
+    expect(simulateContractCalls).toHaveLength(1)
+    const simulateCall = simulateContractCalls[0]
+    expect(simulateCall.args[1]).toEqual([104]) // max_epoch should be 104
+    expect(simulateCall.args[2]).toEqual([5000n]) // 5 epochs × 1000 bytes
+  })
+
+  it('should aggregate usage correctly across epochs', async () => {
+    // Setup: Create dataset with usage across multiple epochs
+    await withDataSet(env, { id: '1', lastReportedEpoch: 95 })
+
+    // Add retrieval logs across epochs 96-100
+    for (let epoch = 96; epoch <= 100; epoch++) {
+      await withRetrievalLog(env, {
+        timestamp: filecoinEpochToTimestamp(epoch),
+        dataSetId: '1',
+        egressBytes: 1000,
+        cacheMiss: 0,
+      })
+      await withRetrievalLog(env, {
+        timestamp: filecoinEpochToTimestamp(epoch),
+        dataSetId: '1',
+        egressBytes: 500,
+        cacheMiss: 1,
+      })
+    }
+
+    // Execute scheduled function
+    await worker.scheduled(null, env, null, {
+      getChainClient: mockGetChainClient,
+    })
+
+    // Verify aggregated data
+    expect(simulateContractCalls).toHaveLength(1)
+    const simulateCall = simulateContractCalls[0]
+    expect(simulateCall.args[0]).toEqual(['1'])
+    expect(simulateCall.args[1]).toEqual([100]) // max_epoch
+    expect(simulateCall.args[2]).toEqual([5000n]) // 5 epochs × 1000 bytes CDN
+    expect(simulateCall.args[3]).toEqual([2500n]) // 5 epochs × 500 bytes cache miss
+  })
+
+  it('should handle datasets with null last_reported_epoch', async () => {
+    // Setup: Create dataset with null last_reported_epoch (never reported)
+    await withDataSet(env, { id: '1', lastReportedEpoch: null })
+
+    const epoch100Timestamp = filecoinEpochToTimestamp(100)
+    await withRetrievalLog(env, {
+      timestamp: epoch100Timestamp,
+      dataSetId: '1',
+      egressBytes: 1000,
+      cacheMiss: 0,
+    })
+
+    // Execute scheduled function
+    await worker.scheduled(null, env, null, {
+      getChainClient: mockGetChainClient,
+    })
+
+    // Verify the dataset is included in reporting
+    expect(simulateContractCalls).toHaveLength(1)
+    const simulateCall = simulateContractCalls[0]
+    expect(simulateCall.args[0]).toEqual(['1'])
+    expect(simulateCall.args[2]).toEqual([1000n])
+  })
+})
