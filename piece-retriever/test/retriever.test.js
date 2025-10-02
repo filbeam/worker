@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeAll } from 'vitest'
-import worker from '../bin/retriever.js'
+import worker from '../bin/piece-retriever.js'
 import { createHash } from 'node:crypto'
 import { retrieveFile } from '../lib/retrieval.js'
 import {
@@ -23,7 +23,7 @@ function sleep(ms) {
 const DNS_ROOT = '.filbeam.io'
 env.DNS_ROOT = DNS_ROOT
 
-describe('retriever.fetch', () => {
+describe('piece-retriever.fetch', () => {
   const defaultPayerAddress = '0x1234567890abcdef1234567890abcdef12345678'
   const { pieceCid: realPieceCid, dataSetId: realDataSetId } =
     CONTENT_STORED_ON_CALIBRATION[0]

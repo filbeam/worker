@@ -1,14 +1,14 @@
 {
-  "name": "@filcdn/monorepo",
+  "name": "@filbeam/monorepo",
   "version": "1.0.0",
   "private": true,
-  "description": "FilCDN Cloudflare Workers Monorepo",
-  "author": "Space Meridian <filcdn@meridian.space>",
+  "description": "FilBeam Cloudflare Workers Monorepo",
+  "author": "Space Meridian <filbeam@meridian.space>",
   "type": "module",
   "workspaces": [
     "bad-bits",
     "indexer",
-    "retriever",
+    "piece-retriever",
     "terminator"
   ],
   "scripts": {
@@ -22,12 +22,12 @@
   "prettier": "@checkernetwork/prettier-config",
   "devDependencies": {
     "@checkernetwork/prettier-config": "^1.0.1",
-    "@cloudflare/vitest-pool-workers": "^0.9.5",
-    "@types/node": "^22.18.6",
+    "@cloudflare/vitest-pool-workers": "^0.9.8",
+    "@types/node": "^22.18.8",
     "neostandard": "^0.12.1",
     "prettier": "^3.6.2",
-    "typescript": "^5.8.3",
+    "typescript": "^5.9.3",
     "vitest": "3.1.4",
-    "wrangler": "^4.40.0"
+    "wrangler": "^4.40.3"
   }
 }

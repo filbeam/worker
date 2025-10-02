@@ -1,9 +1,9 @@
 {
-  "name": "@filcdn/bad-bits",
+  "name": "@filbeam/bad-bits",
   "version": "1.0.0",
   "private": true,
-  "description": "FilCDN Bad Bits Worker",
-  "author": "Space Meridian <filcdn@meridian.space>",
+  "description": "FilBeam Bad Bits Worker",
+  "author": "Space Meridian <filbeam@meridian.space>",
   "type": "module",
   "main": "bin/scheduler.js",
   "scripts": {

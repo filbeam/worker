@@ -1,9 +1,9 @@
 {
-  "name": "@filcdn/terminator",
+  "name": "@filbeam/terminator",
   "version": "1.0.0",
   "private": true,
-  "description": "FilCDN Terminator Worker",
-  "author": "Space Meridian <filcdn@meridian.space>",
+  "description": "FilBeam Terminator Worker",
+  "author": "Space Meridian <filbeam@meridian.space>",
   "type": "module",
   "main": "bin/terminator.js",
   "scripts": {
@@ -14,10 +14,10 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "viem": "^2.37.8"
+    "viem": "^2.37.11"
   },
   "devDependencies": {
-    "@cloudflare/vitest-pool-workers": "^0.9.5",
+    "@cloudflare/vitest-pool-workers": "^0.9.8",
     "@types/validator": "^13.15.2"
   }
 }

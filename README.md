@@ -1,4 +1,4 @@
-# FilCDN Cloudflare Worker
+# FilBeam Cloudflare Worker
 
 [Cloudflare worker](https://developers.cloudflare.com/workers/) used to retrieve
 and cache from the Filecoin PDP Service Providers.
@@ -42,7 +42,7 @@ After you make any change affecting the content of the `env` object, run the fol
 npm run build:types
 ```
 
-### Run the Retriever worker locally
+### Run the Piece Retriever worker locally
 
 1. Choose a wallet address you will use for the requests, e.g. `0x123`.
 
@@ -55,7 +55,7 @@ npm run build:types
 3. Start the retriever worker locally
 
    ```
-   npm start -w retriever
+   npm start -w piece-retriever
    ```
 
 ### Run the Indexer worker locally

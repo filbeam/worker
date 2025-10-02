@@ -68,6 +68,8 @@ Follow these steps to build and deploy the subgraph:
     ```
 
     - Replace `<your-subgraph-name>` with the desired name for your subgraph deployment on Goldsky (e.g., `my-pdp-explorer`). You can create/manage this name in your Goldsky dashboard.
+      - Calibration testnet: `filbeam-alpha-calibnet`
+      - Mainnet: `filbeam-alpha-mainnet`
     - Replace `<version>` with a version identifier (e.g., `v0.0.1`).
     - You can manage your deployments and find your subgraph details in the [Goldsky Dashboard](https://app.goldsky.com/). The deployment command will output the GraphQL endpoint URL for your subgraph upon successful completion. **Copy this URL**, as you will need it for the client.
 
