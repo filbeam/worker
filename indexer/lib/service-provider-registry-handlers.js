@@ -85,6 +85,7 @@ export async function handleProductRemoved(env, providerId, productType) {
     return new Response('OK', { status: 200 })
   }
 
+  await clearServiceProviderIndexCache(env, providerId)
   const result = await env.DB.prepare(
     `
         DELETE FROM service_providers WHERE id = ?
@@ -95,7 +96,6 @@ export async function handleProductRemoved(env, providerId, productType) {
   if (result.meta.changes === 0) {
     return new Response('Provider Not Found', { status: 404 })
   }
-  await clearServiceProviderIndexCache(env, providerId)
   return new Response('OK', { status: 200 })
 }
 
@@ -112,6 +112,7 @@ export async function handleProviderRemoved(env, providerId) {
     return new Response('Bad Request', { status: 400 })
   }
 
+  await clearServiceProviderIndexCache(env, providerId)
   const result = await env.DB.prepare(
     `
         DELETE FROM service_providers WHERE id = ?
@@ -122,7 +123,6 @@ export async function handleProviderRemoved(env, providerId) {
   if (result.meta.changes === 0) {
     return new Response('Provider Not Found', { status: 404 })
   }
-  await clearServiceProviderIndexCache(env, providerId)
   return new Response('OK', { status: 200 })
 }
 
@@ -143,6 +143,7 @@ async function handleProviderServiceUrlUpdate(env, providerId, serviceUrl) {
     `Provider service url updated (providerId=${providerId}, serviceUrl=${serviceUrl})`,
   )
 
+  await clearServiceProviderIndexCache(env, providerId)
   await env.DB.prepare(
     `
         INSERT INTO service_providers (
@@ -156,7 +157,6 @@ async function handleProviderServiceUrlUpdate(env, providerId, serviceUrl) {
   )
     .bind(String(providerId), serviceUrl)
     .run()
-  await clearServiceProviderIndexCache(env, providerId)
   return new Response('OK', { status: 200 })
 }
 
