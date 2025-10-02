@@ -861,6 +861,63 @@ describe('retriever.indexer', () => {
       expect(res.status).toBe(404)
       expect(await res.text()).toBe('Provider Not Found')
     })
+
+    it('clears index cache entries', async () => {
+      const payerAddress = '0xPayerAddress'
+      const serviceProviderId = '1'
+      const productType = 0
+      const serviceUrl = 'https://service.url/'
+      const dataSetId = await withDataSet(env, {
+        withCDN: true,
+        serviceProviderId,
+        payerAddress,
+      })
+      const pieceIds = [randomId(), randomId()]
+      const pieceCids = [randomId(), randomId()]
+      await withPieces(env, dataSetId, pieceIds, pieceCids)
+      for (const pieceCid of pieceCids) {
+        await env.KV.put(
+          `${payerAddress}/${pieceCid}`,
+          JSON.stringify([dataSetId, serviceUrl])
+        )
+      }
+
+      const insertReq = new Request(
+        'https://host/service-provider-registry/product-added',
+        {
+          method: 'POST',
+          headers: {
+            [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+          },
+          body: JSON.stringify({
+            provider_id: serviceProviderId,
+            product_type: productType,
+            service_url: serviceUrl,
+          }),
+        },
+      )
+      const ctx = createExecutionContext()
+      const insertRes = await workerImpl.fetch(insertReq, env, ctx)
+      await waitOnExecutionContext(ctx)
+      expect(insertRes.status).toBe(200)
+
+      const req = new Request('https://host/service-provider-registry/product-removed', {
+        method: 'POST',
+        headers: {
+          [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+        },
+        body: JSON.stringify({
+          provider_id: serviceProviderId,
+          product_type: productType,
+        }),
+      })
+      const res = await workerImpl.fetch(req, env)
+      expect(res.status).toBe(200)
+
+      for (const pieceCid of pieceCids) {
+        expect(await env.KV.get(`${payerAddress}/${pieceCid}`)).toBe(null)
+      }
+    })
   })
 })
 describe('POST /service-provider-registry/provider-removed', () => {
