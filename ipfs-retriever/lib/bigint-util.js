@@ -50,7 +50,8 @@ export function bigIntToBase32(value) {
     return '0'
   }
   const bytes = bigIntToUint8Array(value)
-  return base32.encode(bytes)
+  // Remove the 'b' prefix that multiformats adds
+  return base32.encode(bytes).slice(1)
 }
 
 /**
@@ -67,6 +68,7 @@ export function base32ToBigInt(value) {
   if (value === '0') {
     return 0n
   }
-  const bytes = base32.decode(value)
+  // Add back the 'b' prefix that multiformats expects
+  const bytes = base32.decode('b' + value)
   return uint8ArrayToBigInt(bytes)
 }

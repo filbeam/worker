@@ -119,16 +119,16 @@ describe('parseRequest', () => {
   })
 
   it('should return descriptive error for invalid base32 dataSetId', () => {
-    const request = { url: `https://1-notbase32-baeete${DNS_ROOT}/` }
+    const request = { url: `https://1-invalid1-aeete${DNS_ROOT}/` }
     expect(() => parseRequest(request, { DNS_ROOT })).toThrowError(
-      /Invalid dataSetId encoding in slug: notbase32/,
+      /Invalid dataSetId encoding in slug: invalid1/,
     )
   })
 
   it('should return descriptive error for invalid base32 pieceId', () => {
-    const request = { url: `https://1-bga4q-notbase32${DNS_ROOT}/` }
+    const request = { url: `https://1-ga4q-invalid1${DNS_ROOT}/` }
     expect(() => parseRequest(request, { DNS_ROOT })).toThrowError(
-      /Invalid pieceId encoding in slug: notbase32/,
+      /Invalid pieceId encoding in slug: invalid1/,
     )
   })
 

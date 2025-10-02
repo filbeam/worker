@@ -262,35 +262,35 @@ describe('bigint-util', () => {
     })
 
     it('converts small positive values', () => {
-      expect(bigIntToBase32(1n)).toBe('bae')
+      expect(bigIntToBase32(1n)).toBe('ae')
     })
 
     it('converts single-byte values', () => {
-      expect(bigIntToBase32(255n)).toBe('b74')
+      expect(bigIntToBase32(255n)).toBe('74')
     })
 
     it('converts two-byte values', () => {
-      expect(bigIntToBase32(256n)).toBe('baeaa')
-      expect(bigIntToBase32(65535n)).toBe('b777q')
+      expect(bigIntToBase32(256n)).toBe('aeaa')
+      expect(bigIntToBase32(65535n)).toBe('777q')
     })
 
     it('converts large values', () => {
       const large = 2n ** 64n - 1n
-      expect(bigIntToBase32(large)).toBe('b7777777777776')
+      expect(bigIntToBase32(large)).toBe('7777777777776')
     })
 
     it('converts very large values (256-bit)', () => {
       const veryLarge = 2n ** 256n - 1n
       expect(bigIntToBase32(veryLarge)).toBe(
-        'b777777777777777777777777777777777777777777777777777q',
+        '777777777777777777777777777777777777777777777777777q',
       )
     })
 
     it('handles powers of 2', () => {
-      expect(bigIntToBase32(2n ** 8n)).toBe('baeaa')
-      expect(bigIntToBase32(2n ** 16n)).toBe('baeaaa')
-      expect(bigIntToBase32(2n ** 32n)).toBe('baeaaaaaa')
-      expect(bigIntToBase32(2n ** 64n)).toBe('baeaaaaaaaaaaaaa')
+      expect(bigIntToBase32(2n ** 8n)).toBe('aeaa')
+      expect(bigIntToBase32(2n ** 16n)).toBe('aeaaa')
+      expect(bigIntToBase32(2n ** 32n)).toBe('aeaaaaaa')
+      expect(bigIntToBase32(2n ** 64n)).toBe('aeaaaaaaaaaaaaa')
     })
 
     it('throws error for negative values', () => {
@@ -362,6 +362,7 @@ describe('bigint-util', () => {
     it('throws error for invalid base32 strings', () => {
       expect(() => base32ToBigInt('invalid!@#')).toThrow()
       expect(() => base32ToBigInt('not-base32')).toThrow()
+      expect(() => base32ToBigInt('123')).toThrow() // numbers not in base32 alphabet
     })
   })
 

@@ -579,7 +579,7 @@ describe('getSlugForWalletAndCid', () => {
     const result = await getSlugForWalletAndCid(env, payerAddress, ipfsRootCid)
 
     // Slug format: version-base32(dataSetId)-base32(pieceId)
-    assert.strictEqual(result, '1-bga4q-baeete')
+    assert.strictEqual(result, '1-ga4q-aeete')
   })
 
   it('returns slug with zero-encoded values for dataSetId=0 and pieceId=0', async () => {

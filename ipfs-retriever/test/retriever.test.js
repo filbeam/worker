@@ -129,8 +129,8 @@ describe('retriever.fetch', () => {
     await waitOnExecutionContext(ctx)
     expect(res.status).toBe(302)
     const location = res.headers.get('Location')
-    // Expected slug: 1-bga4q-baeete (version-base32(12345)-base32(67890))
-    expect(location).toBe('https://1-bga4q-baeete.ipfs.filbeam.io/')
+    // Expected slug: 1-ga4q-aeete (version-base32(12345)-base32(67890))
+    expect(location).toBe('https://1-ga4q-aeete.ipfs.filbeam.io/')
   })
 
   it('redirects to slug subdomain with subpath when wallet, CID, and pathname are provided on DNS_ROOT path', async () => {
@@ -164,9 +164,9 @@ describe('retriever.fetch', () => {
     await waitOnExecutionContext(ctx)
     expect(res.status).toBe(302)
     const location = res.headers.get('Location')
-    // Expected slug: 1-b2qyq-baga42 (version-base32(54321)-base32(98765))
+    // Expected slug: 1-2qyq-aga42 (version-base32(54321)-base32(98765))
     expect(location).toBe(
-      'https://1-b2qyq-baga42.ipfs.filbeam.io/path/to/file.txt',
+      'https://1-2qyq-aga42.ipfs.filbeam.io/path/to/file.txt',
     )
   })
 
