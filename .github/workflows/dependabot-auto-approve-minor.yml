@@ -16,6 +16,7 @@ jobs:
           - 'wrangler'
           - 'vitest'
           - typescript
+          - viem
     steps:
       - name: Dependabot metadata
         id: metadata
