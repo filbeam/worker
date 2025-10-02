@@ -193,7 +193,7 @@ export async function getStorageProviderAndValidatePayerByWalletAndCid(
   ipfsRootCid,
 ) {
   if (
-    payerAddress === '0xMB' &&
+    payerAddress === '0x000000000000000000000000000000000000dead' &&
     ipfsRootCid ===
       'bafybeiagrjpf2rwth5oylc64czsrz2jm7a4fgo67b2luygqjrivjbswuku'
   ) {
