@@ -73,6 +73,106 @@ export async function logRetrievalResult(env, params) {
 }
 
 /**
+ * Validates query results and returns provider info. This is a shared helper
+ * used by both getStorageProviderAndValidatePayerByWalletAndCid and
+ * getStorageProviderAndValidatePayerByDataSetAndPiece.
+ *
+ * @param {object} params
+ * @param {any[]} params.results - The query results to validate
+ * @param {string} params.payerAddress - The address of the client paying for
+ *   the request
+ * @param {string} params.lookupKey - Descriptive key for error messages (e.g.,
+ *   "IPFS Root CID 'bafk...'")
+ * @returns {{
+ *   serviceProviderId: string
+ *   serviceUrl: string
+ *   dataSetId: string
+ *   pieceId: string
+ *   ipfsRootCid?: string
+ * }}
+ */
+function validateQueryResultsAndGetProvider(params) {
+  const { results, payerAddress, lookupKey } = params
+
+  httpAssert(
+    results && results.length > 0,
+    404,
+    `${lookupKey} does not exist or may not have been indexed yet.`,
+  )
+
+  const withServiceProvider = results.filter(
+    (row) => row && row.service_provider_id != null,
+  )
+  httpAssert(
+    withServiceProvider.length > 0,
+    404,
+    `${lookupKey} exists but has no associated service provider.`,
+  )
+
+  const withPaymentRail = withServiceProvider.filter(
+    (row) =>
+      row.payer_address && row.payer_address.toLowerCase() === payerAddress,
+  )
+  httpAssert(
+    withPaymentRail.length > 0,
+    402,
+    `There is no Filecoin Warm Storage Service deal for payer '${payerAddress}' and ${lookupKey}.`,
+  )
+
+  const withCDN = withPaymentRail.filter(
+    (row) => row.with_cdn && row.with_cdn === 1,
+  )
+  httpAssert(
+    withCDN.length > 0,
+    402,
+    `The Filecoin Warm Storage Service deal for payer '${payerAddress}' and ${lookupKey} has withCDN=false.`,
+  )
+
+  const withIpfsIndexing = withCDN.filter((row) => row.with_ipfs_indexing === 1)
+  httpAssert(
+    withIpfsIndexing.length > 0,
+    402,
+    `The Filecoin Warm Storage Service deal for payer '${payerAddress}' and ${lookupKey} has withIpfsIndexing=false.`,
+  )
+
+  const withPayerNotSanctioned = withIpfsIndexing.filter(
+    (row) => !row.is_sanctioned,
+  )
+  httpAssert(
+    withPayerNotSanctioned.length > 0,
+    403,
+    `Wallet '${payerAddress}' is sanctioned and cannot retrieve ${lookupKey}.`,
+  )
+
+  const withApprovedProvider = withPayerNotSanctioned.filter(
+    (row) => row.service_url,
+  )
+  httpAssert(
+    withApprovedProvider.length > 0,
+    404,
+    `No approved service provider found for payer '${payerAddress}' and ${lookupKey}.`,
+  )
+
+  const {
+    piece_id: pieceId,
+    data_set_id: dataSetId,
+    ipfs_root_cid: ipfsRootCid,
+    service_provider_id: serviceProviderId,
+    service_url: serviceUrl,
+  } = withApprovedProvider[0]
+
+  // We need this assertion to supress TypeScript error. The compiler is not able to infer that
+  // `withApprovedProvider.filter()` above returns only rows with `service_url` defined.
+  httpAssert(serviceUrl, 500, 'should never happen')
+
+  console.log(
+    `Validated data set ID '${dataSetId}', piece ID '${pieceId}', and service provider id '${serviceProviderId}' for ${lookupKey} and payer '${payerAddress}'. Service URL: ${serviceUrl}`,
+  )
+
+  return { serviceProviderId, serviceUrl, dataSetId, pieceId, ipfsRootCid }
+}
+
+/**
  * Retrieves the provider and data set id for a given root CID.
  *
  * @param {Pick<Env, 'DB'>} env - Cloudflare Worker environment with D1 DB
@@ -87,7 +187,7 @@ export async function logRetrievalResult(env, params) {
  *   pieceId: string
  * }>}
  */
-export async function getStorageProviderAndValidatePayer(
+export async function getStorageProviderAndValidatePayerByWalletAndCid(
   env,
   payerAddress,
   ipfsRootCid,
@@ -96,6 +196,7 @@ export async function getStorageProviderAndValidatePayer(
    SELECT
      pieces.id as piece_id,
      pieces.data_set_id,
+     pieces.ipfs_root_cid,
      data_sets.service_provider_id,
      data_sets.payer_address,
      data_sets.with_cdn,
@@ -114,8 +215,10 @@ export async function getStorageProviderAndValidatePayer(
 
   const results = /**
    * @type {{
-   *   service_provider_id: string
+   *   piece_id: string
    *   data_set_id: string
+   *   ipfs_root_cid: string
+   *   service_provider_id: string
    *   payer_address: string | undefined
    *   with_cdn: number | undefined
    *   with_ipfs_indexing: number | undefined
@@ -127,81 +230,93 @@ export async function getStorageProviderAndValidatePayer(
       (await env.DB.prepare(query).bind(ipfsRootCid).all()).results
     )
   )
+
+  return validateQueryResultsAndGetProvider({
+    results,
+    payerAddress,
+    lookupKey: `IPFS Root CID '${ipfsRootCid}'`,
+  })
+}
+
+/**
+ * Retrieves the provider info for a given data set ID and piece ID.
+ *
+ * @param {Pick<Env, 'DB'>} env - Cloudflare Worker environment with D1 DB
+ *   binding
+ * @param {string} dataSetId - The data set ID
+ * @param {string} pieceId - The piece ID
+ * @returns {Promise<{
+ *   serviceProviderId: string
+ *   serviceUrl: string
+ *   dataSetId: string
+ *   pieceId: string
+ *   ipfsRootCid: string
+ * }>}
+ */
+export async function getStorageProviderAndValidatePayerByDataSetAndPiece(
+  env,
+  dataSetId,
+  pieceId,
+) {
+  const query = `
+   SELECT
+     pieces.id as piece_id,
+     pieces.data_set_id,
+     pieces.ipfs_root_cid,
+     data_sets.service_provider_id,
+     data_sets.payer_address,
+     data_sets.with_cdn,
+     data_sets.with_ipfs_indexing,
+     service_providers.service_url,
+     wallet_details.is_sanctioned
+   FROM pieces
+   LEFT OUTER JOIN data_sets
+     ON pieces.data_set_id = data_sets.id
+   LEFT OUTER JOIN service_providers
+     ON data_sets.service_provider_id = service_providers.id
+   LEFT OUTER JOIN wallet_details
+     ON data_sets.payer_address = wallet_details.address
+   WHERE pieces.id = ? AND pieces.data_set_id = ?
+ `
+
+  const results = /**
+   * @type {{
+   *   piece_id: string
+   *   data_set_id: string
+   *   ipfs_root_cid: string
+   *   service_provider_id: string
+   *   payer_address: string | undefined
+   *   with_cdn: number | undefined
+   *   with_ipfs_indexing: number | undefined
+   *   service_url: string | undefined
+   *   is_sanctioned: number | undefined
+   * }[]}
+   */ (
+    /** @type {any[]} */ (
+      (await env.DB.prepare(query).bind(pieceId, dataSetId).all()).results
+    )
+  )
+
   httpAssert(
     results && results.length > 0,
     404,
-    `IPFS Root CID '${ipfsRootCid}' does not exist or may not have been indexed yet.`,
+    `Piece ID '${pieceId}' does not exist in data set ID '${dataSetId}' or may not have been indexed yet.`,
   )
 
-  const withServiceProvider = results.filter(
-    (row) => row && row.service_provider_id != null,
-  )
+  // Extract the payer address from the first result
+  const { payer_address: payerAddress } = results[0]
+
   httpAssert(
-    withServiceProvider.length > 0,
+    payerAddress,
     404,
-    `IPFS Root CID '${ipfsRootCid}' exists but has no associated service provider.`,
+    `Data set ID '${dataSetId}' exists but has no associated payer address.`,
   )
 
-  const withPaymentRail = withServiceProvider.filter(
-    (row) =>
-      row.payer_address && row.payer_address.toLowerCase() === payerAddress,
-  )
-  httpAssert(
-    withPaymentRail.length > 0,
-    402,
-    `There is no Filecoin Warm Storage Service deal for payer '${payerAddress}' and IPFS Root CID '${ipfsRootCid}'.`,
-  )
-
-  const withCDN = withPaymentRail.filter(
-    (row) => row.with_cdn && row.with_cdn === 1,
-  )
-  httpAssert(
-    withCDN.length > 0,
-    402,
-    `The Filecoin Warm Storage Service deal for payer '${payerAddress}' and IPFS Root CID '${ipfsRootCid}' has withCDN=false.`,
-  )
-
-  const withIpfsIndexing = withCDN.filter((row) => row.with_ipfs_indexing === 1)
-  httpAssert(
-    withIpfsIndexing.length > 0,
-    402,
-    `The Filecoin Warm Storage Service deal for payer '${payerAddress}' and IPFS Root CID '${ipfsRootCid}' has withIpfsIndexing=false.`,
-  )
-
-  const withPayerNotSanctioned = withIpfsIndexing.filter(
-    (row) => !row.is_sanctioned,
-  )
-  httpAssert(
-    withPayerNotSanctioned.length > 0,
-    403,
-    `Wallet '${payerAddress}' is sanctioned and cannot retrieve IPFS Root CID '${ipfsRootCid}'.`,
-  )
-
-  const withApprovedProvider = withPayerNotSanctioned.filter(
-    (row) => row.service_url,
-  )
-  httpAssert(
-    withApprovedProvider.length > 0,
-    404,
-    `No approved service provider found for payer '${payerAddress}' and IPFS Root CID '${ipfsRootCid}'.`,
-  )
-
-  const {
-    piece_id: pieceId,
-    data_set_id: dataSetId,
-    service_provider_id: serviceProviderId,
-    service_url: serviceUrl,
-  } = withApprovedProvider[0]
-
-  // We need this assertion to supress TypeScript error. The compiler is not able to infer that
-  // `withCDN.filter()` above returns only rows with `service_url` defined.
-  httpAssert(serviceUrl, 500, 'should never happen')
-
-  console.log(
-    `Looked up Data set ID '${dataSetId}' and service provider id '${serviceProviderId}' for IPFS Root CID '${ipfsRootCid}' and payer '${payerAddress}'. Service URL: ${serviceUrl}`,
-  )
-
-  return { serviceProviderId, serviceUrl, dataSetId, pieceId }
+  return validateQueryResultsAndGetProvider({
+    results,
+    payerAddress,
+    lookupKey: `data set ID '${dataSetId}' and piece ID '${pieceId}'`,
+  })
 }
 
 /**
@@ -223,21 +338,34 @@ export async function updateDataSetStats(env, { dataSetId, egressBytes }) {
 }
 
 /**
+ * Builds a slug from dataSetId and pieceId.
+ *
+ * @param {bigint} dataSetId - The data set ID as BigInt
+ * @param {bigint} pieceId - The piece ID as BigInt
+ * @returns {string} - The slug in format:
+ *   1-{base32(dataSetId)}-{base32(pieceId)}
+ */
+export function buildSlug(dataSetId, pieceId) {
+  return [
+    '1', // version
+    bigIntToBase32(dataSetId),
+    bigIntToBase32(pieceId),
+  ].join('-')
+}
+
+/**
  * @param {Pick<Env, 'DB'>} env - Cloudflare Worker environment with D1 DB
  *   binding
  * @param {string} payerAddress
  * @param {string} ipfsRootCid
  */
 export async function getSlugForWalletAndCid(env, payerAddress, ipfsRootCid) {
-  const { dataSetId, pieceId } = await getStorageProviderAndValidatePayer(
-    env,
-    payerAddress,
-    ipfsRootCid,
-  )
+  const { dataSetId, pieceId } =
+    await getStorageProviderAndValidatePayerByWalletAndCid(
+      env,
+      payerAddress,
+      ipfsRootCid,
+    )
 
-  return [
-    '1', // version
-    bigIntToBase32(BigInt(dataSetId)),
-    bigIntToBase32(BigInt(pieceId)),
-  ].join('-')
+  return buildSlug(BigInt(dataSetId), BigInt(pieceId))
 }

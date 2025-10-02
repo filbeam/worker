@@ -15,6 +15,7 @@ import {
   withWalletDetails,
 } from './test-data-builders.js'
 import { CONTENT_STORED_ON_CALIBRATION } from './test-data.js'
+import { buildSlug } from '../lib/store.js'
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms))
@@ -25,8 +26,12 @@ env.DNS_ROOT = DNS_ROOT
 
 describe('retriever.fetch', () => {
   const defaultPayerAddress = '0x1234567890abcdef1234567890abcdef12345678'
-  const { ipfsRootCid: realIpfsRootCid, dataSetId: realDataSetId } =
-    CONTENT_STORED_ON_CALIBRATION[0]
+  const {
+    ipfsRootCid: realIpfsRootCid,
+    dataSetId,
+    pieceId: realPieceId,
+  } = CONTENT_STORED_ON_CALIBRATION[0]
+  const realDataSetId = String(dataSetId)
 
   beforeAll(async () => {
     await env.DB.batch([
@@ -36,15 +41,14 @@ describe('retriever.fetch', () => {
       env.DB.prepare('DELETE FROM wallet_details'),
     ])
 
-    let i = 1
     for (const {
       serviceProviderId,
       serviceUrl,
       pieceCid,
       ipfsRootCid,
       dataSetId,
+      pieceId,
     } of CONTENT_STORED_ON_CALIBRATION) {
-      const pieceId = `root-${i}`
       await withDataSetPiece(env, {
         serviceProviderId,
         pieceCid,
@@ -52,14 +56,13 @@ describe('retriever.fetch', () => {
         payerAddress: defaultPayerAddress,
         withCDN: true,
         withIpfsIndexing: true,
-        dataSetId,
+        dataSetId: String(dataSetId),
         pieceId,
       })
       await withApprovedProvider(env, {
         id: serviceProviderId,
         serviceUrl,
       })
-      i++
     }
   })
 
@@ -178,7 +181,7 @@ describe('retriever.fetch', () => {
 
   it('returns 405 for unsupported request methods', async () => {
     const ctx = createExecutionContext()
-    const req = withRequest(1, 'foo', 'POST')
+    const req = withRequest('1', '1', 'POST')
     const res = await worker.fetch(req, env, ctx)
     await waitOnExecutionContext(ctx)
     expect(res.status).toBe(405)
@@ -193,24 +196,22 @@ describe('retriever.fetch', () => {
       retrieveIpfsContent: mockRetrieveIpfsContent,
     })
     await waitOnExecutionContext(ctx)
-    expect(res.status).toBe(400)
-    expect(await res.text()).toBe(
-      'The hostname must be in the format: {IpfsRootCID}-{PayerWalletAddress}.ipfs.filbeam.io',
-    )
+    // When pieceId is provided but dataSetId is undefined, it creates just "foo." which
+    // becomes the root domain and redirects to filbeam.com
+    expect(res.status).toBe(302)
+    expect(res.headers.get('Location')).toBe('https://filbeam.com/')
   })
 
-  it('returns 400 if provided payer address is invalid', async () => {
+  it('returns 400 if slug has invalid base32 encoding', async () => {
     const ctx = createExecutionContext()
     const mockRetrieveIpfsContent = vi.fn()
-    const req = withRequest('bar', realIpfsRootCid)
+    const req = withRequest('notbase32', 'alsonotbase32')
     const res = await worker.fetch(req, env, ctx, {
       retrieveIpfsContent: mockRetrieveIpfsContent,
     })
     await waitOnExecutionContext(ctx)
     expect(res.status).toBe(400)
-    expect(await res.text()).toBe(
-      'Invalid address: bar. Address must be a valid ethereum address.',
-    )
+    expect(await res.text()).toContain('Invalid dataSetId encoding in slug')
   })
 
   it('returns the response from retrieveIpfsContent', async () => {
@@ -223,7 +224,7 @@ describe('retriever.fetch', () => {
       cacheMiss: true,
     })
     const ctx = createExecutionContext()
-    const req = withRequest(defaultPayerAddress, realIpfsRootCid)
+    const req = withRequest(realDataSetId, realPieceId)
     const res = await worker.fetch(req, env, ctx, {
       retrieveIpfsContent: mockRetrieveIpfsContent,
     })
@@ -240,7 +241,7 @@ describe('retriever.fetch', () => {
       cacheMiss: true,
     })
     const ctx = createExecutionContext()
-    const req = withRequest(defaultPayerAddress, realIpfsRootCid)
+    const req = withRequest(realDataSetId, realPieceId)
     const res = await worker.fetch(req, env, ctx, {
       retrieveIpfsContent: mockRetrieveIpfsContent,
     })
@@ -257,7 +258,7 @@ describe('retriever.fetch', () => {
       cacheMiss: false,
     })
     const ctx = createExecutionContext()
-    const req = withRequest(defaultPayerAddress, realIpfsRootCid)
+    const req = withRequest(realDataSetId, realPieceId)
     const res = await worker.fetch(req, env, ctx, {
       retrieveIpfsContent: mockRetrieveIpfsContent,
     })
@@ -278,7 +279,7 @@ describe('retriever.fetch', () => {
       cacheMiss: true,
     })
     const ctx = createExecutionContext()
-    const req = withRequest(defaultPayerAddress, realIpfsRootCid)
+    const req = withRequest(realDataSetId, realPieceId)
     const res = await worker.fetch(req, env, ctx, {
       retrieveIpfsContent: mockRetrieveIpfsContent,
     })
@@ -317,7 +318,7 @@ describe('retriever.fetch', () => {
       cacheMiss: true,
     })
     const ctx = createExecutionContext()
-    const req = withRequest(defaultPayerAddress, realIpfsRootCid)
+    const req = withRequest(realDataSetId, realPieceId)
     const res = await worker.fetch(req, env, ctx, {
       retrieveIpfsContent: mockRetrieveIpfsContent,
     })
@@ -354,7 +355,7 @@ describe('retriever.fetch', () => {
       cacheMiss: false,
     })
     const ctx = createExecutionContext()
-    const req = withRequest(defaultPayerAddress, realIpfsRootCid)
+    const req = withRequest(realDataSetId, realPieceId)
     const res = await worker.fetch(req, env, ctx, {
       retrieveIpfsContent: mockRetrieveIpfsContent,
     })
@@ -393,7 +394,7 @@ describe('retriever.fetch', () => {
       }
     }
     const ctx = createExecutionContext()
-    const req = withRequest(defaultPayerAddress, realIpfsRootCid)
+    const req = withRequest(realDataSetId, realPieceId)
     const res = await worker.fetch(req, env, ctx, {
       retrieveIpfsContent: mockRetrieveIpfsContent,
     })
@@ -429,7 +430,7 @@ describe('retriever.fetch', () => {
       }
     }
     const ctx = createExecutionContext()
-    const req = withRequest(defaultPayerAddress, realIpfsRootCid, 'GET', {
+    const req = withRequest(realDataSetId, realPieceId, 'GET', {
       'CF-IPCountry': 'US',
     })
     const res = await worker.fetch(req, env, ctx, {
@@ -462,7 +463,7 @@ describe('retriever.fetch', () => {
       cacheMiss: true,
     })
     const ctx = createExecutionContext()
-    const req = withRequest(defaultPayerAddress, realIpfsRootCid)
+    const req = withRequest(realDataSetId, realPieceId)
     const res = await worker.fetch(req, env, ctx, {
       retrieveIpfsContent: mockRetrieveIpfsContent,
     })
@@ -537,12 +538,19 @@ describe('retriever.fetch', () => {
   )
 
   it('requests payment if withCDN=false', async () => {
-    const dataSetId = 'test-data-set-no-cdn'
-    const pieceId = 'root-no-cdn'
+    const dataSetId = '1004'
+    const pieceId = '2004'
     const pieceCid =
       'baga6ea4seaqaleibb6ud4xeemuzzpsyhl6cxlsymsnfco4cdjka5uzajo2x4ipa'
     const ipfsRootCid = 'bafk4test'
     const serviceProviderId = 'service-provider'
+    const payerAddress = '0x1234567890abcdef1234567890abcdef12345678'
+
+    await withApprovedProvider(env, {
+      id: serviceProviderId,
+      serviceUrl: 'https://test-provider.xyz',
+    })
+
     await withDataSetPiece(env, {
       serviceProviderId,
       pieceCid,
@@ -550,10 +558,11 @@ describe('retriever.fetch', () => {
       dataSetId,
       withCDN: false,
       pieceId,
+      payerAddress,
     })
 
     const ctx = createExecutionContext()
-    const req = withRequest(defaultPayerAddress, ipfsRootCid, 'GET')
+    const req = withRequest(dataSetId, pieceId, 'GET')
     const res = await worker.fetch(req, env, ctx)
     await waitOnExecutionContext(ctx)
 
@@ -561,12 +570,16 @@ describe('retriever.fetch', () => {
   })
   it('reads the provider URL from the database', async () => {
     const serviceProviderId = 'service-provider-id'
+    const dataSetId = '1001'
+    const pieceId = '2001'
     const payerAddress = '0x1234567890abcdef1234567890abcdef12345608'
     const ipfsRootCid = 'bafk4test'
     const body = 'file content'
 
     await withDataSetPiece(env, {
       serviceProviderId,
+      dataSetId,
+      pieceId,
       ipfsRootCid,
       payerAddress,
     })
@@ -586,7 +599,7 @@ describe('retriever.fetch', () => {
     }
 
     const ctx = createExecutionContext()
-    const req = withRequest(payerAddress, ipfsRootCid)
+    const req = withRequest(dataSetId, pieceId)
     const res = await worker.fetch(req, env, ctx, {
       retrieveIpfsContent: mockRetrieveIpfsContent,
     })
@@ -599,35 +612,39 @@ describe('retriever.fetch', () => {
 
   it('throws an error if the providerAddress is not found in the database', async () => {
     const serviceProviderId = 'service-provider-id'
+    const dataSetId = '1002'
+    const pieceId = '2002'
     const payerAddress = '0x2A06D234246eD18b6C91de8349fF34C22C7268e8'
     const ipfsRootCid = 'bafk4test'
 
     await withDataSetPiece(env, {
       serviceProviderId,
+      dataSetId,
+      pieceId,
       ipfsRootCid,
       payerAddress,
     })
 
     const ctx = createExecutionContext()
-    const req = withRequest(payerAddress, ipfsRootCid)
+    const req = withRequest(dataSetId, pieceId)
     const res = await worker.fetch(req, env, ctx)
     await waitOnExecutionContext(ctx)
 
     // Expect an error because no URL was found
     expect(res.status).toBe(404)
     expect(await res.text()).toBe(
-      `No approved service provider found for payer '0x2a06d234246ed18b6c91de8349ff34c22c7268e8' and IPFS Root CID 'bafk4test'.`,
+      `No approved service provider found for payer '0x2a06d234246ed18b6c91de8349ff34c22c7268e8' and data set ID '${dataSetId}' and piece ID '${pieceId}'.`,
     )
   })
 
   it('returns data set ID in the X-Data-Set-ID response header', async () => {
-    const { ipfsRootCid, dataSetId } = CONTENT_STORED_ON_CALIBRATION[0]
+    const { dataSetId } = CONTENT_STORED_ON_CALIBRATION[0]
     const mockRetrieveIpfsContent = vi.fn().mockResolvedValue({
       response: new Response('hello'),
       cacheMiss: true,
     })
     const ctx = createExecutionContext()
-    const req = withRequest(defaultPayerAddress, ipfsRootCid)
+    const req = withRequest(realDataSetId, realPieceId)
     const res = await worker.fetch(req, env, ctx, {
       retrieveIpfsContent: mockRetrieveIpfsContent,
     })
@@ -637,13 +654,13 @@ describe('retriever.fetch', () => {
   })
 
   it('stores data set ID in retrieval logs', async () => {
-    const { ipfsRootCid, dataSetId } = CONTENT_STORED_ON_CALIBRATION[0]
+    const { dataSetId } = CONTENT_STORED_ON_CALIBRATION[0]
     const mockRetrieveIpfsContent = vi.fn().mockResolvedValue({
       response: new Response('hello'),
       cacheMiss: true,
     })
     const ctx = createExecutionContext()
-    const req = withRequest(defaultPayerAddress, ipfsRootCid)
+    const req = withRequest(realDataSetId, realPieceId)
     const res = await worker.fetch(req, env, ctx, {
       retrieveIpfsContent: mockRetrieveIpfsContent,
     })
@@ -668,13 +685,13 @@ describe('retriever.fetch', () => {
   })
 
   it('returns data set ID in the X-Data-Set-ID response header when the response body is empty', async () => {
-    const { ipfsRootCid, dataSetId } = CONTENT_STORED_ON_CALIBRATION[0]
+    const { dataSetId } = CONTENT_STORED_ON_CALIBRATION[0]
     const mockRetrieveIpfsContent = vi.fn().mockResolvedValue({
       response: new Response(null, { status: 404 }),
       cacheMiss: true,
     })
     const ctx = createExecutionContext()
-    const req = withRequest(defaultPayerAddress, ipfsRootCid)
+    const req = withRequest(realDataSetId, realPieceId)
     const res = await worker.fetch(req, env, ctx, {
       retrieveIpfsContent: mockRetrieveIpfsContent,
     })
@@ -692,7 +709,7 @@ describe('retriever.fetch', () => {
       cacheMiss: true,
     })
     const ctx = createExecutionContext()
-    const req = withRequest(defaultPayerAddress, realIpfsRootCid, 'HEAD')
+    const req = withRequest(realDataSetId, realPieceId, 'HEAD')
     const res = await worker.fetch(req, env, ctx, {
       retrieveIpfsContent: mockRetrieveIpfsContent,
     })
@@ -710,7 +727,7 @@ describe('retriever.fetch', () => {
     })
 
     const ctx = createExecutionContext()
-    const req = withRequest(defaultPayerAddress, realIpfsRootCid)
+    const req = withRequest(realDataSetId, realPieceId)
     const res = await worker.fetch(req, env, ctx, {
       retrieveIpfsContent: mockRetrieveIpfsContent,
     })
@@ -722,13 +739,19 @@ describe('retriever.fetch', () => {
   })
 
   it('reject retrieval request if payer is sanctioned', async () => {
-    const dataSetId = 'test-data-set-payer-sanctioned'
-    const pieceId = 'root-data-set-payer-sanctioned'
+    const dataSetId = '1003'
+    const pieceId = '2003'
     const pieceCid =
       'baga6ea4seaqaleibb6ud4xeemuzzpsyhl6cxlsymsnfco4cdjka5uzajo2x4ipa'
     const ipfsRootCid = 'bafk4test'
     const serviceProviderId = 'service-provider-id'
     const payerAddress = '0x999999cf1046e68e36E1aA2E0E07105eDDD1f08E'
+
+    await withApprovedProvider(env, {
+      id: serviceProviderId,
+      serviceUrl: 'https://test-provider.xyz',
+    })
+
     await withDataSetPiece(env, {
       serviceProviderId,
       payerAddress,
@@ -736,6 +759,7 @@ describe('retriever.fetch', () => {
       ipfsRootCid,
       dataSetId,
       withCDN: true,
+      withIpfsIndexing: true,
       pieceId,
     })
 
@@ -745,7 +769,7 @@ describe('retriever.fetch', () => {
       true, // Sanctioned
     )
     const ctx = createExecutionContext()
-    const req = withRequest(payerAddress, ipfsRootCid, 'GET')
+    const req = withRequest(dataSetId, pieceId)
     const res = await worker.fetch(req, env, ctx)
     await waitOnExecutionContext(ctx)
 
@@ -753,7 +777,7 @@ describe('retriever.fetch', () => {
   })
   it('does not log to retrieval_logs on method not allowed (405)', async () => {
     const ctx = createExecutionContext()
-    const req = withRequest(defaultPayerAddress, realIpfsRootCid, 'POST')
+    const req = withRequest(realDataSetId, realPieceId, 'POST')
     const res = await worker.fetch(req, env, ctx)
     await waitOnExecutionContext(ctx)
 
@@ -809,25 +833,24 @@ describe('retriever.fetch', () => {
       .first()
     expect(result).toBeDefined()
   })
-  it('does not log to retrieval_logs when payer address is invalid (400)', async () => {
+  it('does not log to retrieval_logs when slug encoding is invalid (400)', async () => {
+    const ctx = createExecutionContext()
     const { count: countBefore } = await env.DB.prepare(
       'SELECT COUNT(*) AS count FROM retrieval_logs',
     ).first()
 
-    const invalidAddress = 'not-an-address'
-    const ctx = createExecutionContext()
-    const req = withRequest(invalidAddress, realIpfsRootCid)
+    // Use values without hyphens that will fail base32 decoding
+    const req = withRequest('notbase32', 'alsoinvalid')
     const res = await worker.fetch(req, env, ctx)
     await waitOnExecutionContext(ctx)
 
     expect(res.status).toBe(400)
-    expect(await res.text()).toContain('Invalid address')
+    expect(await res.text()).toContain('Invalid dataSetId encoding in slug')
 
     const { count: countAfter } = await env.DB.prepare(
       'SELECT COUNT(*) AS count FROM retrieval_logs',
     ).first()
-
-    expect(countAfter).toEqual(countBefore)
+    expect(countAfter).toBe(countBefore)
   })
 })
 
@@ -841,18 +864,24 @@ describe('retriever.fetch', () => {
  * @returns {Request}
  */
 function withRequest(
-  payerWalletAddress,
-  ipfsRootCid,
+  dataSetId,
+  pieceId,
   method = 'GET',
   headers = {},
   { subpath = '' } = {},
 ) {
   let url = 'http://'
-  const prefix =
-    payerWalletAddress && ipfsRootCid
-      ? [ipfsRootCid, payerWalletAddress].join('-')
-      : ipfsRootCid || payerWalletAddress
-  if (prefix) url += `${prefix}.`
+  if (dataSetId && pieceId) {
+    try {
+      const slug = buildSlug(BigInt(dataSetId), BigInt(pieceId))
+      url += `${slug}.`
+    } catch {
+      // If conversion fails, use raw values (for testing error cases)
+      url += `1-${dataSetId}-${pieceId}.`
+    }
+  } else if (dataSetId) {
+    url += `${dataSetId}.`
+  }
   url += DNS_ROOT.slice(1) // remove the leading '.'
   if (subpath) url += `/${subpath}`
 

@@ -2,7 +2,8 @@ import { describe, it, beforeAll } from 'vitest'
 import assert from 'node:assert/strict'
 import {
   logRetrievalResult,
-  getStorageProviderAndValidatePayer,
+  getStorageProviderAndValidatePayerByWalletAndCid,
+  getStorageProviderAndValidatePayerByDataSetAndPiece,
   updateDataSetStats,
   getSlugForWalletAndCid,
 } from '../lib/store.js'
@@ -45,7 +46,7 @@ describe('logRetrievalResult', () => {
   })
 })
 
-describe('getStorageProviderAndValidatePayer', () => {
+describe('getStorageProviderAndValidatePayerByWalletAndCid', () => {
   const APPROVED_SERVICE_PROVIDER_ID = '20'
   beforeAll(async () => {
     await withApprovedProvider(env, {
@@ -70,7 +71,7 @@ describe('getStorageProviderAndValidatePayer', () => {
       .bind('piece-1', dataSetId, 'baga4piece', ipfsRootCid)
       .run()
 
-    const result = await getStorageProviderAndValidatePayer(
+    const result = await getStorageProviderAndValidatePayerByWalletAndCid(
       env,
       payerAddress,
       ipfsRootCid,
@@ -82,7 +83,7 @@ describe('getStorageProviderAndValidatePayer', () => {
     const payerAddress = '0x1234567890abcdef1234567890abcdef12345678'
     await assert.rejects(
       async () =>
-        await getStorageProviderAndValidatePayer(
+        await getStorageProviderAndValidatePayerByWalletAndCid(
           env,
           payerAddress,
           'nonexistent-cid',
@@ -107,7 +108,11 @@ describe('getStorageProviderAndValidatePayer', () => {
 
     await assert.rejects(
       async () =>
-        await getStorageProviderAndValidatePayer(env, payerAddress, cid),
+        await getStorageProviderAndValidatePayerByWalletAndCid(
+          env,
+          payerAddress,
+          cid,
+        ),
       /no associated service provider/,
     )
   })
@@ -134,7 +139,11 @@ describe('getStorageProviderAndValidatePayer', () => {
 
     await assert.rejects(
       async () =>
-        await getStorageProviderAndValidatePayer(env, payerAddress, cid),
+        await getStorageProviderAndValidatePayerByWalletAndCid(
+          env,
+          payerAddress,
+          cid,
+        ),
       /There is no Filecoin Warm Storage Service deal for payer/,
     )
   })
@@ -156,7 +165,11 @@ describe('getStorageProviderAndValidatePayer', () => {
 
     await assert.rejects(
       async () =>
-        await getStorageProviderAndValidatePayer(env, payerAddress, cid),
+        await getStorageProviderAndValidatePayerByWalletAndCid(
+          env,
+          payerAddress,
+          cid,
+        ),
       /withCDN=false/,
     )
   })
@@ -175,7 +188,7 @@ describe('getStorageProviderAndValidatePayer', () => {
       ).bind('piece-3', dataSetId, 'bagatest', cid),
     ])
 
-    const result = await getStorageProviderAndValidatePayer(
+    const result = await getStorageProviderAndValidatePayerByWalletAndCid(
       env,
       payerAddress,
       cid,
@@ -225,7 +238,7 @@ describe('getStorageProviderAndValidatePayer', () => {
       .run()
 
     // Should return only the serviceProviderId1 which is the first in the ordering
-    const result = await getStorageProviderAndValidatePayer(
+    const result = await getStorageProviderAndValidatePayerByWalletAndCid(
       env,
       payerAddress,
       ipfsRootCid,
@@ -266,16 +279,224 @@ describe('getStorageProviderAndValidatePayer', () => {
     })
 
     // Should return service provider 1 because service provider 2 is not approved
-    const result = await getStorageProviderAndValidatePayer(
+    const result = await getStorageProviderAndValidatePayerByWalletAndCid(
       env,
       payerAddress,
       ipfsRootCid,
     )
     assert.deepStrictEqual(result, {
       dataSetId: dataSetId1,
+      pieceId: '0',
       serviceProviderId: serviceProviderId1.toLowerCase(),
       serviceUrl: 'https://pdp-provider-1.xyz',
+      ipfsRootCid,
     })
+  })
+})
+
+describe('getStorageProviderAndValidatePayerByDataSetAndPiece', () => {
+  const APPROVED_SERVICE_PROVIDER_ID = '25'
+  beforeAll(async () => {
+    await withApprovedProvider(env, {
+      id: APPROVED_SERVICE_PROVIDER_ID,
+      serviceUrl: 'https://approved-provider-byids.xyz',
+    })
+  })
+
+  it('returns service provider for valid dataSetId and pieceId', async () => {
+    const dataSetId = 'test-set-byids-1'
+    const pieceId = 'piece-byids-1'
+    const payerAddress = '0xabc123def456abc123def456abc123def456abc1'
+
+    await withDataSetPiece(env, {
+      payerAddress,
+      serviceProviderId: APPROVED_SERVICE_PROVIDER_ID,
+      dataSetId,
+      pieceId,
+      withCDN: true,
+      withIpfsIndexing: true,
+      ipfsRootCid: 'bafkbyids1',
+    })
+
+    const result = await getStorageProviderAndValidatePayerByDataSetAndPiece(
+      env,
+      dataSetId,
+      pieceId,
+    )
+
+    assert.strictEqual(result.serviceProviderId, APPROVED_SERVICE_PROVIDER_ID)
+    assert.strictEqual(result.serviceUrl, 'https://approved-provider-byids.xyz')
+    assert.strictEqual(result.dataSetId, dataSetId)
+    assert.strictEqual(result.pieceId, pieceId)
+  })
+
+  it('throws error if pieceId does not exist in the data set', async () => {
+    const dataSetId = 'test-set-byids-2'
+    const pieceId = 'nonexistent-piece'
+
+    await withDataSetPiece(env, {
+      payerAddress: '0xabc123def456abc123def456abc123def456abc2',
+      serviceProviderId: APPROVED_SERVICE_PROVIDER_ID,
+      dataSetId,
+      pieceId: 'existing-piece',
+      withCDN: true,
+      withIpfsIndexing: true,
+      ipfsRootCid: 'bafkbyids2',
+    })
+
+    await assert.rejects(
+      async () =>
+        await getStorageProviderAndValidatePayerByDataSetAndPiece(
+          env,
+          dataSetId,
+          pieceId,
+        ),
+      /does not exist in data set/,
+    )
+  })
+
+  it('throws error if pieceId exists but in different dataSetId', async () => {
+    const dataSetId1 = 'test-set-byids-3a'
+    const dataSetId2 = 'test-set-byids-3b'
+    const pieceId = 'piece-byids-3'
+    const payerAddress = '0xabc123def456abc123def456abc123def456abc3'
+
+    await withDataSetPiece(env, {
+      payerAddress,
+      serviceProviderId: APPROVED_SERVICE_PROVIDER_ID,
+      dataSetId: dataSetId1,
+      pieceId,
+      withCDN: true,
+      withIpfsIndexing: true,
+      ipfsRootCid: 'bafkbyids3a',
+    })
+
+    await withDataSetPiece(env, {
+      payerAddress,
+      serviceProviderId: APPROVED_SERVICE_PROVIDER_ID,
+      dataSetId: dataSetId2,
+      pieceId: 'different-piece',
+      withCDN: true,
+      withIpfsIndexing: true,
+      ipfsRootCid: 'bafkbyids3b',
+    })
+
+    await assert.rejects(
+      async () =>
+        await getStorageProviderAndValidatePayerByDataSetAndPiece(
+          env,
+          dataSetId2,
+          pieceId,
+        ),
+      /does not exist in data set/,
+    )
+  })
+
+  it('throws error if withCDN=false', async () => {
+    const dataSetId = 'test-set-byids-4'
+    const pieceId = 'piece-byids-4'
+
+    await withDataSetPiece(env, {
+      payerAddress: '0xabc123def456abc123def456abc123def456abc4',
+      serviceProviderId: APPROVED_SERVICE_PROVIDER_ID,
+      dataSetId,
+      pieceId,
+      withCDN: false,
+      withIpfsIndexing: true,
+      ipfsRootCid: 'bafkbyids4',
+    })
+
+    await assert.rejects(
+      async () =>
+        await getStorageProviderAndValidatePayerByDataSetAndPiece(
+          env,
+          dataSetId,
+          pieceId,
+        ),
+      /withCDN=false/,
+    )
+  })
+
+  it('throws error if withIpfsIndexing=false', async () => {
+    const dataSetId = 'test-set-byids-5'
+    const pieceId = 'piece-byids-5'
+
+    await withDataSetPiece(env, {
+      payerAddress: '0xabc123def456abc123def456abc123def456abc5',
+      serviceProviderId: APPROVED_SERVICE_PROVIDER_ID,
+      dataSetId,
+      pieceId,
+      withCDN: true,
+      withIpfsIndexing: false,
+      ipfsRootCid: 'bafkbyids5',
+    })
+
+    await assert.rejects(
+      async () =>
+        await getStorageProviderAndValidatePayerByDataSetAndPiece(
+          env,
+          dataSetId,
+          pieceId,
+        ),
+      /withIpfsIndexing=false/,
+    )
+  })
+
+  it('throws error if payer is sanctioned', async () => {
+    const dataSetId = 'test-set-byids-6'
+    const pieceId = 'piece-byids-6'
+    const payerAddress = '0xabc123def456abc123def456abc123def456abc6'
+
+    await env.DB.prepare(
+      'INSERT INTO wallet_details (address, is_sanctioned) VALUES (?, ?)',
+    )
+      .bind(payerAddress, true)
+      .run()
+
+    await withDataSetPiece(env, {
+      payerAddress,
+      serviceProviderId: APPROVED_SERVICE_PROVIDER_ID,
+      dataSetId,
+      pieceId,
+      withCDN: true,
+      withIpfsIndexing: true,
+      ipfsRootCid: 'bafkbyids6',
+    })
+
+    await assert.rejects(
+      async () =>
+        await getStorageProviderAndValidatePayerByDataSetAndPiece(
+          env,
+          dataSetId,
+          pieceId,
+        ),
+      /is sanctioned/,
+    )
+  })
+
+  it('handles zero values for dataSetId and pieceId', async () => {
+    const dataSetId = '0'
+    const pieceId = '0'
+
+    await withDataSetPiece(env, {
+      payerAddress: '0xabc123def456abc123def456abc123def456abc7',
+      serviceProviderId: APPROVED_SERVICE_PROVIDER_ID,
+      dataSetId,
+      pieceId,
+      withCDN: true,
+      withIpfsIndexing: true,
+      ipfsRootCid: 'bafkbyids7',
+    })
+
+    const result = await getStorageProviderAndValidatePayerByDataSetAndPiece(
+      env,
+      dataSetId,
+      pieceId,
+    )
+
+    assert.strictEqual(result.dataSetId, '0')
+    assert.strictEqual(result.pieceId, '0')
+    assert.strictEqual(result.serviceProviderId, APPROVED_SERVICE_PROVIDER_ID)
   })
 })
 

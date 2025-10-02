@@ -5,7 +5,7 @@ import {
   measureStreamedEgress,
 } from '../lib/retrieval.js'
 import {
-  getStorageProviderAndValidatePayer,
+  getStorageProviderAndValidatePayerByDataSetAndPiece,
   logRetrievalResult,
   updateDataSetStats,
   getSlugForWalletAndCid,
@@ -85,30 +85,21 @@ export default {
     const workerStartedAt = performance.now()
     const requestCountryCode = request.headers.get('CF-IPCountry')
 
-    const { payerWalletAddress, ipfsRootCid, ipfsSubpath } = parseRequest(
-      request,
-      env,
-    )
-
-    httpAssert(
-      isValidEthereumAddress(payerWalletAddress),
-      400,
-      `Invalid address: ${payerWalletAddress}. Address must be a valid ethereum address.`,
-    )
+    const { dataSetId, pieceId, ipfsSubpath } = parseRequest(request, env)
 
     try {
       // Timestamp to measure file retrieval performance (from cache and from SP)
       const fetchStartedAt = performance.now()
 
-      const [{ serviceProviderId, serviceUrl, dataSetId }, isBadBit] =
-        await Promise.all([
-          getStorageProviderAndValidatePayer(
-            env,
-            payerWalletAddress,
-            ipfsRootCid,
-          ),
-          findInBadBits(env, ipfsRootCid),
-        ])
+      const { serviceProviderId, serviceUrl, ipfsRootCid } =
+        await getStorageProviderAndValidatePayerByDataSetAndPiece(
+          env,
+          dataSetId,
+          pieceId,
+        )
+
+      // Now check Bad Bits with the ipfsRootCid we got from the database
+      const isBadBit = await findInBadBits(env, ipfsRootCid)
 
       httpAssert(
         !isBadBit,
