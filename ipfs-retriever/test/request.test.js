@@ -73,35 +73,35 @@ describe('parseRequest', () => {
   it('should return descriptive error for invalid hostname format - missing parts', () => {
     const request = { url: `https://1-abc${DNS_ROOT}/` }
     expect(() => parseRequest(request, { DNS_ROOT })).toThrowError(
-      `The hostname must be in the format: {version}-{dataSetId}-{pieceId}${DNS_ROOT}`,
+      `The hostname must be in the format: 1-{dataSetId}-{pieceId}${DNS_ROOT}`,
     )
   })
 
   it('should return descriptive error for invalid hostname format - too many parts', () => {
     const request = { url: `https://1-abc-def-ghi${DNS_ROOT}/` }
     expect(() => parseRequest(request, { DNS_ROOT })).toThrowError(
-      `The hostname must be in the format: {version}-{dataSetId}-{pieceId}${DNS_ROOT}`,
+      `The hostname must be in the format: 1-{dataSetId}-{pieceId}${DNS_ROOT}`,
     )
   })
 
   it('should return descriptive error for invalid hostname format - no dashes', () => {
     const request = { url: `https://1abc${DNS_ROOT}/` }
     expect(() => parseRequest(request, { DNS_ROOT })).toThrowError(
-      `The hostname must be in the format: {version}-{dataSetId}-{pieceId}${DNS_ROOT}`,
+      `The hostname must be in the format: 1-{dataSetId}-{pieceId}${DNS_ROOT}`,
     )
   })
 
   it('should return descriptive error for missing dataSetId', () => {
     const request = { url: `https://1--abc${DNS_ROOT}/` }
     expect(() => parseRequest(request, { DNS_ROOT })).toThrowError(
-      `The hostname must be in the format: {version}-{dataSetId}-{pieceId}${DNS_ROOT}`,
+      `The hostname must be in the format: 1-{dataSetId}-{pieceId}${DNS_ROOT}`,
     )
   })
 
   it('should return descriptive error for missing pieceId', () => {
     const request = { url: `https://1-abc-${DNS_ROOT}/` }
     expect(() => parseRequest(request, { DNS_ROOT })).toThrowError(
-      `The hostname must be in the format: {version}-{dataSetId}-{pieceId}${DNS_ROOT}`,
+      `The hostname must be in the format: 1-{dataSetId}-{pieceId}${DNS_ROOT}`,
     )
   })
 

@@ -29,7 +29,7 @@ export function parseRequest(request, { DNS_ROOT }) {
   httpAssert(
     parts.length === 3,
     400,
-    `The hostname must be in the format: {version}-{dataSetId}-{pieceId}${DNS_ROOT}`,
+    `The hostname must be in the format: 1-{dataSetId}-{pieceId}${DNS_ROOT}`,
   )
 
   const [version, encodedDataSetId, encodedPieceId] = parts
@@ -43,7 +43,7 @@ export function parseRequest(request, { DNS_ROOT }) {
   httpAssert(
     encodedDataSetId && encodedPieceId,
     400,
-    `The hostname must be in the format: {version}-{dataSetId}-{pieceId}${DNS_ROOT}`,
+    `The hostname must be in the format: 1-{dataSetId}-{pieceId}${DNS_ROOT}`,
   )
 
   let dataSetId
