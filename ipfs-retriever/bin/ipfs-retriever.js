@@ -8,6 +8,7 @@ import {
   getStorageProviderAndValidatePayer,
   logRetrievalResult,
   updateDataSetStats,
+  getSlugForWalletAndCid,
 } from '../lib/store.js'
 import { httpAssert } from '../lib/http-assert.js'
 import { setContentSecurityPolicy } from '../lib/content-security-policy.js'
@@ -70,8 +71,7 @@ export default {
     )
 
     if (URL.parse(request.url)?.hostname === env.DNS_ROOT.slice(1)) {
-      // Accessing bare domain like "ipfs.filbeam.io" - redirect to filbeam.com
-      return Response.redirect('https://filbeam.com/', 302)
+      return handleDnsRootRequest(request, env)
     }
 
     if (URL.parse(request.url)?.hostname.endsWith('filcdn.io')) {
@@ -255,4 +255,57 @@ function getErrorHttpStatusMessage(error) {
       : 'Internal Server Error'
 
   return { status, message }
+}
+
+/**
+ * Handles requests to the bare DNS_ROOT domain (e.g., ipfs.filbeam.io).
+ *
+ * - If no path is provided, redirects to https://filbeam.com
+ * - If path is /wallet/cid or /wallet/cid/pathname, generates a slug and
+ *   redirects to the subdomain-based URL
+ *
+ * @param {Request} request - The incoming request
+ * @param {RetrieverEnv} env - Worker environment
+ * @returns {Promise<Response>} Redirect response
+ */
+async function handleDnsRootRequest(request, env) {
+  // Parse the URL path to extract wallet, cid, and optional pathname
+  const parsedUrl = URL.parse(request.url)
+  const pathname = parsedUrl?.pathname || '/'
+
+  // If no path, redirect to filbeam.com
+  if (pathname === '/' || pathname === '') {
+    return Response.redirect('https://filbeam.com/', 302)
+  }
+
+  // Parse path as /wallet/cid/pathname
+  const pathParts = pathname.slice(1).split('/') // Remove leading slash and split
+
+  if (pathParts.length < 2) {
+    httpAssert(
+      false,
+      404,
+      'Invalid path format. Expected: /wallet/cid or /wallet/cid/pathname',
+    )
+  }
+
+  const wallet = pathParts[0]
+  const cid = pathParts[1]
+  const subpath = pathParts.slice(2).join('/')
+
+  // Validate wallet address
+  httpAssert(
+    isValidEthereumAddress(wallet),
+    404,
+    `Invalid wallet address: ${wallet}. Address must be a valid ethereum address.`,
+  )
+
+  // Get slug for the wallet and CID
+  const slug = await getSlugForWalletAndCid(env, wallet, cid)
+
+  // Build redirect URL
+  const redirectPath = subpath ? `/${subpath}` : ''
+  const redirectUrl = `https://${slug}${env.DNS_ROOT}${redirectPath}`
+
+  return Response.redirect(redirectUrl, 302)
 }

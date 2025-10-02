@@ -72,6 +72,101 @@ describe('retriever.fetch', () => {
     expect(res.headers.get('Location')).toBe('https://filbeam.com/')
   })
 
+  it('returns 404 for invalid path format on DNS_ROOT (missing CID)', async () => {
+    const ctx = createExecutionContext()
+    const req = new Request(
+      `https://${DNS_ROOT.slice(1)}/${defaultPayerAddress}`,
+    )
+    const res = await worker.fetch(req, env, ctx)
+    await waitOnExecutionContext(ctx)
+    expect(res.status).toBe(404)
+    expect(await res.text()).toContain('Invalid path format')
+  })
+
+  it('returns 404 for invalid wallet address on DNS_ROOT path', async () => {
+    const ctx = createExecutionContext()
+    const invalidWallet = 'invalid-wallet'
+    const ipfsRootCid = 'bafk4testslug1'
+    const req = new Request(
+      `https://${DNS_ROOT.slice(1)}/${invalidWallet}/${ipfsRootCid}`,
+    )
+    const res = await worker.fetch(req, env, ctx)
+    await waitOnExecutionContext(ctx)
+    expect(res.status).toBe(404)
+    expect(await res.text()).toContain('Invalid wallet address')
+  })
+
+  it('redirects to slug subdomain when valid wallet and CID are provided on DNS_ROOT path', async () => {
+    // Set up test data with numeric pieceId and dataSetId for slug generation
+    const testPayerAddress = '0xabcdef1234567890abcdef1234567890abcdef99'
+    const testIpfsRootCid = 'bafk4testslug2'
+    const testDataSetId = '12345'
+    const testPieceId = '67890'
+    const serviceProviderId = '100'
+
+    await withDataSetPiece(env, {
+      serviceProviderId,
+      payerAddress: testPayerAddress,
+      ipfsRootCid: testIpfsRootCid,
+      dataSetId: testDataSetId,
+      pieceId: testPieceId,
+      withCDN: true,
+      withIpfsIndexing: true,
+    })
+    await withApprovedProvider(env, {
+      id: serviceProviderId,
+      serviceUrl: 'https://test-provider.example.com',
+    })
+
+    const ctx = createExecutionContext()
+    const req = new Request(
+      `https://${DNS_ROOT.slice(1)}/${testPayerAddress}/${testIpfsRootCid}`,
+    )
+    const res = await worker.fetch(req, env, ctx)
+    await waitOnExecutionContext(ctx)
+    expect(res.status).toBe(302)
+    const location = res.headers.get('Location')
+    // Expected slug: 1-bga4q-baeete (version-base32(12345)-base32(67890))
+    expect(location).toBe('https://1-bga4q-baeete.ipfs.filbeam.io/')
+  })
+
+  it('redirects to slug subdomain with subpath when wallet, CID, and pathname are provided on DNS_ROOT path', async () => {
+    // Set up test data with numeric pieceId and dataSetId for slug generation
+    const testPayerAddress = '0xabcdef1234567890abcdef1234567890abcdef98'
+    const testIpfsRootCid = 'bafk4testslug3'
+    const testDataSetId = '54321'
+    const testPieceId = '98765'
+    const serviceProviderId = '101'
+
+    await withDataSetPiece(env, {
+      serviceProviderId,
+      payerAddress: testPayerAddress,
+      ipfsRootCid: testIpfsRootCid,
+      dataSetId: testDataSetId,
+      pieceId: testPieceId,
+      withCDN: true,
+      withIpfsIndexing: true,
+    })
+    await withApprovedProvider(env, {
+      id: serviceProviderId,
+      serviceUrl: 'https://test-provider2.example.com',
+    })
+
+    const ctx = createExecutionContext()
+    const subpath = 'path/to/file.txt'
+    const req = new Request(
+      `https://${DNS_ROOT.slice(1)}/${testPayerAddress}/${testIpfsRootCid}/${subpath}`,
+    )
+    const res = await worker.fetch(req, env, ctx)
+    await waitOnExecutionContext(ctx)
+    expect(res.status).toBe(302)
+    const location = res.headers.get('Location')
+    // Expected slug: 1-b2qyq-baga42 (version-base32(54321)-base32(98765))
+    expect(location).toBe(
+      'https://1-b2qyq-baga42.ipfs.filbeam.io/path/to/file.txt',
+    )
+  })
+
   it('redirects to https://*.filcdn.io/* when old domain was used', async () => {
     const ctx = createExecutionContext()
     const req = new Request(`https://foo.filcdn.io/bar`)
