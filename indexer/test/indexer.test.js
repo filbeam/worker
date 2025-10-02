@@ -745,7 +745,7 @@ describe('retriever.indexer', () => {
 
       // Now update the provider URL
       req = new Request(
-        'https://host/service-provider-registry/product-added',
+        'https://host/service-provider-registry/product-updated',
         {
           method: 'POST',
           headers: {
