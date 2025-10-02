@@ -32,6 +32,7 @@ export async function insertDataSetPiece(
  * @param {(number | string)[]} pieceIds
  */
 export async function removeDataSetPieces(env, dataSetId, pieceIds) {
+  await clearDataSetPiecesIndexCache(env, dataSetId, pieceIds)
   await env.DB.prepare(
     `
     DELETE FROM pieces
@@ -43,7 +44,6 @@ export async function removeDataSetPieces(env, dataSetId, pieceIds) {
   )
     .bind(String(dataSetId), ...pieceIds.map(String))
     .run()
-  await clearDataSetPiecesIndexCache(env, dataSetId, pieceIds)
 }
 
 /**

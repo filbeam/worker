@@ -630,6 +630,40 @@ describe('retriever.indexer', () => {
         .all()
       expect(pieces.length).toBe(0)
     })
+
+    it('clears index cache entries', async () => {
+      const payerAddress = '0xPayerAddress'
+      const dataSetId = await withDataSet(env, {
+        withCDN: true,
+        serviceProviderId: '1',
+        payerAddress,
+      })
+      const pieceIds = [randomId(), randomId()]
+      const pieceCids = [randomId(), randomId()]
+      await withPieces(env, dataSetId, pieceIds, pieceCids)
+      for (const pieceCid of pieceCids) {
+        await env.KV.put(
+          `${payerAddress}/${pieceCid}`,
+          JSON.stringify([dataSetId, 'https://service.url/'])
+        )
+      }
+      const req = new Request('https://host/pdp-verifier/pieces-removed', {
+        method: 'POST',
+        headers: {
+          [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+        },
+        body: JSON.stringify({
+          data_set_id: dataSetId,
+          piece_ids: pieceIds,
+        }),
+      })
+      const res = await workerImpl.fetch(req, env)
+      expect(res.status).toBe(200)
+
+      for (const pieceCid of pieceCids) {
+        expect(await env.KV.get(`${payerAddress}/${pieceCid}`)).toBe(null)
+      }
+    })
   })
 
   describe('POST /service-provider-registry/product-added', () => {
