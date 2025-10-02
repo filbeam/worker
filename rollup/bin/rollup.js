@@ -1,4 +1,4 @@
-import { getChainClient } from '../lib/chain.js'
+import { getChainClient as defaultGetChainClient } from '../lib/chain.js'
 import { abi } from '../lib/filbeam.js'
 import { aggregateUsageData, prepareBatchData } from '../lib/rollup.js'
 
@@ -8,6 +8,7 @@ import { aggregateUsageData, prepareBatchData } from '../lib/rollup.js'
  *   RPC_URL: string
  *   FILBEAM_CONTRACT_ADDRESS: string
  *   FILBEAM_CONTROLLER_ADDRESS_PRIVATE_KEY: string
+ *   GENESIS_BLOCK_TIMESTAMP: string
  *   DB: D1Database
  * }} RollupEnv
  */
@@ -17,8 +18,14 @@ export default {
    * @param {any} _controller
    * @param {RollupEnv} env
    * @param {ExecutionContext} _ctx
+   * @param {{ getChainClient?: typeof defaultGetChainClient }} [options]
    */
-  async scheduled(_controller, env, _ctx) {
+  async scheduled(
+    _controller,
+    env,
+    _ctx,
+    { getChainClient = defaultGetChainClient } = {},
+  ) {
     console.log('Starting rollup worker scheduled run')
 
     try {
@@ -31,7 +38,11 @@ export default {
       )
 
       // Aggregate usage data for all datasets that need reporting
-      const allUsageData = await aggregateUsageData(env.DB, Number(targetEpoch))
+      const allUsageData = await aggregateUsageData(
+        env.DB,
+        Number(targetEpoch),
+        Number(env.GENESIS_BLOCK_TIMESTAMP),
+      )
 
       if (allUsageData.length === 0) {
         console.log('No usage data to report')

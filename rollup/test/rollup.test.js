@@ -4,6 +4,7 @@ import {
   withDataSet,
   withRetrievalLog,
   filecoinEpochToTimestamp,
+  FILECOIN_GENESIS_UNIX_TIMESTAMP,
 } from './test-helpers.js'
 import { aggregateUsageData, prepareBatchData } from '../lib/rollup.js'
 
@@ -79,7 +80,11 @@ describe('rollup', () => {
         })
 
         // Call with targetEpoch = 100 to get data up to epoch 100
-        const usageData = await aggregateUsageData(env.DB, 100)
+        const usageData = await aggregateUsageData(
+          env.DB,
+          100,
+          FILECOIN_GENESIS_UNIX_TIMESTAMP,
+        )
 
         const usage1 = usageData.find((u) => u.data_set_id === '1')
         expect(usage1).toEqual({
@@ -138,7 +143,11 @@ describe('rollup', () => {
         })
 
         // Call with targetEpoch = 100 to get data up to epoch 100
-        const usageData = await aggregateUsageData(env.DB, 100)
+        const usageData = await aggregateUsageData(
+          env.DB,
+          100,
+          FILECOIN_GENESIS_UNIX_TIMESTAMP,
+        )
 
         const usage = usageData.find((u) => u.data_set_id === '1')
         expect(usage).toEqual({
@@ -169,7 +178,11 @@ describe('rollup', () => {
         }
 
         // Call with targetEpoch = 100 to get data up to epoch 100
-        const usageData = await aggregateUsageData(env.DB, 100)
+        const usageData = await aggregateUsageData(
+          env.DB,
+          100,
+          FILECOIN_GENESIS_UNIX_TIMESTAMP,
+        )
 
         // Should have data for 1, 2, 3 but NOT 4
         expect(usageData.find((u) => u.data_set_id === '1')).toBeTruthy()

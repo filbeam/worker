@@ -13,7 +13,7 @@ env.SECRET_HEADER_KEY = 'secret-header-key'
 env.SECRET_HEADER_VALUE = 'secret-header-value'
 env.CHAINALYSIS_API_KEY = 'mock-chainalysis-api-key'
 
-describe('retriever.indexer', () => {
+describe('piece-retriever.indexer', () => {
   beforeEach(async () => {
     // Reset the database before each test
     await env.DB.exec('DELETE FROM service_providers')
