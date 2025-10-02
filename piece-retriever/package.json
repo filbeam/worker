@@ -1,5 +1,5 @@
 {
-  "name": "@filbeam/retriever",
+  "name": "@filbeam/piece-retriever",
   "version": "1.0.0",
   "private": true,
   "description": "FilBeam Retrieval Worker",
