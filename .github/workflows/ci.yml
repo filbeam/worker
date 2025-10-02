@@ -58,7 +58,7 @@ jobs:
       - uses: actions/checkout@v5
       - name: Install dependencies
         run: npm ci
-      - name: Deploy Retriever and Migrate Database
+      - name: Deploy Piece Retriever and Migrate Database
         uses: cloudflare/wrangler-action@v3
         with:
           workingDirectory: retriever
