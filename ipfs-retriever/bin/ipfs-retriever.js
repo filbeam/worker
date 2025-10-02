@@ -70,7 +70,10 @@ export default {
       'Method Not Allowed',
     )
 
-    if (URL.parse(request.url)?.hostname === env.DNS_ROOT.slice(1)) {
+    if (
+      URL.parse(request.url)?.hostname === env.DNS_ROOT.slice(1) ||
+      URL.parse(request.url)?.hostname === `link${env.DNS_ROOT}`
+    ) {
       return handleDnsRootRequest(request, env)
     }
 
