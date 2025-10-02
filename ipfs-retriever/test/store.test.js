@@ -4,6 +4,7 @@ import {
   logRetrievalResult,
   getStorageProviderAndValidatePayer,
   updateDataSetStats,
+  getSlugForWalletAndCid,
 } from '../lib/store.js'
 import { env } from 'cloudflare:test'
 import { withDataSetPiece, withApprovedProvider } from './test-data-builders.js'
@@ -326,5 +327,83 @@ describe('updateDataSetStats', () => {
         total_egress_bytes_used: EGRESS_BYTES + 1000,
       },
     ])
+  })
+})
+
+describe('getSlugForWalletAndCid', () => {
+  const APPROVED_SERVICE_PROVIDER_ID = '30'
+  beforeAll(async () => {
+    await withApprovedProvider(env, {
+      id: APPROVED_SERVICE_PROVIDER_ID,
+      serviceUrl: 'https://approved-provider-slug.xyz',
+    })
+  })
+
+  it('returns slug with version, dataSetId and pieceId encoded in base32', async () => {
+    const dataSetId = '12345'
+    const pieceId = '67890'
+    const ipfsRootCid = 'bafk4slugtest1'
+    const payerAddress = '0xabcdef1234567890abcdef1234567890abcdef34'
+
+    await withDataSetPiece(env, {
+      payerAddress,
+      serviceProviderId: APPROVED_SERVICE_PROVIDER_ID,
+      dataSetId,
+      pieceId,
+      withCDN: true,
+      withIpfsIndexing: true,
+      ipfsRootCid,
+    })
+
+    const result = await getSlugForWalletAndCid(env, payerAddress, ipfsRootCid)
+
+    // Slug format: version-base32(dataSetId)-base32(pieceId)
+    assert.strictEqual(result, '1-bga4q-baeete')
+  })
+
+  it('returns slug with zero-encoded values for dataSetId=0 and pieceId=0', async () => {
+    const dataSetId = '0'
+    const pieceId = '0'
+    const ipfsRootCid = 'bafk4slugtest2'
+    const payerAddress = '0xabcdef1234567890abcdef1234567890abcdef35'
+
+    await withDataSetPiece(env, {
+      payerAddress,
+      serviceProviderId: APPROVED_SERVICE_PROVIDER_ID,
+      dataSetId,
+      pieceId,
+      withCDN: true,
+      withIpfsIndexing: true,
+      ipfsRootCid,
+    })
+
+    const result = await getSlugForWalletAndCid(env, payerAddress, ipfsRootCid)
+
+    // For dataSetId=0 and pieceId=0, bigIntToBase32 returns '0'
+    assert.strictEqual(result, '1-0-0')
+  })
+
+  it('throws error for invalid payer address', async () => {
+    const dataSetId = '99999'
+    const pieceId = '88888'
+    const ipfsRootCid = 'bafk4slugtest3'
+    const validPayerAddress = '0xabcdef1234567890abcdef1234567890abcdef36'
+    const invalidPayerAddress = '0x0000000000000000000000000000000000000000'
+
+    await withDataSetPiece(env, {
+      payerAddress: validPayerAddress,
+      serviceProviderId: APPROVED_SERVICE_PROVIDER_ID,
+      dataSetId,
+      pieceId,
+      withCDN: true,
+      withIpfsIndexing: true,
+      ipfsRootCid,
+    })
+
+    await assert.rejects(
+      async () =>
+        await getSlugForWalletAndCid(env, invalidPayerAddress, ipfsRootCid),
+      /There is no Filecoin Warm Storage Service deal for payer/,
+    )
   })
 })

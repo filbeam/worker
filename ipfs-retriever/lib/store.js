@@ -1,3 +1,4 @@
+import { bigIntToBase32 } from './bigint-util.js'
 import { httpAssert } from './http-assert.js'
 
 /**
@@ -83,6 +84,7 @@ export async function logRetrievalResult(env, params) {
  *   serviceProviderId: string
  *   serviceUrl: string
  *   dataSetId: string
+ *   pieceId: string
  * }>}
  */
 export async function getStorageProviderAndValidatePayer(
@@ -91,7 +93,15 @@ export async function getStorageProviderAndValidatePayer(
   ipfsRootCid,
 ) {
   const query = `
-   SELECT pieces.data_set_id, data_sets.service_provider_id, data_sets.payer_address, data_sets.with_cdn, data_sets.with_ipfs_indexing, service_providers.service_url, wallet_details.is_sanctioned
+   SELECT
+     pieces.id as piece_id,
+     pieces.data_set_id,
+     data_sets.service_provider_id,
+     data_sets.payer_address,
+     data_sets.with_cdn,
+     data_sets.with_ipfs_indexing,
+     service_providers.service_url,
+     wallet_details.is_sanctioned
    FROM pieces
    LEFT OUTER JOIN data_sets
      ON pieces.data_set_id = data_sets.id
@@ -177,6 +187,7 @@ export async function getStorageProviderAndValidatePayer(
   )
 
   const {
+    piece_id: pieceId,
     data_set_id: dataSetId,
     service_provider_id: serviceProviderId,
     service_url: serviceUrl,
@@ -190,7 +201,7 @@ export async function getStorageProviderAndValidatePayer(
     `Looked up Data set ID '${dataSetId}' and service provider id '${serviceProviderId}' for IPFS Root CID '${ipfsRootCid}' and payer '${payerAddress}'. Service URL: ${serviceUrl}`,
   )
 
-  return { serviceProviderId, serviceUrl, dataSetId }
+  return { serviceProviderId, serviceUrl, dataSetId, pieceId }
 }
 
 /**
@@ -209,4 +220,24 @@ export async function updateDataSetStats(env, { dataSetId, egressBytes }) {
   )
     .bind(egressBytes, dataSetId)
     .run()
+}
+
+/**
+ * @param {Pick<Env, 'DB'>} env - Cloudflare Worker environment with D1 DB
+ *   binding
+ * @param {string} payerAddress
+ * @param {string} ipfsRootCid
+ */
+export async function getSlugForWalletAndCid(env, payerAddress, ipfsRootCid) {
+  const { dataSetId, pieceId } = await getStorageProviderAndValidatePayer(
+    env,
+    payerAddress,
+    ipfsRootCid,
+  )
+
+  return [
+    '1', // version
+    bigIntToBase32(BigInt(dataSetId)),
+    bigIntToBase32(BigInt(pieceId)),
+  ].join('-')
 }
