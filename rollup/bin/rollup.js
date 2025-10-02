@@ -8,6 +8,7 @@ import { aggregateUsageData, prepareBatchData } from '../lib/rollup.js'
  *   RPC_URL: string
  *   FILBEAM_CONTRACT_ADDRESS: string
  *   FILBEAM_CONTROLLER_ADDRESS_PRIVATE_KEY: string
+ *   GENESIS_BLOCK_TIMESTAMP: string
  *   DB: D1Database
  * }} RollupEnv
  */
@@ -37,7 +38,11 @@ export default {
       )
 
       // Aggregate usage data for all datasets that need reporting
-      const allUsageData = await aggregateUsageData(env.DB, Number(targetEpoch))
+      const allUsageData = await aggregateUsageData(
+        env.DB,
+        Number(targetEpoch),
+        Number(env.GENESIS_BLOCK_TIMESTAMP),
+      )
 
       if (allUsageData.length === 0) {
         console.log('No usage data to report')

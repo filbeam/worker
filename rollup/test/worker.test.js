@@ -23,6 +23,7 @@ describe('rollup worker scheduled entrypoint', () => {
       RPC_URL: 'https://mock-rpc.example.com',
       FILBEAM_CONTRACT_ADDRESS: '0xMockFilBeamAddress',
       FILBEAM_CONTROLLER_ADDRESS_PRIVATE_KEY: '0xMockPrivateKey',
+      GENESIS_BLOCK_TIMESTAMP: '1598306400',
     }
 
     await applyD1Migrations(env.DB, env.TEST_MIGRATIONS)

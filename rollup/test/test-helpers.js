@@ -43,7 +43,7 @@ export async function withDataSet(
 export const randomId = () => String(Math.ceil(Math.random() * 1e10))
 
 // Filecoin epoch constants
-const FILECOIN_GENESIS_UNIX_TIMESTAMP = 1598306400
+export const FILECOIN_GENESIS_UNIX_TIMESTAMP = 1598306400
 const FILECOIN_EPOCH_DURATION_SECONDS = 30
 
 /**
