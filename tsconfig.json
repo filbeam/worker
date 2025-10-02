@@ -19,7 +19,7 @@
   },
   "include": [
     "bad-bits",
-    "retriever",
+    "piece-retriever",
     "indexer",
     "eslint.config.js",
     "worker-configuration.d.ts"
