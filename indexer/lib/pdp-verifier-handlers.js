@@ -32,6 +32,7 @@ export async function insertDataSetPiece(
  * @param {(number | string)[]} pieceIds
  */
 export async function removeDataSetPieces(env, dataSetId, pieceIds) {
+  await clearDataSetPiecesIndexCache(env, dataSetId, pieceIds)
   await env.DB.prepare(
     `
     DELETE FROM pieces
@@ -43,4 +44,30 @@ export async function removeDataSetPieces(env, dataSetId, pieceIds) {
   )
     .bind(String(dataSetId), ...pieceIds.map(String))
     .run()
+}
+
+/**
+ * @param {Env} env
+ * @param {number | string} dataSetId
+ * @param {(number | string)[]} pieceIds
+ */
+async function clearDataSetPiecesIndexCache(env, dataSetId, pieceIds) {
+  const { results } = await env.DB.prepare(
+    `
+      SELECT data_sets.payer_address AS payerAddress, pieces.cid AS pieceCID
+      FROM data_sets
+      INNER JOIN pieces ON pieces.data_set_id = data_sets.id
+      WHERE data_sets.id = ? AND pieces.id IN (${new Array(pieceIds.length)
+        .fill(null)
+        .map(() => '?')
+        .join(', ')})
+    `,
+  )
+    .bind(String(dataSetId), ...pieceIds.map(String))
+    .run()
+  await Promise.all(
+    results.map(async ({ payerAddress, pieceCID }) => {
+      await env.KV.delete(`${payerAddress}/${pieceCID}`)
+    }),
+  )
 }

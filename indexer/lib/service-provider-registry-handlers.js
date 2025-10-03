@@ -85,6 +85,7 @@ export async function handleProductRemoved(env, providerId, productType) {
     return new Response('OK', { status: 200 })
   }
 
+  await clearServiceProviderIndexCache(env, providerId)
   const result = await env.DB.prepare(
     `
         DELETE FROM service_providers WHERE id = ?
@@ -111,6 +112,7 @@ export async function handleProviderRemoved(env, providerId) {
     return new Response('Bad Request', { status: 400 })
   }
 
+  await clearServiceProviderIndexCache(env, providerId)
   const result = await env.DB.prepare(
     `
         DELETE FROM service_providers WHERE id = ?
@@ -141,6 +143,7 @@ async function handleProviderServiceUrlUpdate(env, providerId, serviceUrl) {
     `Provider service url updated (providerId=${providerId}, serviceUrl=${serviceUrl})`,
   )
 
+  await clearServiceProviderIndexCache(env, providerId)
   await env.DB.prepare(
     `
         INSERT INTO service_providers (
@@ -155,4 +158,26 @@ async function handleProviderServiceUrlUpdate(env, providerId, serviceUrl) {
     .bind(String(providerId), serviceUrl)
     .run()
   return new Response('OK', { status: 200 })
+}
+
+/**
+ * @param {Env} env
+ * @param {string | number} providerId
+ */
+async function clearServiceProviderIndexCache(env, providerId) {
+  const { results } = await env.DB.prepare(
+    `
+      SELECT data_sets.payer_address AS payerAddress, pieces.cid AS pieceCID
+      FROM data_sets
+      INNER JOIN pieces ON pieces.data_set_id = data_sets.id
+      WHERE data_sets.service_provider_id = ?
+    `,
+  )
+    .bind(String(providerId))
+    .run()
+  await Promise.all(
+    results.map(async ({ payerAddress, pieceCID }) => {
+      await env.KV.delete(`${payerAddress}/${pieceCID}`)
+    }),
+  )
 }
