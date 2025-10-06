@@ -24,7 +24,7 @@ import { findInBadBits } from '../lib/bad-bits-util.js'
  *   DNS_ROOT: '.localhost' | '.calibration.filbeam.io' | '.filbeam.io'
  *   DB: D1Database
  *   KV: KVNamespace
- * }} PieteRetrieverEnv
+ * }} PieceRetrieverEnv
  */
 export default {
   /**
