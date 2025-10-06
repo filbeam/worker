@@ -62,9 +62,16 @@ describe('getStorageProviderAndValidatePayer', () => {
     const payerAddress = '0x1234567890abcdef1234567890abcdef12345678'
 
     await env.DB.prepare(
-      'INSERT INTO data_sets (id, service_provider_id, payer_address, with_cdn) VALUES (?, ?, ?, ?)',
+      'INSERT INTO data_sets (id, service_provider_id, payer_address, with_cdn, cdn_egress_quota, cache_miss_egress_quota) VALUES (?, ?, ?, ?, ?, ?)',
     )
-      .bind(dataSetId, APPROVED_SERVICE_PROVIDER_ID, payerAddress, true)
+      .bind(
+        dataSetId,
+        APPROVED_SERVICE_PROVIDER_ID,
+        payerAddress,
+        true,
+        '1099511627776',
+        '1099511627776',
+      )
       .run()
     await env.DB.prepare(
       'INSERT INTO pieces (id, data_set_id, cid) VALUES (?, ?, ?)',
@@ -122,12 +129,14 @@ describe('getStorageProviderAndValidatePayer', () => {
 
     await env.DB.batch([
       env.DB.prepare(
-        'INSERT INTO data_sets (id, service_provider_id, payer_address, with_cdn) VALUES (?, ?, ?, ?)',
+        'INSERT INTO data_sets (id, service_provider_id, payer_address, with_cdn, cdn_egress_quota, cache_miss_egress_quota) VALUES (?, ?, ?, ?, ?, ?)',
       ).bind(
         dataSetId,
         serviceProviderId,
         payerAddress.replace('a', 'b'),
         true,
+        '1099511627776',
+        '1099511627776',
       ),
       env.DB.prepare(
         'INSERT INTO pieces (id, data_set_id, cid) VALUES (?, ?, ?)',
@@ -149,8 +158,15 @@ describe('getStorageProviderAndValidatePayer', () => {
 
     await env.DB.batch([
       env.DB.prepare(
-        'INSERT INTO data_sets (id, service_provider_id, payer_address, with_cdn) VALUES (?, ?, ?, ?)',
-      ).bind(dataSetId, serviceProviderId, payerAddress, false),
+        'INSERT INTO data_sets (id, service_provider_id, payer_address, with_cdn, cdn_egress_quota, cache_miss_egress_quota) VALUES (?, ?, ?, ?, ?, ?)',
+      ).bind(
+        dataSetId,
+        serviceProviderId,
+        payerAddress,
+        false,
+        '1099511627776',
+        '1099511627776',
+      ),
       env.DB.prepare(
         'INSERT INTO pieces (id, data_set_id, cid) VALUES (?, ?, ?)',
       ).bind('piece-2', dataSetId, cid),
@@ -170,8 +186,15 @@ describe('getStorageProviderAndValidatePayer', () => {
 
     await env.DB.batch([
       env.DB.prepare(
-        'INSERT INTO data_sets (id, service_provider_id, payer_address, with_cdn) VALUES (?, ?, ?, ?)',
-      ).bind(dataSetId, APPROVED_SERVICE_PROVIDER_ID, payerAddress, true),
+        'INSERT INTO data_sets (id, service_provider_id, payer_address, with_cdn, cdn_egress_quota, cache_miss_egress_quota) VALUES (?, ?, ?, ?, ?, ?)',
+      ).bind(
+        dataSetId,
+        APPROVED_SERVICE_PROVIDER_ID,
+        payerAddress,
+        true,
+        '1099511627776',
+        '1099511627776',
+      ),
       env.DB.prepare(
         'INSERT INTO pieces (id, data_set_id, cid) VALUES (?, ?, ?)',
       ).bind('piece-3', dataSetId, cid),
@@ -202,15 +225,29 @@ describe('getStorageProviderAndValidatePayer', () => {
 
     // Insert both owners into separate sets with the same pieceCid
     await env.DB.prepare(
-      'INSERT INTO data_sets (id, service_provider_id, payer_address, with_cdn) VALUES (?, ?, ?, ?)',
+      'INSERT INTO data_sets (id, service_provider_id, payer_address, with_cdn, cdn_egress_quota, cache_miss_egress_quota) VALUES (?, ?, ?, ?, ?, ?)',
     )
-      .bind(dataSetId1, serviceProviderId1, payerAddress, true)
+      .bind(
+        dataSetId1,
+        serviceProviderId1,
+        payerAddress,
+        true,
+        '1099511627776',
+        '1099511627776',
+      )
       .run()
 
     await env.DB.prepare(
-      'INSERT INTO data_sets (id, service_provider_id, payer_address, with_cdn) VALUES (?, ?, ?, ?)',
+      'INSERT INTO data_sets (id, service_provider_id, payer_address, with_cdn, cdn_egress_quota, cache_miss_egress_quota) VALUES (?, ?, ?, ?, ?, ?)',
     )
-      .bind(dataSetId2, serviceProviderId2, payerAddress, true)
+      .bind(
+        dataSetId2,
+        serviceProviderId2,
+        payerAddress,
+        true,
+        '1099511627776',
+        '1099511627776',
+      )
       .run()
 
     // Insert same pieceCid for both sets
@@ -277,7 +314,377 @@ describe('getStorageProviderAndValidatePayer', () => {
       dataSetId: dataSetId1,
       serviceProviderId: serviceProviderId1.toLowerCase(),
       serviceUrl: 'https://pdp-provider-1.xyz',
+      cdnEgressQuota: '1099511627776',
+      cacheMissEgressQuota: '1099511627776',
     })
+  })
+})
+
+describe('Egress Quota Management', () => {
+  const APPROVED_SERVICE_PROVIDER_ID = '30'
+
+  beforeAll(async () => {
+    await withApprovedProvider(env, {
+      id: APPROVED_SERVICE_PROVIDER_ID,
+      serviceUrl: 'https://quota-test-provider.xyz',
+    })
+  })
+
+  it('returns error when CDN quota is exhausted', async () => {
+    const dataSetId = 'test-quota-exhausted'
+    const pieceCid = 'test-cid-exhausted'
+    const payerAddress = '0x1234567890abcdef1234567890abcdef12345678'
+
+    await env.DB.prepare(
+      'INSERT INTO data_sets (id, service_provider_id, payer_address, with_cdn, cdn_egress_quota, cache_miss_egress_quota) VALUES (?, ?, ?, ?, ?, ?)',
+    )
+      .bind(
+        dataSetId,
+        APPROVED_SERVICE_PROVIDER_ID,
+        payerAddress,
+        true,
+        '0',
+        '1000000',
+      )
+      .run()
+    await env.DB.prepare(
+      'INSERT INTO pieces (id, data_set_id, cid) VALUES (?, ?, ?)',
+    )
+      .bind('piece-exhausted', dataSetId, pieceCid)
+      .run()
+
+    await assert.rejects(
+      async () =>
+        await getStorageProviderAndValidatePayer(env, payerAddress, pieceCid),
+      /CDN egress quota exhausted/,
+    )
+  })
+
+  it('returns error when cache-miss quota is exhausted', async () => {
+    const dataSetId = 'test-cache-miss-exhausted'
+    const pieceCid = 'test-cid-cache-miss-exhausted'
+    const payerAddress = '0x1234567890abcdef1234567890abcdef12345678'
+
+    await env.DB.prepare(
+      'INSERT INTO data_sets (id, service_provider_id, payer_address, with_cdn, cdn_egress_quota, cache_miss_egress_quota) VALUES (?, ?, ?, ?, ?, ?)',
+    )
+      .bind(
+        dataSetId,
+        APPROVED_SERVICE_PROVIDER_ID,
+        payerAddress,
+        true,
+        '1000000',
+        '0',
+      )
+      .run()
+    await env.DB.prepare(
+      'INSERT INTO pieces (id, data_set_id, cid) VALUES (?, ?, ?)',
+    )
+      .bind('piece-cache-miss-exhausted', dataSetId, pieceCid)
+      .run()
+
+    await assert.rejects(
+      async () =>
+        await getStorageProviderAndValidatePayer(env, payerAddress, pieceCid),
+      /Cache miss egress quota exhausted/,
+    )
+  })
+
+  it('allows retrieval when quota is sufficient', async () => {
+    const dataSetId = 'test-quota-sufficient'
+    const pieceCid = 'test-cid-sufficient'
+    const payerAddress = '0x1234567890abcdef1234567890abcdef12345678'
+
+    await env.DB.prepare(
+      'INSERT INTO data_sets (id, service_provider_id, payer_address, with_cdn, cdn_egress_quota, cache_miss_egress_quota) VALUES (?, ?, ?, ?, ?, ?)',
+    )
+      .bind(
+        dataSetId,
+        APPROVED_SERVICE_PROVIDER_ID,
+        payerAddress,
+        true,
+        '1000000',
+        '1000000',
+      )
+      .run()
+    await env.DB.prepare(
+      'INSERT INTO pieces (id, data_set_id, cid) VALUES (?, ?, ?)',
+    )
+      .bind('piece-sufficient', dataSetId, pieceCid)
+      .run()
+
+    const result = await getStorageProviderAndValidatePayer(
+      env,
+      payerAddress,
+      pieceCid,
+    )
+    assert.strictEqual(result.dataSetId, dataSetId)
+    assert.strictEqual(result.cdnEgressQuota, '1000000')
+    assert.strictEqual(result.cacheMissEgressQuota, '1000000')
+  })
+
+  it('correctly decrements CDN quota on cache hit', async () => {
+    const dataSetId = 'test-quota-decrement-cdn'
+    const initialQuota = '1000000'
+    const egressBytes = 100000
+
+    await env.DB.prepare(
+      'INSERT INTO data_sets (id, service_provider_id, payer_address, with_cdn, cdn_egress_quota, cache_miss_egress_quota) VALUES (?, ?, ?, ?, ?, ?)',
+    )
+      .bind(
+        dataSetId,
+        APPROVED_SERVICE_PROVIDER_ID,
+        '0xtest',
+        true,
+        initialQuota,
+        initialQuota,
+      )
+      .run()
+
+    await updateDataSetStats(env, {
+      dataSetId,
+      egressBytes,
+      cacheMiss: false,
+    })
+
+    const result = await env.DB.prepare(
+      'SELECT cdn_egress_quota, cache_miss_egress_quota FROM data_sets WHERE id = ?',
+    )
+      .bind(dataSetId)
+      .first()
+
+    // Handle potential decimal formatting from SQLite
+    const expectedQuota = String(BigInt(initialQuota) - BigInt(egressBytes))
+    const actualQuota = result.cdn_egress_quota.endsWith('.0')
+      ? result.cdn_egress_quota.slice(0, -2)
+      : result.cdn_egress_quota
+    assert.strictEqual(actualQuota, expectedQuota)
+    assert.strictEqual(result.cache_miss_egress_quota, initialQuota)
+  })
+
+  it('correctly decrements cache miss quota on cache miss', async () => {
+    const dataSetId = 'test-quota-decrement-miss'
+    const initialQuota = '1000000'
+    const egressBytes = 100000
+
+    await env.DB.prepare(
+      'INSERT INTO data_sets (id, service_provider_id, payer_address, with_cdn, cdn_egress_quota, cache_miss_egress_quota) VALUES (?, ?, ?, ?, ?, ?)',
+    )
+      .bind(
+        dataSetId,
+        APPROVED_SERVICE_PROVIDER_ID,
+        '0xtest',
+        true,
+        initialQuota,
+        initialQuota,
+      )
+      .run()
+
+    await updateDataSetStats(env, {
+      dataSetId,
+      egressBytes,
+      cacheMiss: true,
+    })
+
+    const result = await env.DB.prepare(
+      'SELECT cdn_egress_quota, cache_miss_egress_quota FROM data_sets WHERE id = ?',
+    )
+      .bind(dataSetId)
+      .first()
+
+    assert.strictEqual(result.cdn_egress_quota, initialQuota)
+    // Handle potential decimal formatting from SQLite
+    const expectedQuota = String(BigInt(initialQuota) - BigInt(egressBytes))
+    const actualQuota = result.cache_miss_egress_quota.endsWith('.0')
+      ? result.cache_miss_egress_quota.slice(0, -2)
+      : result.cache_miss_egress_quota
+    assert.strictEqual(actualQuota, expectedQuota)
+  })
+
+  it('prevents quota from going below zero when egress exceeds quota', async () => {
+    const dataSetId = 'test-quota-below-zero'
+    const insufficientQuota = '1000'
+    const egressBytes = 2000
+
+    await env.DB.prepare(
+      'INSERT INTO data_sets (id, service_provider_id, payer_address, with_cdn, cdn_egress_quota, cache_miss_egress_quota) VALUES (?, ?, ?, ?, ?, ?)',
+    )
+      .bind(
+        dataSetId,
+        APPROVED_SERVICE_PROVIDER_ID,
+        '0xtest',
+        true,
+        '1000000',
+        insufficientQuota,
+      )
+      .run()
+
+    // Should not throw an error but set quota to 0
+    await updateDataSetStats(env, {
+      dataSetId,
+      egressBytes,
+      cacheMiss: true,
+    })
+
+    const result = await env.DB.prepare(
+      'SELECT cache_miss_egress_quota FROM data_sets WHERE id = ?',
+    )
+      .bind(dataSetId)
+      .first()
+
+    // Quota should be 0, not negative
+    assert.strictEqual(result.cache_miss_egress_quota, '0')
+  })
+
+  it('prevents CDN quota from going below zero when egress exceeds quota', async () => {
+    const dataSetId = 'test-cdn-quota-below-zero'
+    const insufficientQuota = '500'
+    const egressBytes = 1500
+
+    await env.DB.prepare(
+      'INSERT INTO data_sets (id, service_provider_id, payer_address, with_cdn, cdn_egress_quota, cache_miss_egress_quota) VALUES (?, ?, ?, ?, ?, ?)',
+    )
+      .bind(
+        dataSetId,
+        APPROVED_SERVICE_PROVIDER_ID,
+        '0xtest',
+        true,
+        insufficientQuota,
+        '1000000',
+      )
+      .run()
+
+    // Should not throw an error but set quota to 0
+    await updateDataSetStats(env, {
+      dataSetId,
+      egressBytes,
+      cacheMiss: false,
+    })
+
+    const result = await env.DB.prepare(
+      'SELECT cdn_egress_quota FROM data_sets WHERE id = ?',
+    )
+      .bind(dataSetId)
+      .first()
+
+    // CDN quota should be 0, not negative
+    assert.strictEqual(result.cdn_egress_quota, '0')
+  })
+
+  it('returns error when quota values are null', async () => {
+    const dataSetId = 'test-quota-null'
+    const pieceCid = 'test-cid-null'
+    const payerAddress = '0x1234567890abcdef1234567890abcdef12345678'
+
+    await env.DB.prepare(
+      'INSERT INTO data_sets (id, service_provider_id, payer_address, with_cdn, cdn_egress_quota, cache_miss_egress_quota) VALUES (?, ?, ?, ?, ?, ?)',
+    )
+      .bind(
+        dataSetId,
+        APPROVED_SERVICE_PROVIDER_ID,
+        payerAddress,
+        true,
+        null,
+        null,
+      )
+      .run()
+    await env.DB.prepare(
+      'INSERT INTO pieces (id, data_set_id, cid) VALUES (?, ?, ?)',
+    )
+      .bind('piece-null', dataSetId, pieceCid)
+      .run()
+
+    // Should return 402 error when quotas are null
+    await assert.rejects(
+      async () =>
+        await getStorageProviderAndValidatePayer(env, payerAddress, pieceCid),
+      /CDN egress quota exhausted/,
+    )
+  })
+
+  it('handles very large quota values (uint256)', async () => {
+    const dataSetId = 'test-quota-large'
+    const pieceCid = 'test-cid-large'
+    const payerAddress = '0x1234567890abcdef1234567890abcdef12345678'
+    // Simulate a very large uint256 value
+    const largeQuota =
+      '115792089237316195423570985008687907853269984665640564039457584007913129639935'
+
+    await env.DB.prepare(
+      'INSERT INTO data_sets (id, service_provider_id, payer_address, with_cdn, cdn_egress_quota, cache_miss_egress_quota) VALUES (?, ?, ?, ?, ?, ?)',
+    )
+      .bind(
+        dataSetId,
+        APPROVED_SERVICE_PROVIDER_ID,
+        payerAddress,
+        true,
+        largeQuota,
+        largeQuota,
+      )
+      .run()
+    await env.DB.prepare(
+      'INSERT INTO pieces (id, data_set_id, cid) VALUES (?, ?, ?)',
+    )
+      .bind('piece-large', dataSetId, pieceCid)
+      .run()
+
+    const result = await getStorageProviderAndValidatePayer(
+      env,
+      payerAddress,
+      pieceCid,
+    )
+    assert.strictEqual(result.cdnEgressQuota, largeQuota)
+  })
+
+  it('handles quota exactly at piece size', async () => {
+    const dataSetId = 'test-quota-exact'
+    const pieceCid = 'test-cid-exact'
+    const payerAddress = '0x1234567890abcdef1234567890abcdef12345678'
+    const exactQuota = '1000'
+
+    await env.DB.prepare(
+      'INSERT INTO data_sets (id, service_provider_id, payer_address, with_cdn, cdn_egress_quota, cache_miss_egress_quota) VALUES (?, ?, ?, ?, ?, ?)',
+    )
+      .bind(
+        dataSetId,
+        APPROVED_SERVICE_PROVIDER_ID,
+        payerAddress,
+        true,
+        exactQuota,
+        exactQuota,
+      )
+      .run()
+    await env.DB.prepare(
+      'INSERT INTO pieces (id, data_set_id, cid) VALUES (?, ?, ?)',
+    )
+      .bind('piece-exact', dataSetId, pieceCid)
+      .run()
+
+    // Quota of exactly 1000 should be sufficient (> 0)
+    const result = await getStorageProviderAndValidatePayer(
+      env,
+      payerAddress,
+      pieceCid,
+    )
+    assert.strictEqual(result.dataSetId, dataSetId)
+
+    // Decrement by exact amount should result in 0
+    await updateDataSetStats(env, {
+      dataSetId,
+      egressBytes: 1000,
+      cacheMiss: false,
+    })
+
+    const afterDecrement = await env.DB.prepare(
+      'SELECT cdn_egress_quota FROM data_sets WHERE id = ?',
+    )
+      .bind(dataSetId)
+      .first()
+    // Handle potential decimal formatting from SQLite
+    const actualQuota = afterDecrement.cdn_egress_quota.endsWith('.0')
+      ? afterDecrement.cdn_egress_quota.slice(0, -2)
+      : afterDecrement.cdn_egress_quota
+    assert.strictEqual(actualQuota, '0')
   })
 })
 

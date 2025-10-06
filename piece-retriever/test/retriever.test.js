@@ -674,12 +674,14 @@ describe('piece-retriever.fetch', () => {
 
     await env.DB.batch([
       env.DB.prepare(
-        'INSERT INTO data_sets (id, service_provider_id, payer_address, with_cdn) VALUES (?, ?, ?, ?)',
+        'INSERT INTO data_sets (id, service_provider_id, payer_address, with_cdn, cdn_egress_quota, cache_miss_egress_quota) VALUES (?, ?, ?, ?, ?, ?)',
       ).bind(
         dataSetId,
         unsupportedServiceProviderId,
         defaultPayerAddress,
         true,
+        '1099511627776',
+        '1099511627776',
       ),
       env.DB.prepare(
         'INSERT INTO pieces (id, data_set_id, cid) VALUES (?, ?, ?)',

@@ -158,7 +158,8 @@ export default {
             dataSetId,
           })
 
-          await updateDataSetStats(env, { dataSetId, egressBytes })
+          // Update stats and decrement quota
+          await updateDataSetStats(env, { dataSetId, egressBytes, cacheMiss })
         })(),
       )
 
