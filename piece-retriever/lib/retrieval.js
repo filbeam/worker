@@ -62,13 +62,13 @@ export async function measureStreamedEgress(reader) {
   return total
 }
 
-
 /**
  * Creates a transform stream that enforces quota limits during streaming. This
  * stream passes data through while tracking bytes and stopping when quota is
  * exceeded.
  *
- * @param {string | null} availableQuota - The available quota in bytes
+ * @param {string | null} availableQuota - The available quota in bytes (null
+ *   means no limit)
  * @param {AbortController} abortController - Controller to signal quota
  *   exceeded
  * @param {(bytesTransferred: number, exceeded?: boolean) => void} onBytesTransferred
@@ -83,15 +83,16 @@ export function createQuotaEnforcingStream(
   onBytesTransferred,
 ) {
   let totalTransferred = 0
-  const quotaLimit =
-    availableQuota && availableQuota !== '0' ? BigInt(availableQuota) : null
+  // If no quota provided or quota is 0, treat as unlimited
+  const hasQuotaLimit = availableQuota && availableQuota !== '0'
+  const quotaLimit = hasQuotaLimit ? BigInt(availableQuota) : null
 
   return new TransformStream({
     transform(chunk, controller) {
       const chunkSize = chunk.length
 
       // If no quota limit, just pass through
-      if (quotaLimit === null) {
+      if (!hasQuotaLimit) {
         controller.enqueue(chunk)
         totalTransferred += chunkSize
         onBytesTransferred(totalTransferred)
@@ -99,9 +100,11 @@ export function createQuotaEnforcingStream(
       }
 
       // Check if this chunk would exceed quota
-      if (BigInt(totalTransferred + chunkSize) > quotaLimit) {
+      // We know quotaLimit is not null here because hasQuotaLimit is true
+      const limit = /** @type {bigint} */ (quotaLimit)
+      if (BigInt(totalTransferred + chunkSize) > limit) {
         // Calculate how many bytes we can still transfer
-        const remainingQuota = Number(quotaLimit - BigInt(totalTransferred))
+        const remainingQuota = Number(limit - BigInt(totalTransferred))
 
         if (remainingQuota > 0) {
           // Transfer only what fits in the quota

@@ -2,6 +2,7 @@ import { isValidEthereumAddress } from '../lib/address.js'
 import { parseRequest } from '../lib/request.js'
 import {
   retrieveFile as defaultRetrieveFile,
+  measureStreamedEgress,
   createQuotaEnforcingStream,
 } from '../lib/retrieval.js'
 import {
@@ -173,20 +174,16 @@ export default {
         // For testing compatibility, we need to use a dual approach
         // In production, the transform stream will track bytes as they flow
         // In tests, we need to tee the stream to measure bytes independently
-        const [returnedStreamForClient, measurementStream] = returnedStream.tee()
+        const [returnedStreamForClient, measurementStream] =
+          returnedStream.tee()
         returnedStream = returnedStreamForClient
 
         ctx.waitUntil(
           (async () => {
             try {
-              // Consume the measurement stream to count bytes
+              // Use measureStreamedEgress to count bytes from the measurement stream
               const reader = measurementStream.getReader()
-              let measuredBytes = 0
-              while (true) {
-                const { done, value } = await reader.read()
-                if (done) break
-                measuredBytes += value.length
-              }
+              const measuredBytes = await measureStreamedEgress(reader)
 
               // Use the measured bytes if we got them, otherwise use what the transform tracked
               if (measuredBytes > 0) {
