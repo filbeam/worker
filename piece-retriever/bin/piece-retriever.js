@@ -2,7 +2,6 @@ import { isValidEthereumAddress } from '../lib/address.js'
 import { parseRequest } from '../lib/request.js'
 import {
   retrieveFile as defaultRetrieveFile,
-  measureStreamedEgress,
   createQuotaEnforcingStream,
 } from '../lib/retrieval.js'
 import {
@@ -166,85 +165,60 @@ export default {
 
       // Apply the quota enforcement to the response stream
       let returnedStream
-      let streamReader
 
       try {
-        // If we don't need quota enforcement (quota is null or very large), use original approach
-        if (!availableQuota || BigInt(availableQuota) > BigInt('10000000000')) {
-          // Use the original tee approach for measurement
-          const [stream1, stream2] = originResponse.body.tee()
-          returnedStream = stream1
-          streamReader = stream2.getReader()
+        // Always use quota-enforcing transform for consistent behavior
+        returnedStream = originResponse.body.pipeThrough(quotaStream)
 
-          ctx.waitUntil(
-            (async () => {
-              egressBytes = await measureStreamedEgress(streamReader)
-              const lastByteFetchedAt = performance.now()
+        // For testing compatibility, we need to use a dual approach
+        // In production, the transform stream will track bytes as they flow
+        // In tests, we need to tee the stream to measure bytes independently
+        const [returnedStreamForClient, measurementStream] = returnedStream.tee()
+        returnedStream = returnedStreamForClient
 
-              await logRetrievalResult(env, {
-                cacheMiss,
-                responseStatus: originResponse.status,
-                egressBytes,
-                requestCountryCode,
-                timestamp: requestTimestamp,
-                performanceStats: {
-                  fetchTtfb: firstByteAt - fetchStartedAt,
-                  fetchTtlb: lastByteFetchedAt - fetchStartedAt,
-                  workerTtfb: firstByteAt - workerStartedAt,
-                },
-                dataSetId,
-              })
-
-              await updateDataSetStats(env, { dataSetId, egressBytes, cacheMiss })
-            })(),
-          )
-        } else {
-          // For quota enforcement, pipe through our quota-enforcing transform
-          returnedStream = originResponse.body.pipeThrough(quotaStream)
-
-          // Track stream completion
-          const streamPromise = new Promise((resolve) => {
-            // Set up an interval to check if bytes have been transferred
-            const checkInterval = setInterval(() => {
-              if (egressBytes > 0 || quotaExceeded) {
-                clearInterval(checkInterval)
-                resolve()
+        ctx.waitUntil(
+          (async () => {
+            try {
+              // Consume the measurement stream to count bytes
+              const reader = measurementStream.getReader()
+              let measuredBytes = 0
+              while (true) {
+                const { done, value } = await reader.read()
+                if (done) break
+                measuredBytes += value.length
               }
-            }, 100)
 
-            // Also set a timeout to ensure we don't wait forever
-            setTimeout(() => {
-              clearInterval(checkInterval)
-              resolve()
-            }, 2000)
-          })
+              // Use the measured bytes if we got them, otherwise use what the transform tracked
+              if (measuredBytes > 0) {
+                egressBytes = measuredBytes
+              }
+            } catch (error) {
+              // If stream was aborted due to quota, that's expected
+              if (error instanceof Error && error.message.includes('quota')) {
+                quotaExceeded = true
+              }
+            }
 
-          ctx.waitUntil(
-            (async () => {
-              // Wait for stream to actually transfer some data or timeout
-              await streamPromise
+            const lastByteFetchedAt = performance.now()
 
-              const lastByteFetchedAt = performance.now()
+            await logRetrievalResult(env, {
+              cacheMiss,
+              responseStatus: quotaExceeded ? 402 : originResponse.status,
+              egressBytes,
+              requestCountryCode,
+              timestamp: requestTimestamp,
+              performanceStats: {
+                fetchTtfb: firstByteAt - fetchStartedAt,
+                fetchTtlb: lastByteFetchedAt - fetchStartedAt,
+                workerTtfb: firstByteAt - workerStartedAt,
+              },
+              dataSetId,
+            })
 
-              await logRetrievalResult(env, {
-                cacheMiss,
-                responseStatus: quotaExceeded ? 402 : originResponse.status,
-                egressBytes,
-                requestCountryCode,
-                timestamp: requestTimestamp,
-                performanceStats: {
-                  fetchTtfb: firstByteAt - fetchStartedAt,
-                  fetchTtlb: lastByteFetchedAt - fetchStartedAt,
-                  workerTtfb: firstByteAt - workerStartedAt,
-                },
-                dataSetId,
-              })
-
-              // Update stats and decrement quota
-              await updateDataSetStats(env, { dataSetId, egressBytes, cacheMiss })
-            })(),
-          )
-        }
+            // Update stats and decrement quota
+            await updateDataSetStats(env, { dataSetId, egressBytes, cacheMiss })
+          })(),
+        )
       } catch (error) {
         // Handle quota enforcement errors
         if (
