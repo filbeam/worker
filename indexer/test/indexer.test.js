@@ -1,13 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { assertCloseToNow } from './test-helpers.js'
+import { assertCloseToNow, withDataSet, randomId } from './test-helpers.js'
 import workerImpl from '../bin/indexer.js'
 import {
   env,
   createExecutionContext,
   waitOnExecutionContext,
 } from 'cloudflare:test'
-
-const randomId = () => String(Math.ceil(Math.random() * 1e10))
 
 env.SECRET_HEADER_KEY = 'secret-header-key'
 env.SECRET_HEADER_VALUE = 'secret-header-value'
@@ -1191,36 +1189,3 @@ describe('POST /filbeam/usage-reported', () => {
     )
   })
 })
-
-async function withDataSet(
-  env,
-  {
-    dataSetId = randomId(),
-    withCDN = true,
-    withIPFSIndexing = false,
-    serviceProviderId,
-    payerAddress,
-  },
-) {
-  await env.DB.prepare(
-    `
-    INSERT INTO data_sets (
-      id,
-      with_cdn,
-      with_ipfs_indexing,
-      service_provider_id,
-      payer_address
-    )
-    VALUES (?, ?, ?, ?, ?)`,
-  )
-    .bind(
-      String(dataSetId),
-      withCDN,
-      withIPFSIndexing,
-      serviceProviderId,
-      payerAddress,
-    )
-    .run()
-
-  return dataSetId
-}

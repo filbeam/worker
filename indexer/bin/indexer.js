@@ -8,6 +8,7 @@ import { checkIfAddressIsSanctioned as defaultCheckIfAddressIsSanctioned } from 
 import {
   handleFWSSDataSetCreated,
   handleFWSSServiceTerminated,
+  handleFWSSCDNPaymentRailsToppedUp,
 } from '../lib/fwss-handlers.js'
 import {
   removeDataSetPieces,
@@ -31,6 +32,8 @@ import { CID } from 'multiformats/cid'
  *   SECRET_HEADER_VALUE: string
  *   CHAINALYSIS_API_KEY: string
  *   GOLDSKY_SUBGRAPH_URL: string
+ *   CDN_RATE_PER_TIB: string
+ *   CACHE_MISS_RATE_PER_TIB: string
  * }} IndexerEnv
  */
 
@@ -208,6 +211,40 @@ export default {
     } else if (pathname === '/service-provider-registry/provider-removed') {
       const { provider_id: providerId } = payload
       return await handleProviderRemoved(env, providerId)
+    } else if (pathname === '/fwss/cdn-payment-rails-topped-up') {
+      // Validate payload
+      if (
+        !payload.data_set_id ||
+        !(
+          typeof payload.data_set_id === 'number' ||
+          typeof payload.data_set_id === 'string'
+        ) ||
+        payload.total_cdn_lockup === undefined ||
+        payload.total_cache_miss_lockup === undefined
+      ) {
+        console.error('FWSS.CDNPaymentRailsToppedUp: Invalid payload', payload)
+        return new Response('Bad Request', { status: 400 })
+      }
+
+      console.log(
+        `CDN Payment Rails topped up (data_set_id=${payload.data_set_id}, ` +
+          `total_cdn_lockup=${payload.total_cdn_lockup}, total_cache_miss_lockup=${payload.total_cache_miss_lockup})`,
+      )
+
+      try {
+        // @ts-ignore - env type includes the new dollar rate variables
+        await handleFWSSCDNPaymentRailsToppedUp(env, payload)
+      } catch (err) {
+        console.error(`Error handling CDN payment rails top-up: ${err}`)
+        // Queue for retry if needed
+        // @ts-ignore
+        env.RETRY_QUEUE.send({
+          type: 'fwss-cdn-payment-rails-topped-up',
+          payload,
+        })
+      }
+
+      return new Response('OK', { status: 200 })
     } else if (pathname === '/filbeam/usage-reported') {
       // Validate required fields
       if (
@@ -259,6 +296,17 @@ export default {
         } catch (err) {
           console.log(
             `Error handling FWSS data set creation: ${err}. Retrying...`,
+          )
+          message.retry({ delaySeconds: 10 })
+        }
+      } else if (message.body.type === 'fwss-cdn-payment-rails-topped-up') {
+        try {
+          // @ts-ignore - env type includes the new dollar rate variables
+          await handleFWSSCDNPaymentRailsToppedUp(env, message.body.payload)
+          message.ack()
+        } catch (err) {
+          console.log(
+            `Error handling CDN payment rails top-up: ${err}. Retrying...`,
           )
           message.retry({ delaySeconds: 10 })
         }
