@@ -44,12 +44,30 @@ export async function retrieveFile(
 }
 
 /**
+ * Measures the egress of a request by reading from a readable stream and return
+ * the total number of bytes transferred.
+ *
+ * @param {ReadableStreamDefaultReader<Uint8Array>} reader - The reader for the
+ *   readable stream.
+ * @returns {Promise<number>} - A promise that resolves to the total number of
+ *   bytes transferred.
+ */
+export async function measureStreamedEgress(reader) {
+  let total = 0
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    total += value.length
+  }
+  return total
+}
+
+/**
  * Creates a transform stream that enforces quota limits during streaming. This
  * stream passes data through while tracking bytes and stopping when quota is
  * exceeded.
  *
- * @param {string | null} availableQuota - The available quota in bytes (null
- *   means no limit, '0' means no data allowed)
+ * @param {string | null} availableQuota - The available quota in bytes
  * @returns {{
  *   stream: TransformStream<Uint8Array, Uint8Array>
  *   getStatus: () => { egressBytes: number; quotaExceeded: boolean }
@@ -59,28 +77,15 @@ export async function retrieveFile(
 export function createQuotaEnforcingStream(availableQuota) {
   let egressBytes = 0
   let quotaExceeded = false
-
-  // null means no limit (allow all), otherwise enforce the quota strictly
-  const hasQuotaLimit = availableQuota !== null
-  const quotaLimit = hasQuotaLimit ? BigInt(availableQuota) : null
+  const quotaLimit = BigInt(availableQuota || '0')
 
   const stream = new TransformStream({
     transform(chunk, controller) {
       const chunkSize = chunk.length
 
-      // If no quota limit (null), pass through all data
-      if (!hasQuotaLimit) {
-        controller.enqueue(chunk)
-        egressBytes += chunkSize
-        return
-      }
-
-      // Check if this chunk would exceed quota
-      // We know quotaLimit is not null here because hasQuotaLimit is true
-      const limit = /** @type {bigint} */ (quotaLimit)
-      if (BigInt(egressBytes + chunkSize) > limit) {
+      if (BigInt(egressBytes + chunkSize) > quotaLimit) {
         // Calculate how many bytes we can still transfer
-        const remainingQuota = Number(limit - BigInt(egressBytes))
+        const remainingQuota = Number(quotaLimit - BigInt(egressBytes))
 
         if (remainingQuota > 0) {
           // Transfer only what fits in the quota

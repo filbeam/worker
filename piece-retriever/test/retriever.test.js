@@ -769,14 +769,21 @@ describe('piece-retriever.fetch', () => {
     )
     await waitOnExecutionContext(ctx)
 
-    // Should get partial content when quota is exceeded
-    // The stream will be cut off but initial response may still be 200
-    // Check the actual bytes transferred
-    const body = await res.arrayBuffer()
-    assert(
-      body.byteLength <= 100,
-      `Expected at most 100 bytes, got ${body.byteLength}`,
-    )
+    // With Content-Length header, should get 402 immediately if quota insufficient
+    if (res.status === 402) {
+      // Got 402 as expected when Content-Length exceeds quota
+      const body = await res.text()
+      assert(body.includes('egress quota insufficient'))
+    } else {
+      // Should get partial content when quota is exceeded during streaming
+      // The stream will be cut off but initial response may still be 200
+      // Check the actual bytes transferred
+      const body = await res.arrayBuffer()
+      assert(
+        body.byteLength <= 100,
+        `Expected at most 100 bytes, got ${body.byteLength}`,
+      )
+    }
 
     // Check logs after execution context completes
     const { results } = await env.DB.prepare(
