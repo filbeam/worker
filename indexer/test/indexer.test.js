@@ -644,7 +644,7 @@ describe('piece-retriever.indexer', () => {
       for (const pieceCid of pieceCids) {
         await env.KV.put(
           `${payerAddress}/${pieceCid}`,
-          JSON.stringify([dataSetId, 'https://service.url/'])
+          JSON.stringify([dataSetId, 'https://service.url/']),
         )
       }
       const req = new Request('https://host/pdp-verifier/pieces-removed', {
@@ -788,7 +788,7 @@ describe('piece-retriever.indexer', () => {
       for (const pieceCid of pieceCids) {
         await env.KV.put(
           `${payerAddress}/${pieceCid}`,
-          JSON.stringify([dataSetId, serviceUrl])
+          JSON.stringify([dataSetId, serviceUrl]),
         )
       }
 
@@ -811,15 +811,18 @@ describe('piece-retriever.indexer', () => {
       await waitOnExecutionContext(ctx)
       expect(insertRes.status).toBe(200)
 
-      const req = new Request('https://host/service-provider-registry/provider-removed', {
-        method: 'POST',
-        headers: {
-          [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+      const req = new Request(
+        'https://host/service-provider-registry/provider-removed',
+        {
+          method: 'POST',
+          headers: {
+            [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+          },
+          body: JSON.stringify({
+            provider_id: serviceProviderId,
+          }),
         },
-        body: JSON.stringify({
-          provider_id: serviceProviderId,
-        }),
-      })
+      )
       const res = await workerImpl.fetch(req, env)
       expect(res.status).toBe(200)
 
@@ -933,7 +936,7 @@ describe('piece-retriever.indexer', () => {
       for (const pieceCid of pieceCids) {
         await env.KV.put(
           `${payerAddress}/${pieceCid}`,
-          JSON.stringify([dataSetId, serviceUrl])
+          JSON.stringify([dataSetId, serviceUrl]),
         )
       }
 
@@ -956,16 +959,19 @@ describe('piece-retriever.indexer', () => {
       await waitOnExecutionContext(ctx)
       expect(insertRes.status).toBe(200)
 
-      const req = new Request('https://host/service-provider-registry/product-removed', {
-        method: 'POST',
-        headers: {
-          [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+      const req = new Request(
+        'https://host/service-provider-registry/product-removed',
+        {
+          method: 'POST',
+          headers: {
+            [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+          },
+          body: JSON.stringify({
+            provider_id: serviceProviderId,
+            product_type: productType,
+          }),
         },
-        body: JSON.stringify({
-          provider_id: serviceProviderId,
-          product_type: productType,
-        }),
-      })
+      )
       const res = await workerImpl.fetch(req, env)
       expect(res.status).toBe(200)
 
@@ -1079,7 +1085,7 @@ describe('POST /service-provider-registry/provider-removed', () => {
     for (const pieceCid of pieceCids) {
       await env.KV.put(
         `${payerAddress}/${pieceCid}`,
-        JSON.stringify([dataSetId, serviceUrl])
+        JSON.stringify([dataSetId, serviceUrl]),
       )
     }
 
@@ -1102,15 +1108,18 @@ describe('POST /service-provider-registry/provider-removed', () => {
     await waitOnExecutionContext(ctx)
     expect(insertRes.status).toBe(200)
 
-    const req = new Request('https://host/service-provider-registry/provider-removed', {
-      method: 'POST',
-      headers: {
-        [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+    const req = new Request(
+      'https://host/service-provider-registry/provider-removed',
+      {
+        method: 'POST',
+        headers: {
+          [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+        },
+        body: JSON.stringify({
+          provider_id: serviceProviderId,
+        }),
       },
-      body: JSON.stringify({
-        provider_id: serviceProviderId,
-      }),
-    })
+    )
     const res = await workerImpl.fetch(req, env)
     expect(res.status).toBe(200)
 
@@ -1211,7 +1220,7 @@ describe('POST /fwss/cdn-service-terminated', () => {
     for (const pieceCid of pieceCids) {
       await env.KV.put(
         `${payerAddress}/${pieceCid}`,
-        JSON.stringify([dataSetId, 'https://service.url/'])
+        JSON.stringify([dataSetId, 'https://service.url/']),
       )
     }
     const req = new Request('https://host/fwss/cdn-service-terminated', {
@@ -1225,7 +1234,7 @@ describe('POST /fwss/cdn-service-terminated', () => {
     })
     const res = await workerImpl.fetch(req, env)
     expect(res.status).toBe(200)
-    
+
     for (const pieceCid of pieceCids) {
       expect(await env.KV.get(`${payerAddress}/${pieceCid}`)).toBe(null)
     }
@@ -1290,7 +1299,7 @@ describe('POST /fwss/service-terminated', () => {
     for (const pieceCid of pieceCids) {
       await env.KV.put(
         `${payerAddress}/${pieceCid}`,
-        JSON.stringify([dataSetId, 'https://service.url/'])
+        JSON.stringify([dataSetId, 'https://service.url/']),
       )
     }
     const req = new Request('https://host/fwss/service-terminated', {
@@ -1304,7 +1313,7 @@ describe('POST /fwss/service-terminated', () => {
     })
     const res = await workerImpl.fetch(req, env)
     expect(res.status).toBe(200)
-    
+
     for (const pieceCid of pieceCids) {
       expect(await env.KV.get(`${payerAddress}/${pieceCid}`)).toBe(null)
     }

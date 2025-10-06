@@ -22,7 +22,7 @@ export default defineWorkersProject(async () => {
             // Add a test-only binding for migrations, so we can apply them in a
             // setup file
             bindings: { TEST_MIGRATIONS: migrations },
-            kvNamespaces: ['KV']
+            kvNamespaces: ['KV'],
           },
         },
       },
