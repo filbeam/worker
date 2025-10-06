@@ -44,67 +44,49 @@ export async function retrieveFile(
 }
 
 /**
- * Measures the egress of a request by reading from a readable stream and return
- * the total number of bytes transferred.
- *
- * @param {ReadableStreamDefaultReader<Uint8Array>} reader - The reader for the
- *   readable stream.
- * @returns {Promise<number>} - A promise that resolves to the total number of
- *   bytes transferred.
- */
-export async function measureStreamedEgress(reader) {
-  let total = 0
-  while (true) {
-    const { done, value } = await reader.read()
-    if (done) break
-    total += value.length
-  }
-  return total
-}
-
-/**
  * Creates a transform stream that enforces quota limits during streaming. This
  * stream passes data through while tracking bytes and stopping when quota is
  * exceeded.
  *
  * @param {string | null} availableQuota - The available quota in bytes (null
- *   means no limit)
+ *   means no limit, '0' means no data allowed)
  * @returns {{
  *   stream: TransformStream<Uint8Array, Uint8Array>
- *   getStatus: () => { bytesTransferred: number; quotaExceeded: boolean }
+ *   getStatus: () => { egressBytes: number; quotaExceeded: boolean }
  * }}
  *   - Transform stream and status getter
  */
 export function createQuotaEnforcingStream(availableQuota) {
-  let totalTransferred = 0
+  let egressBytes = 0
   let quotaExceeded = false
-  // If no quota provided or quota is 0, treat as unlimited
-  const hasQuotaLimit = availableQuota && availableQuota !== '0'
+
+  // null means no limit (allow all), otherwise enforce the quota strictly
+  const hasQuotaLimit = availableQuota !== null
   const quotaLimit = hasQuotaLimit ? BigInt(availableQuota) : null
 
   const stream = new TransformStream({
     transform(chunk, controller) {
       const chunkSize = chunk.length
 
-      // If no quota limit, just pass through
+      // If no quota limit (null), pass through all data
       if (!hasQuotaLimit) {
         controller.enqueue(chunk)
-        totalTransferred += chunkSize
+        egressBytes += chunkSize
         return
       }
 
       // Check if this chunk would exceed quota
       // We know quotaLimit is not null here because hasQuotaLimit is true
       const limit = /** @type {bigint} */ (quotaLimit)
-      if (BigInt(totalTransferred + chunkSize) > limit) {
+      if (BigInt(egressBytes + chunkSize) > limit) {
         // Calculate how many bytes we can still transfer
-        const remainingQuota = Number(limit - BigInt(totalTransferred))
+        const remainingQuota = Number(limit - BigInt(egressBytes))
 
         if (remainingQuota > 0) {
           // Transfer only what fits in the quota
           const partialChunk = chunk.slice(0, remainingQuota)
           controller.enqueue(partialChunk)
-          totalTransferred += remainingQuota
+          egressBytes += remainingQuota
         }
 
         // Terminate stream gracefully - don't throw error, just stop
@@ -115,13 +97,13 @@ export function createQuotaEnforcingStream(availableQuota) {
 
       // Transfer the full chunk
       controller.enqueue(chunk)
-      totalTransferred += chunkSize
+      egressBytes += chunkSize
     },
   })
 
   return {
     stream,
-    getStatus: () => ({ bytesTransferred: totalTransferred, quotaExceeded }),
+    getStatus: () => ({ egressBytes, quotaExceeded }),
   }
 }
 

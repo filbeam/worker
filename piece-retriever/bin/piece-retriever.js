@@ -2,7 +2,6 @@ import { isValidEthereumAddress } from '../lib/address.js'
 import { parseRequest } from '../lib/request.js'
 import {
   retrieveFile as defaultRetrieveFile,
-  measureStreamedEgress,
   createQuotaEnforcingStream,
 } from '../lib/retrieval.js'
 import {
@@ -148,30 +147,14 @@ export default {
 
       // Apply quota enforcement and measure egress
       const quotaEnforcer = createQuotaEnforcingStream(availableQuota)
-      const enforcedStream = originResponse.body.pipeThrough(
+      const responseStream = originResponse.body.pipeThrough(
         quotaEnforcer.stream,
       )
 
-      // Split stream: one for response, one for measurement
-      const [responseStream, measurementStream] = enforcedStream.tee()
-
       ctx.waitUntil(
         (async () => {
-          let egressBytes = 0
-
-          try {
-            // Measure bytes from the measurement stream
-            const reader = measurementStream.getReader()
-            egressBytes = await measureStreamedEgress(reader)
-          } catch (error) {
-            // Measurement might fail if stream was terminated early
-            // Get the actual bytes transferred from the quota enforcer
-            const status = quotaEnforcer.getStatus()
-            egressBytes = status.bytesTransferred
-          }
-
           // Check if quota was exceeded
-          const { quotaExceeded } = quotaEnforcer.getStatus()
+          const { quotaExceeded, egressBytes } = quotaEnforcer.getStatus()
 
           const lastByteFetchedAt = performance.now()
 
