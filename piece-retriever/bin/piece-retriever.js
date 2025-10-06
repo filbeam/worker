@@ -144,34 +144,6 @@ export default {
       // Determine which quota to use based on cache hit/miss
       const availableQuota = cacheMiss ? cacheMissEgressQuota : cdnEgressQuota
 
-      // Check Content-Length header to see if we can determine size upfront
-      const contentLength = originResponse.headers.get('Content-Length')
-      if (contentLength && availableQuota !== null) {
-        const contentSize = BigInt(contentLength)
-        const quotaLimit = BigInt(availableQuota)
-
-        // If content size exceeds available quota, return 402 immediately
-        if (contentSize > quotaLimit) {
-          const quotaType = cacheMiss ? 'Cache miss' : 'CDN'
-
-          ctx.waitUntil(
-            logRetrievalResult(env, {
-              cacheMiss,
-              responseStatus: 402,
-              egressBytes: 0,
-              requestCountryCode,
-              timestamp: requestTimestamp,
-              dataSetId,
-            }),
-          )
-
-          return new Response(
-            `${quotaType} egress quota insufficient. Required: ${contentLength} bytes, Available: ${availableQuota} bytes. Payer '${payerWalletAddress}' needs to top up the payment rails.`,
-            { status: 402 },
-          )
-        }
-      }
-
       const firstByteAt = performance.now()
 
       // Apply quota enforcement and measure egress
