@@ -3,6 +3,7 @@ import { parseRequest } from '../lib/request.js'
 import {
   retrieveFile as defaultRetrieveFile,
   measureStreamedEgress,
+  createQuotaEnforcingStream,
 } from '../lib/retrieval.js'
 import {
   getStorageProviderAndValidatePayer,
@@ -83,11 +84,19 @@ export default {
       // Timestamp to measure file retrieval performance (from cache and from SP)
       const fetchStartedAt = performance.now()
 
-      const [{ serviceProviderId, serviceUrl, dataSetId }, isBadBit] =
-        await Promise.all([
-          getStorageProviderAndValidatePayer(env, payerWalletAddress, pieceCid),
-          findInBadBits(env, pieceCid),
-        ])
+      const [
+        {
+          serviceProviderId,
+          serviceUrl,
+          dataSetId,
+          cdnEgressQuota,
+          cacheMissEgressQuota,
+        },
+        isBadBit,
+      ] = await Promise.all([
+        getStorageProviderAndValidatePayer(env, payerWalletAddress, pieceCid),
+        findInBadBits(env, pieceCid),
+      ])
 
       httpAssert(
         !isBadBit,
@@ -132,36 +141,136 @@ export default {
         return response
       }
 
-      // Stream and count bytes
-      // We create two identical streams, one for the egress measurement and the other for returning the response as soon as possible
-      const [returnedStream, egressMeasurementStream] =
-        originResponse.body.tee()
-      const reader = egressMeasurementStream.getReader()
+      // Determine which quota to use based on cache hit/miss
+      const availableQuota = cacheMiss ? cacheMissEgressQuota : cdnEgressQuota
+
+      // Create abort controller for quota enforcement
+      const quotaAbortController = new AbortController()
+
+      // Track bytes for logging
+      let egressBytes = 0
+      let quotaExceeded = false
       const firstByteAt = performance.now()
 
-      ctx.waitUntil(
-        (async () => {
-          const egressBytes = await measureStreamedEgress(reader)
-          const lastByteFetchedAt = performance.now()
+      // Create quota-enforcing transform stream
+      const quotaStream = createQuotaEnforcingStream(
+        availableQuota,
+        quotaAbortController,
+        (bytes, exceeded = false) => {
+          egressBytes = bytes
+          if (exceeded) {
+            quotaExceeded = true
+          }
+        },
+      )
 
-          await logRetrievalResult(env, {
-            cacheMiss,
-            responseStatus: originResponse.status,
-            egressBytes,
-            requestCountryCode,
-            timestamp: requestTimestamp,
-            performanceStats: {
-              fetchTtfb: firstByteAt - fetchStartedAt,
-              fetchTtlb: lastByteFetchedAt - fetchStartedAt,
-              workerTtfb: firstByteAt - workerStartedAt,
-            },
-            dataSetId,
+      // Apply the quota enforcement to the response stream
+      let returnedStream
+      let streamReader
+
+      try {
+        // If we don't need quota enforcement (quota is null or very large), use original approach
+        if (!availableQuota || BigInt(availableQuota) > BigInt('10000000000')) {
+          // Use the original tee approach for measurement
+          const [stream1, stream2] = originResponse.body.tee()
+          returnedStream = stream1
+          streamReader = stream2.getReader()
+
+          ctx.waitUntil(
+            (async () => {
+              egressBytes = await measureStreamedEgress(streamReader)
+              const lastByteFetchedAt = performance.now()
+
+              await logRetrievalResult(env, {
+                cacheMiss,
+                responseStatus: originResponse.status,
+                egressBytes,
+                requestCountryCode,
+                timestamp: requestTimestamp,
+                performanceStats: {
+                  fetchTtfb: firstByteAt - fetchStartedAt,
+                  fetchTtlb: lastByteFetchedAt - fetchStartedAt,
+                  workerTtfb: firstByteAt - workerStartedAt,
+                },
+                dataSetId,
+              })
+
+              await updateDataSetStats(env, { dataSetId, egressBytes, cacheMiss })
+            })(),
+          )
+        } else {
+          // For quota enforcement, pipe through our quota-enforcing transform
+          returnedStream = originResponse.body.pipeThrough(quotaStream)
+
+          // Track stream completion
+          const streamPromise = new Promise((resolve) => {
+            // Set up an interval to check if bytes have been transferred
+            const checkInterval = setInterval(() => {
+              if (egressBytes > 0 || quotaExceeded) {
+                clearInterval(checkInterval)
+                resolve()
+              }
+            }, 100)
+
+            // Also set a timeout to ensure we don't wait forever
+            setTimeout(() => {
+              clearInterval(checkInterval)
+              resolve()
+            }, 2000)
           })
 
-          // Update stats and decrement quota
-          await updateDataSetStats(env, { dataSetId, egressBytes, cacheMiss })
-        })(),
-      )
+          ctx.waitUntil(
+            (async () => {
+              // Wait for stream to actually transfer some data or timeout
+              await streamPromise
+
+              const lastByteFetchedAt = performance.now()
+
+              await logRetrievalResult(env, {
+                cacheMiss,
+                responseStatus: quotaExceeded ? 402 : originResponse.status,
+                egressBytes,
+                requestCountryCode,
+                timestamp: requestTimestamp,
+                performanceStats: {
+                  fetchTtfb: firstByteAt - fetchStartedAt,
+                  fetchTtlb: lastByteFetchedAt - fetchStartedAt,
+                  workerTtfb: firstByteAt - workerStartedAt,
+                },
+                dataSetId,
+              })
+
+              // Update stats and decrement quota
+              await updateDataSetStats(env, { dataSetId, egressBytes, cacheMiss })
+            })(),
+          )
+        }
+      } catch (error) {
+        // Handle quota enforcement errors
+        if (
+          error instanceof Error &&
+          error.message.includes('quota exceeded')
+        ) {
+          // Return 402 Payment Required for quota exceeded
+          ctx.waitUntil(
+            logRetrievalResult(env, {
+              cacheMiss,
+              responseStatus: 402,
+              egressBytes,
+              requestCountryCode,
+              timestamp: requestTimestamp,
+              dataSetId,
+            }),
+          )
+
+          const quotaType = cacheMiss ? 'Cache miss' : 'CDN'
+          return new Response(
+            `${quotaType} egress quota exhausted. Payer '${payerWalletAddress}' needs to top up the payment rails.`,
+            { status: 402 },
+          )
+        }
+        throw error
+      }
 
       // Return immediately, proxying the transformed response
       const response = new Response(returnedStream, {

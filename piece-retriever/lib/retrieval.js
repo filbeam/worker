@@ -62,6 +62,76 @@ export async function measureStreamedEgress(reader) {
   return total
 }
 
+
+/**
+ * Creates a transform stream that enforces quota limits during streaming. This
+ * stream passes data through while tracking bytes and stopping when quota is
+ * exceeded.
+ *
+ * @param {string | null} availableQuota - The available quota in bytes
+ * @param {AbortController} abortController - Controller to signal quota
+ *   exceeded
+ * @param {(bytesTransferred: number, exceeded?: boolean) => void} onBytesTransferred
+ *   - Callback for bytes transferred
+ *
+ * @returns {TransformStream<Uint8Array, Uint8Array>} - Transform stream that
+ *   enforces quota
+ */
+export function createQuotaEnforcingStream(
+  availableQuota,
+  abortController,
+  onBytesTransferred,
+) {
+  let totalTransferred = 0
+  const quotaLimit =
+    availableQuota && availableQuota !== '0' ? BigInt(availableQuota) : null
+
+  return new TransformStream({
+    transform(chunk, controller) {
+      const chunkSize = chunk.length
+
+      // If no quota limit, just pass through
+      if (quotaLimit === null) {
+        controller.enqueue(chunk)
+        totalTransferred += chunkSize
+        onBytesTransferred(totalTransferred)
+        return
+      }
+
+      // Check if this chunk would exceed quota
+      if (BigInt(totalTransferred + chunkSize) > quotaLimit) {
+        // Calculate how many bytes we can still transfer
+        const remainingQuota = Number(quotaLimit - BigInt(totalTransferred))
+
+        if (remainingQuota > 0) {
+          // Transfer only what fits in the quota
+          const partialChunk = chunk.slice(0, remainingQuota)
+          controller.enqueue(partialChunk)
+          totalTransferred += remainingQuota
+          onBytesTransferred(totalTransferred, true) // Mark as exceeded
+        }
+
+        // Close the stream gracefully and signal abort
+        controller.terminate()
+        abortController.abort('Egress quota exceeded')
+        return
+      }
+
+      // Transfer the full chunk
+      controller.enqueue(chunk)
+      totalTransferred += chunkSize
+      onBytesTransferred(totalTransferred)
+    },
+
+    flush() {
+      // Final callback with total bytes
+      if (totalTransferred > 0) {
+        onBytesTransferred(totalTransferred)
+      }
+    },
+  })
+}
+
 /**
  * @param {string} serviceUrl
  * @param {string} pieceCid

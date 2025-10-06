@@ -723,6 +723,166 @@ describe('piece-retriever.fetch', () => {
 
     expect(countAfter).toEqual(countBefore)
   })
+  it('stops streaming when quota is exceeded', async () => {
+    const payerAddress = '0xaaaa567890abcdef1234567890abcdef12345678'
+    const pieceCid =
+      'bafkquotatestexceedquotatestexceedquotatestexceedquotatestexce'
+    const dataSetId = 'quota-test-dataset-exceed'
+    const serviceProviderId = 'quota-test-provider-exceed'
+
+    // Set up provider
+    await env.DB.prepare(
+      'INSERT INTO service_providers (id, service_url) VALUES (?, ?)',
+    )
+      .bind(serviceProviderId, 'https://test-provider.com')
+      .run()
+
+    // Set up data set with small quota (100 bytes)
+    await env.DB.prepare(
+      'INSERT INTO data_sets (id, service_provider_id, payer_address, with_cdn, cdn_egress_quota, cache_miss_egress_quota) VALUES (?, ?, ?, ?, ?, ?)',
+    )
+      .bind(dataSetId, serviceProviderId, payerAddress, true, '100', '100')
+      .run()
+
+    // Set up piece
+    await env.DB.prepare(
+      'INSERT INTO pieces (id, data_set_id, cid) VALUES (?, ?, ?)',
+    )
+      .bind('piece-quota-test', dataSetId, pieceCid)
+      .run()
+
+    // Mock a response with more data than quota allows (500 bytes)
+    const largeContent = new Uint8Array(500).fill(65) // 500 'A's
+    const fakeResponse = new Response(largeContent, {
+      status: 200,
+      headers: { 'CF-Cache-Status': 'MISS', 'Content-Length': '500' },
+    })
+
+    const ctx = createExecutionContext()
+    const res = await worker.fetch(
+      withRequest(payerAddress, pieceCid),
+      env,
+      ctx,
+      {
+        retrieveFile: async () => ({ response: fakeResponse, cacheMiss: true }),
+      },
+    )
+    await waitOnExecutionContext(ctx)
+
+    // Should get partial content when quota is exceeded
+    // The stream will be cut off but initial response may still be 200
+    // Check the actual bytes transferred
+    const body = await res.arrayBuffer()
+    assert(
+      body.byteLength <= 100,
+      `Expected at most 100 bytes, got ${body.byteLength}`,
+    )
+
+    // Check logs after execution context completes
+    const { results } = await env.DB.prepare(
+      'SELECT egress_bytes, response_status FROM retrieval_logs WHERE data_set_id = ?',
+    )
+      .bind(dataSetId)
+      .all()
+
+    assert.strictEqual(results.length, 1)
+    assert(
+      results[0].egress_bytes <= 100,
+      `Expected at most 100 bytes logged, got ${results[0].egress_bytes}`,
+    )
+
+    // Check that quota was decremented
+    const quotaResult = await env.DB.prepare(
+      'SELECT cache_miss_egress_quota FROM data_sets WHERE id = ?',
+    )
+      .bind(dataSetId)
+      .first()
+
+    const actualQuota = quotaResult.cache_miss_egress_quota.endsWith('.0')
+      ? quotaResult.cache_miss_egress_quota.slice(0, -2)
+      : quotaResult.cache_miss_egress_quota
+
+    const remaining = 100 - (results[0].egress_bytes || 0)
+    assert.strictEqual(actualQuota, String(remaining))
+  })
+
+  it('allows full transfer when within quota', async () => {
+    const payerAddress = '0xbbbb567890abcdef1234567890abcdef12345678'
+    const pieceCid =
+      'bafkquotaokquotaokquotaokquotaokquotaokquotaokquotaokquotaok'
+    const dataSetId = 'quota-ok-dataset-unique'
+    const serviceProviderId = 'quota-ok-provider-unique'
+
+    // Set up provider
+    await env.DB.prepare(
+      'INSERT INTO service_providers (id, service_url) VALUES (?, ?)',
+    )
+      .bind(serviceProviderId, 'https://test-provider.com')
+      .run()
+
+    // Set up data set with sufficient quota (1000 bytes)
+    await env.DB.prepare(
+      'INSERT INTO data_sets (id, service_provider_id, payer_address, with_cdn, cdn_egress_quota, cache_miss_egress_quota) VALUES (?, ?, ?, ?, ?, ?)',
+    )
+      .bind(dataSetId, serviceProviderId, payerAddress, true, '1000', '1000')
+      .run()
+
+    // Set up piece
+    await env.DB.prepare(
+      'INSERT INTO pieces (id, data_set_id, cid) VALUES (?, ?, ?)',
+    )
+      .bind('piece-quota-ok', dataSetId, pieceCid)
+      .run()
+
+    // Mock a response that fits within quota (100 bytes)
+    const content = new Uint8Array(100).fill(65) // 100 'A's
+    const fakeResponse = new Response(content, {
+      status: 200,
+      headers: { 'CF-Cache-Status': 'HIT', 'Content-Length': '100' },
+    })
+
+    const ctx = createExecutionContext()
+    const res = await worker.fetch(
+      withRequest(payerAddress, pieceCid),
+      env,
+      ctx,
+      {
+        retrieveFile: async () => ({
+          response: fakeResponse,
+          cacheMiss: false,
+        }),
+      },
+    )
+    await waitOnExecutionContext(ctx)
+
+    // Should succeed
+    assert.strictEqual(res.status, 200)
+    const body = await res.arrayBuffer()
+    assert.strictEqual(body.byteLength, 100)
+
+    // Check that full content was logged
+    const { results } = await env.DB.prepare(
+      'SELECT egress_bytes, response_status FROM retrieval_logs WHERE data_set_id = ?',
+    )
+      .bind(dataSetId)
+      .all()
+
+    assert.strictEqual(results.length, 1)
+    assert.strictEqual(results[0].egress_bytes, 100)
+    assert.strictEqual(results[0].response_status, 200)
+
+    // Check that quota was decremented correctly
+    const quotaResult = await env.DB.prepare(
+      'SELECT cdn_egress_quota FROM data_sets WHERE id = ?',
+    )
+      .bind(dataSetId)
+      .first()
+
+    const actualQuota = quotaResult.cdn_egress_quota.endsWith('.0')
+      ? quotaResult.cdn_egress_quota.slice(0, -2)
+      : quotaResult.cdn_egress_quota
+    assert.strictEqual(actualQuota, '900') // 1000 - 100
+  })
 })
 
 /**
