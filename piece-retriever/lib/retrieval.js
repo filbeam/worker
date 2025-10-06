@@ -69,25 +69,20 @@ export async function measureStreamedEgress(reader) {
  *
  * @param {string | null} availableQuota - The available quota in bytes (null
  *   means no limit)
- * @param {AbortController} abortController - Controller to signal quota
- *   exceeded
- * @param {(bytesTransferred: number, exceeded?: boolean) => void} onBytesTransferred
- *   - Callback for bytes transferred
- *
- * @returns {TransformStream<Uint8Array, Uint8Array>} - Transform stream that
- *   enforces quota
+ * @returns {{
+ *   stream: TransformStream<Uint8Array, Uint8Array>
+ *   getStatus: () => { bytesTransferred: number; quotaExceeded: boolean }
+ * }}
+ *   - Transform stream and status getter
  */
-export function createQuotaEnforcingStream(
-  availableQuota,
-  abortController,
-  onBytesTransferred,
-) {
+export function createQuotaEnforcingStream(availableQuota) {
   let totalTransferred = 0
+  let quotaExceeded = false
   // If no quota provided or quota is 0, treat as unlimited
   const hasQuotaLimit = availableQuota && availableQuota !== '0'
   const quotaLimit = hasQuotaLimit ? BigInt(availableQuota) : null
 
-  return new TransformStream({
+  const stream = new TransformStream({
     transform(chunk, controller) {
       const chunkSize = chunk.length
 
@@ -95,7 +90,6 @@ export function createQuotaEnforcingStream(
       if (!hasQuotaLimit) {
         controller.enqueue(chunk)
         totalTransferred += chunkSize
-        onBytesTransferred(totalTransferred)
         return
       }
 
@@ -111,28 +105,24 @@ export function createQuotaEnforcingStream(
           const partialChunk = chunk.slice(0, remainingQuota)
           controller.enqueue(partialChunk)
           totalTransferred += remainingQuota
-          onBytesTransferred(totalTransferred, true) // Mark as exceeded
         }
 
-        // Close the stream gracefully and signal abort
+        // Terminate stream gracefully - don't throw error, just stop
+        quotaExceeded = true
         controller.terminate()
-        abortController.abort('Egress quota exceeded')
         return
       }
 
       // Transfer the full chunk
       controller.enqueue(chunk)
       totalTransferred += chunkSize
-      onBytesTransferred(totalTransferred)
-    },
-
-    flush() {
-      // Final callback with total bytes
-      if (totalTransferred > 0) {
-        onBytesTransferred(totalTransferred)
-      }
     },
   })
+
+  return {
+    stream,
+    getStatus: () => ({ bytesTransferred: totalTransferred, quotaExceeded }),
+  }
 }
 
 /**
