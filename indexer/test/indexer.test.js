@@ -1041,6 +1041,261 @@ describe('POST /fwss/service-terminated', () => {
   })
 })
 
+describe('POST /fwss/cdn-payment-rails-topped-up', () => {
+  beforeEach(async () => {
+    await env.DB.exec('DELETE FROM data_sets')
+  })
+
+  it('returns 400 if data_set_id is missing', async () => {
+    const req = new Request('https://host/fwss/cdn-payment-rails-topped-up', {
+      method: 'POST',
+      headers: {
+        [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+      },
+      body: JSON.stringify({
+        total_cdn_lockup: '1000000000000000000',
+        total_cache_miss_lockup: '2000000000000000000',
+      }),
+    })
+    const res = await workerImpl.fetch(req, env)
+    expect(res.status).toBe(400)
+    expect(await res.text()).toBe('Bad Request')
+  })
+
+  it('returns 400 if total_cdn_lockup is missing', async () => {
+    const req = new Request('https://host/fwss/cdn-payment-rails-topped-up', {
+      method: 'POST',
+      headers: {
+        [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+      },
+      body: JSON.stringify({
+        data_set_id: '123',
+        total_cache_miss_lockup: '2000000000000000000',
+      }),
+    })
+    const res = await workerImpl.fetch(req, env)
+    expect(res.status).toBe(400)
+    expect(await res.text()).toBe('Bad Request')
+  })
+
+  it('returns 400 if total_cache_miss_lockup is missing', async () => {
+    const req = new Request('https://host/fwss/cdn-payment-rails-topped-up', {
+      method: 'POST',
+      headers: {
+        [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+      },
+      body: JSON.stringify({
+        data_set_id: '123',
+        total_cdn_lockup: '1000000000000000000',
+      }),
+    })
+    const res = await workerImpl.fetch(req, env)
+    expect(res.status).toBe(400)
+    expect(await res.text()).toBe('Bad Request')
+  })
+
+  it('calculates and stores egress quotas', async () => {
+    const dataSetId = await withDataSet(env, {
+      withCDN: true,
+      serviceProviderId: '1',
+      payerAddress: '0xPayerAddress',
+    })
+
+    // Set environment rates
+    env.CDN_RATE_DOLLARS_PER_TIB = '5'
+    env.CACHE_MISS_RATE_DOLLARS_PER_TIB = '5'
+
+    const req = new Request('https://host/fwss/cdn-payment-rails-topped-up', {
+      method: 'POST',
+      headers: {
+        [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+      },
+      body: JSON.stringify({
+        data_set_id: dataSetId,
+        total_cdn_lockup: '5000000000000000000', // 5 USDFC
+        total_cache_miss_lockup: '10000000000000000000', // 10 USDFC
+      }),
+    })
+
+    const res = await workerImpl.fetch(req, env)
+    expect(res.status).toBe(200)
+    expect(await res.text()).toBe('OK')
+
+    // Verify quotas were stored
+    const result = await env.DB.prepare(
+      'SELECT cdn_egress_quota, cache_miss_egress_quota FROM data_sets WHERE id = ?',
+    )
+      .bind(dataSetId)
+      .first()
+
+    // With 5 USDFC lockup and $5 per TiB rate = 1 TiB = 1099511627776 bytes
+    expect(result.cdn_egress_quota).toBe('1099511627776')
+    // With 10 USDFC lockup and $5 per TiB rate = 2 TiB = 2199023255552 bytes
+    expect(result.cache_miss_egress_quota).toBe('2199023255552')
+  })
+
+  it('handles numeric data_set_id', async () => {
+    const dataSetId = '456'
+    await withDataSet(env, {
+      dataSetId,
+      withCDN: true,
+      serviceProviderId: '1',
+      payerAddress: '0xPayerAddress',
+    })
+
+    env.CDN_RATE_DOLLARS_PER_TIB = '5'
+    env.CACHE_MISS_RATE_DOLLARS_PER_TIB = '5'
+
+    const req = new Request('https://host/fwss/cdn-payment-rails-topped-up', {
+      method: 'POST',
+      headers: {
+        [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+      },
+      body: JSON.stringify({
+        data_set_id: 456, // Numeric
+        total_cdn_lockup: '5000000000000000000',
+        total_cache_miss_lockup: '10000000000000000000',
+      }),
+    })
+
+    const res = await workerImpl.fetch(req, env)
+    expect(res.status).toBe(200)
+    expect(await res.text()).toBe('OK')
+
+    const result = await env.DB.prepare(
+      'SELECT cdn_egress_quota, cache_miss_egress_quota FROM data_sets WHERE id = ?',
+    )
+      .bind(dataSetId)
+      .first()
+
+    expect(result.cdn_egress_quota).toBe('1099511627776')
+    expect(result.cache_miss_egress_quota).toBe('2199023255552')
+  })
+
+  it('handles zero lockup amounts', async () => {
+    const dataSetId = await withDataSet(env, {
+      withCDN: true,
+      serviceProviderId: '1',
+      payerAddress: '0xPayerAddress',
+    })
+
+    env.CDN_RATE_DOLLARS_PER_TIB = '5'
+    env.CACHE_MISS_RATE_DOLLARS_PER_TIB = '5'
+
+    const req = new Request('https://host/fwss/cdn-payment-rails-topped-up', {
+      method: 'POST',
+      headers: {
+        [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+      },
+      body: JSON.stringify({
+        data_set_id: dataSetId,
+        total_cdn_lockup: '0',
+        total_cache_miss_lockup: '0',
+      }),
+    })
+
+    const res = await workerImpl.fetch(req, env)
+    expect(res.status).toBe(200)
+    expect(await res.text()).toBe('OK')
+
+    const result = await env.DB.prepare(
+      'SELECT cdn_egress_quota, cache_miss_egress_quota FROM data_sets WHERE id = ?',
+    )
+      .bind(dataSetId)
+      .first()
+
+    expect(result.cdn_egress_quota).toBe('0')
+    expect(result.cache_miss_egress_quota).toBe('0')
+  })
+
+  it('updates quotas for existing data set', async () => {
+    const dataSetId = await withDataSet(env, {
+      withCDN: true,
+      serviceProviderId: '1',
+      payerAddress: '0xPayerAddress',
+    })
+
+    env.CDN_RATE_DOLLARS_PER_TIB = '5'
+    env.CACHE_MISS_RATE_DOLLARS_PER_TIB = '5'
+
+    // First update
+    await workerImpl.fetch(
+      new Request('https://host/fwss/cdn-payment-rails-topped-up', {
+        method: 'POST',
+        headers: {
+          [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+        },
+        body: JSON.stringify({
+          data_set_id: dataSetId,
+          total_cdn_lockup: '5000000000000000000',
+          total_cache_miss_lockup: '10000000000000000000',
+        }),
+      }),
+      env,
+    )
+
+    // Second update with different values
+    const req = new Request('https://host/fwss/cdn-payment-rails-topped-up', {
+      method: 'POST',
+      headers: {
+        [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+      },
+      body: JSON.stringify({
+        data_set_id: dataSetId,
+        total_cdn_lockup: '10000000000000000000', // 10 USDFC
+        total_cache_miss_lockup: '20000000000000000000', // 20 USDFC
+      }),
+    })
+
+    const res = await workerImpl.fetch(req, env)
+    expect(res.status).toBe(200)
+
+    const result = await env.DB.prepare(
+      'SELECT cdn_egress_quota, cache_miss_egress_quota FROM data_sets WHERE id = ?',
+    )
+      .bind(dataSetId)
+      .first()
+
+    // Updated values: 10 USDFC = 2 TiB, 20 USDFC = 4 TiB
+    expect(result.cdn_egress_quota).toBe('2199023255552')
+    expect(result.cache_miss_egress_quota).toBe('4398046511104')
+  })
+
+  it('handles missing data set gracefully', async () => {
+    // Test that the handler doesn't fail when the data set doesn't exist
+    const dataSetId = '999'
+
+    env.CDN_RATE_DOLLARS_PER_TIB = '5'
+    env.CACHE_MISS_RATE_DOLLARS_PER_TIB = '5'
+
+    const req = new Request('https://host/fwss/cdn-payment-rails-topped-up', {
+      method: 'POST',
+      headers: {
+        [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+      },
+      body: JSON.stringify({
+        data_set_id: dataSetId,
+        total_cdn_lockup: '5000000000000000000',
+        total_cache_miss_lockup: '10000000000000000000',
+      }),
+    })
+
+    const res = await workerImpl.fetch(req, env)
+    expect(res.status).toBe(200)
+    expect(await res.text()).toBe('OK')
+
+    // Since the data set doesn't exist, the quotas won't be stored
+    // This is expected behavior - the handler updates existing data sets only
+    const result = await env.DB.prepare(
+      'SELECT cdn_egress_quota, cache_miss_egress_quota FROM data_sets WHERE id = ?',
+    )
+      .bind(dataSetId)
+      .first()
+
+    expect(result).toBe(null)
+  })
+})
+
 describe('POST /filbeam/usage-reported', () => {
   it('validates required fields', async () => {
     const testCases = [
