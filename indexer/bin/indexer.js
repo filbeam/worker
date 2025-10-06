@@ -299,17 +299,6 @@ export default {
           )
           message.retry({ delaySeconds: 10 })
         }
-      } else if (message.body.type === 'fwss-cdn-payment-rails-topped-up') {
-        try {
-          // @ts-ignore - env type includes the new dollar rate variables
-          await handleFWSSCDNPaymentRailsToppedUp(env, message.body.payload)
-          message.ack()
-        } catch (err) {
-          console.log(
-            `Error handling CDN payment rails top-up: ${err}. Retrying...`,
-          )
-          message.retry({ delaySeconds: 10 })
-        }
       } else {
         console.error(`Unknown message type: ${message.body.type}.`)
         message.ack() // Acknowledge unknown messages to avoid reprocessing
