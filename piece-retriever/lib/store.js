@@ -174,8 +174,11 @@ export async function getStorageProviderAndValidatePayer(
 
   // Check CDN quota first
   const withSufficientCDNQuota = withApprovedProvider.filter((row) => {
-    const cdnQuota = row.cdn_egress_quota
-    return cdnQuota !== null && cdnQuota !== undefined && BigInt(cdnQuota) > 0n
+    return (
+      row.cdn_egress_quota !== null &&
+      row.cdn_egress_quota !== undefined &&
+      BigInt(row.cdn_egress_quota) > 0n
+    )
   })
   httpAssert(
     withSufficientCDNQuota.length > 0,
@@ -185,11 +188,10 @@ export async function getStorageProviderAndValidatePayer(
 
   // Check cache-miss quota
   const withSufficientCacheMissQuota = withSufficientCDNQuota.filter((row) => {
-    const cacheMissQuota = row.cache_miss_egress_quota
     return (
-      cacheMissQuota !== null &&
-      cacheMissQuota !== undefined &&
-      BigInt(cacheMissQuota) > 0n
+      row.cache_miss_egress_quota !== null &&
+      row.cache_miss_egress_quota !== undefined &&
+      BigInt(row.cache_miss_egress_quota) > 0n
     )
   })
   httpAssert(

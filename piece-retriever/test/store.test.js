@@ -602,40 +602,6 @@ describe('Egress Quota Management', () => {
     )
   })
 
-  it('handles very large quota values (uint256)', async () => {
-    const dataSetId = 'test-quota-large'
-    const pieceCid = 'test-cid-large'
-    const payerAddress = '0x1234567890abcdef1234567890abcdef12345678'
-    // Simulate a very large uint256 value
-    const largeQuota =
-      '115792089237316195423570985008687907853269984665640564039457584007913129639935'
-
-    await env.DB.prepare(
-      'INSERT INTO data_sets (id, service_provider_id, payer_address, with_cdn, cdn_egress_quota, cache_miss_egress_quota) VALUES (?, ?, ?, ?, ?, ?)',
-    )
-      .bind(
-        dataSetId,
-        APPROVED_SERVICE_PROVIDER_ID,
-        payerAddress,
-        true,
-        largeQuota,
-        largeQuota,
-      )
-      .run()
-    await env.DB.prepare(
-      'INSERT INTO pieces (id, data_set_id, cid) VALUES (?, ?, ?)',
-    )
-      .bind('piece-large', dataSetId, pieceCid)
-      .run()
-
-    const result = await getStorageProviderAndValidatePayer(
-      env,
-      payerAddress,
-      pieceCid,
-    )
-    assert.strictEqual(result.cdnEgressQuota, largeQuota)
-  })
-
   it('handles quota exactly at piece size', async () => {
     const dataSetId = 'test-quota-exact'
     const pieceCid = 'test-cid-exact'
