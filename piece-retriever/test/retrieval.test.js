@@ -4,18 +4,24 @@ import { retrieveFile, getRetrievalUrl } from '../lib/retrieval.js'
 describe('retrieveFile', () => {
   const baseUrl = 'https://example.com'
   const pieceCid = 'bafy123abc'
-  const defaultCacheTtl = 86400
   let fetchMock
+  let cachesMock
 
   beforeEach(() => {
     fetchMock = vi
       .fn()
       .mockResolvedValue({ ok: true, status: 200, headers: new Headers({}) })
     global.fetch = fetchMock
+    cachesMock = {
+      match: vi.fn(),
+      put: vi.fn().mockResolvedValueOnce(),
+    }
+    global.caches = { default: cachesMock }
   })
 
   it('constructs the correct URL', async () => {
-    await retrieveFile(baseUrl, pieceCid)
+    cachesMock.match.mockResolvedValueOnce(null)
+    await retrieveFile(baseUrl, pieceCid, new Request(baseUrl))
     expect(fetchMock).toHaveBeenCalledWith(
       `${baseUrl}/piece/${pieceCid}`,
       expect.any(Object),
@@ -23,35 +29,48 @@ describe('retrieveFile', () => {
   })
 
   it('uses the default cacheTtl if not provided', async () => {
-    await retrieveFile(baseUrl, pieceCid)
-    const options = fetchMock.mock.calls[0][1]
-    expect(options.cf.cacheTtlByStatus['200-299']).toBe(defaultCacheTtl)
+    cachesMock.match.mockResolvedValueOnce(null)
+    await retrieveFile(baseUrl, pieceCid, new Request(baseUrl))
+    expect(cachesMock.put.mock.calls[0][1].headers.get('Cache-Control')).toBe(
+      'public, max-age=86400',
+    )
   })
 
   it('uses the provided cacheTtl', async () => {
-    await retrieveFile(baseUrl, pieceCid, 1234)
-    const options = fetchMock.mock.calls[0][1]
-    expect(options.cf.cacheTtlByStatus['200-299']).toBe(1234)
+    cachesMock.match.mockResolvedValueOnce(null)
+    await retrieveFile(baseUrl, pieceCid, new Request(baseUrl), 1234)
+    expect(cachesMock.put.mock.calls[0][1].headers.get('Cache-Control')).toBe(
+      'public, max-age=1234',
+    )
   })
 
-  it('sets correct cacheTtlByStatus and cacheEverything', async () => {
-    await retrieveFile(baseUrl, pieceCid, 555)
-    const options = fetchMock.mock.calls[0][1]
-    expect(options.cf).toEqual({
-      cacheTtlByStatus: {
-        '200-299': 555,
-        404: 0,
-        '500-599': 0,
-      },
-      cacheEverything: true,
-    })
-  })
-
-  it('returns the fetch response', async () => {
+  it('returns the cached response', async () => {
     const response = { ok: true, status: 200, headers: new Headers({}) }
-    fetchMock.mockResolvedValueOnce(response)
-    const result = await retrieveFile(baseUrl, pieceCid)
+    cachesMock.match.mockResolvedValueOnce(response)
+    const result = await retrieveFile(baseUrl, pieceCid, new Request(baseUrl))
     expect(result.response).toBe(response)
+  })
+
+  it('returns the not ok fetch response', async () => {
+    cachesMock.match.mockResolvedValueOnce(null)
+    const response = { ok: false, status: 500, headers: new Headers({}) }
+    fetchMock.mockResolvedValueOnce(response)
+    const result = await retrieveFile(baseUrl, pieceCid, new Request(baseUrl))
+    expect(result.response).toBe(response)
+  })
+
+  it('caches and returns a newly cached response', async () => {
+    cachesMock.match.mockResolvedValueOnce(null)
+    const response = {
+      ok: true,
+      status: 201,
+      headers: new Headers({ foo: 'bar' }),
+    }
+    fetchMock.mockResolvedValueOnce(response)
+    const result = await retrieveFile(baseUrl, pieceCid, new Request(baseUrl))
+    expect(result.response.status).toBe(201)
+    expect(result.response.headers.get('foo')).toBe('bar')
+    expect(cachesMock.put.mock.calls[0][0]).toBe(`${baseUrl}/piece/${pieceCid}`)
   })
 })
 
