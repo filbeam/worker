@@ -23,12 +23,12 @@ import { findInBadBits } from '../lib/bad-bits-util.js'
  *   CLIENT_CACHE_TTL: 31536000
  *   DNS_ROOT: '.localhost' | '.calibration.filbeam.io' | '.filbeam.io'
  *   DB: D1Database
- * }} RetrieverEnv
+ * }} PieceRetrieverEnv
  */
 export default {
   /**
    * @param {Request} request
-   * @param {RetrieverEnv} env
+   * @param {PieceRetrieverEnv} env
    * @param {ExecutionContext} ctx
    * @param {object} options
    * @param {typeof defaultRetrieveFile} [options.retrieveFile]
@@ -44,7 +44,7 @@ export default {
 
   /**
    * @param {Request} request
-   * @param {RetrieverEnv} env
+   * @param {PieceRetrieverEnv} env
    * @param {ExecutionContext} ctx
    * @param {object} options
    * @param {typeof defaultRetrieveFile} [options.retrieveFile]
