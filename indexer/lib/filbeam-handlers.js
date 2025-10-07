@@ -9,14 +9,15 @@ export async function handleFilBeamUsageReported(env, payload) {
   const dataSetId = String(payload.data_set_id)
   const newEpoch = Number(payload.new_epoch)
 
-  // Check if dataset exists and get current last_reported_epoch
-  const result = /** @type {{ last_reported_epoch: number | null } | null} */ (
-    await env.DB.prepare(
-      'SELECT last_reported_epoch FROM data_sets WHERE id = ?',
+  // Check if dataset exists and get current last_rollup_reported_at_epoch
+  const result =
+    /** @type {{ last_rollup_reported_at_epoch: number | null } | null} */ (
+      await env.DB.prepare(
+        'SELECT last_rollup_reported_at_epoch FROM data_sets WHERE id = ?',
+      )
+        .bind(dataSetId)
+        .first()
     )
-      .bind(dataSetId)
-      .first()
-  )
 
   if (!result) {
     console.warn(
@@ -26,32 +27,35 @@ export async function handleFilBeamUsageReported(env, payload) {
     return new Response('OK', { status: 200 })
   }
 
-  const lastReportedEpoch = result.last_reported_epoch
+  const lastRollupReportedAtEpoch = result.last_rollup_reported_at_epoch
 
   // Validate that new epoch is greater than last reported epoch
-  if (lastReportedEpoch !== null && newEpoch <= lastReportedEpoch) {
+  if (
+    lastRollupReportedAtEpoch !== null &&
+    newEpoch <= lastRollupReportedAtEpoch
+  ) {
     console.error(
       `FilBeam.UsageReported: Invalid epoch progression for dataset ${dataSetId}. ` +
-        `Current epoch: ${lastReportedEpoch}, new epoch: ${newEpoch}`,
+        `Current epoch: ${lastRollupReportedAtEpoch}, new epoch: ${newEpoch}`,
     )
     return new Response(
-      `Bad Request: new_epoch (${newEpoch}) must be greater than last_reported_epoch (${lastReportedEpoch})`,
+      `Bad Request: new_epoch (${newEpoch}) must be greater than last_rollup_reported_at_epoch (${lastRollupReportedAtEpoch})`,
       { status: 400 },
     )
   }
 
-  // Update the last_reported_epoch
+  // Update the last_rollup_reported_at_epoch
   await env.DB.prepare(
     `UPDATE data_sets
-     SET last_reported_epoch = ?
+     SET last_rollup_reported_at_epoch = ?
      WHERE id = ?
-     AND (last_reported_epoch IS NULL OR last_reported_epoch < ?)`,
+     AND (last_rollup_reported_at_epoch IS NULL OR last_rollup_reported_at_epoch < ?)`,
   )
     .bind(newEpoch, dataSetId, newEpoch)
     .run()
 
   console.log(
-    `FilBeam.UsageReported: Updated dataset ${dataSetId} last_reported_epoch from ${lastReportedEpoch} to ${newEpoch}`,
+    `FilBeam.UsageReported: Updated dataset ${dataSetId} last_rollup_reported_at_epoch from ${lastRollupReportedAtEpoch} to ${newEpoch}`,
   )
 
   return new Response('OK', { status: 200 })

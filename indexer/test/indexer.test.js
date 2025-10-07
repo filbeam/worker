@@ -1115,11 +1115,11 @@ describe('POST /filbeam/usage-reported', () => {
 
     // Verify the epoch was updated
     const result = await env.DB.prepare(
-      'SELECT last_reported_epoch FROM data_sets WHERE id = ?',
+      'SELECT last_rollup_reported_at_epoch FROM data_sets WHERE id = ?',
     )
       .bind(dataSetId)
       .first()
-    expect(result.last_reported_epoch).toBe(100)
+    expect(result.last_rollup_reported_at_epoch).toBe(100)
   })
 
   it('accepts valid payload with numeric data_set_id', async () => {
@@ -1150,23 +1150,23 @@ describe('POST /filbeam/usage-reported', () => {
 
     // Verify the epoch was updated
     const result = await env.DB.prepare(
-      'SELECT last_reported_epoch FROM data_sets WHERE id = ?',
+      'SELECT last_rollup_reported_at_epoch FROM data_sets WHERE id = ?',
     )
       .bind(dataSetId)
       .first()
-    expect(result.last_reported_epoch).toBe(150)
+    expect(result.last_rollup_reported_at_epoch).toBe(150)
   })
 
-  it('returns 400 when new_epoch is not greater than last_reported_epoch', async () => {
+  it('returns 400 when new_epoch is not greater than last_rollup_reported_at_epoch', async () => {
     const dataSetId = await withDataSet(env, {
       withCDN: true,
       serviceProviderId: '1',
       payerAddress: '0xPayerAddress',
     })
 
-    // First update to set last_reported_epoch to 100
+    // First update to set last_rollup_reported_at_epoch to 100
     await env.DB.prepare(
-      'UPDATE data_sets SET last_reported_epoch = ? WHERE id = ?',
+      'UPDATE data_sets SET last_rollup_reported_at_epoch = ? WHERE id = ?',
     )
       .bind(100, dataSetId)
       .run()
@@ -1187,7 +1187,7 @@ describe('POST /filbeam/usage-reported', () => {
     const res = await workerImpl.fetch(req, env)
     expect(res.status).toBe(400)
     expect(await res.text()).toContain(
-      'must be greater than last_reported_epoch',
+      'must be greater than last_rollup_reported_at_epoch',
     )
   })
 })

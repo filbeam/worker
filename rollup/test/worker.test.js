@@ -186,7 +186,7 @@ describe('rollup worker scheduled entrypoint', () => {
   })
 
   it('should not report datasets that are already up to date', async () => {
-    // Setup: Create datasets with different last_reported_epoch values
+    // Setup: Create datasets with different last_rollup_reported_at_epoch values
     await withDataSet(env, { id: '1', lastRollupReportedAtEpoch: 99 }) // Should be included
     await withDataSet(env, { id: '2', lastRollupReportedAtEpoch: 100 }) // Should NOT be included (already reported)
 
@@ -325,8 +325,8 @@ describe('rollup worker scheduled entrypoint', () => {
     expect(simulateCall.args[3]).toEqual([2500n]) // 5 epochs × 500 bytes cache miss
   })
 
-  it('should handle datasets with null last_reported_epoch', async () => {
-    // Setup: Create dataset with null last_reported_epoch (never reported)
+  it('should handle datasets with null last_rollup_reported_at_epoch', async () => {
+    // Setup: Create dataset with null last_rollup_reported_at_epoch (never reported)
     await withDataSet(env, { id: '1', lastRollupReportedAtEpoch: null })
 
     const epoch100Timestamp = filecoinEpochToTimestamp(100)
