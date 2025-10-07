@@ -1,3 +1,5 @@
+/* global caches */
+
 /**
  * Retrieves the file under the pieceCID from the constructed URL.
  *
