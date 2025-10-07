@@ -64,7 +64,7 @@ export default {
       const { request } = await publicClient.simulateContract({
         address: env.FILBEAM_CONTRACT_ADDRESS,
         abi,
-        functionName: 'reportUsageRollupBatch',
+        functionName: 'recordUsageRollups',
         args: [
           batchData.dataSetIds,
           batchData.epochs,

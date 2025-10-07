@@ -115,7 +115,7 @@ describe('rollup worker scheduled entrypoint', () => {
     expect(simulateContractCalls).toHaveLength(1)
     const simulateCall = simulateContractCalls[0]
     expect(simulateCall.address).toBe(env.FILBEAM_CONTRACT_ADDRESS)
-    expect(simulateCall.functionName).toBe('reportUsageRollupBatch')
+    expect(simulateCall.functionName).toBe('recordUsageRollups')
     expect(simulateCall.args[0]).toEqual(['1', '2']) // dataSetIds
     expect(simulateCall.args[1]).toEqual([100, 100]) // epochs
     expect(simulateCall.args[2]).toEqual([2500n, 4000n]) // cdnBytesUsed (all egress)
