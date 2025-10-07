@@ -40,8 +40,8 @@ export default {
       // Aggregate usage data for all datasets that need reporting
       const usageData = await aggregateUsageData(
         env.DB,
-        Number(targetEpoch),
-        Number(env.GENESIS_BLOCK_TIMESTAMP),
+        BigInt(env.GENESIS_BLOCK_TIMESTAMP),
+        targetEpoch,
       )
 
       if (usageData.length === 0) {

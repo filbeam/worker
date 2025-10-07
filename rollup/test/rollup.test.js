@@ -82,8 +82,8 @@ describe('rollup', () => {
         // Call with targetEpoch = 100 to get data up to epoch 100
         const usageData = await aggregateUsageData(
           env.DB,
-          100,
-          FILECOIN_GENESIS_UNIX_TIMESTAMP,
+          BigInt(FILECOIN_GENESIS_UNIX_TIMESTAMP),
+          100n,
         )
 
         const usage1 = usageData.find((u) => u.data_set_id === '1')
@@ -145,8 +145,8 @@ describe('rollup', () => {
         // Call with targetEpoch = 100 to get data up to epoch 100
         const usageData = await aggregateUsageData(
           env.DB,
-          100,
-          FILECOIN_GENESIS_UNIX_TIMESTAMP,
+          BigInt(FILECOIN_GENESIS_UNIX_TIMESTAMP),
+          100n,
         )
 
         const usage = usageData.find((u) => u.data_set_id === '1')
@@ -180,8 +180,8 @@ describe('rollup', () => {
         // Call with targetEpoch = 100 to get data up to epoch 100
         const usageData = await aggregateUsageData(
           env.DB,
-          100,
-          FILECOIN_GENESIS_UNIX_TIMESTAMP,
+          BigInt(FILECOIN_GENESIS_UNIX_TIMESTAMP),
+          100n,
         )
 
         // Should have data for 1, 2, 3 but NOT 4
@@ -234,8 +234,8 @@ describe('rollup', () => {
 
         const usageData = await aggregateUsageData(
           env.DB,
-          100,
-          FILECOIN_GENESIS_UNIX_TIMESTAMP,
+          BigInt(FILECOIN_GENESIS_UNIX_TIMESTAMP),
+          100n,
         )
 
         // Should only have datasets 1 and 3 (dataset 2 has null egress_bytes and is filtered out)

@@ -2,9 +2,9 @@
  * Aggregate usage data for all datasets that need reporting
  *
  * @param {D1Database} db
- * @param {number} targetEpoch - Target epoch to aggregate data up to
- * @param {number} genesisBlockTimestamp - Genesis block timestamp for epoch
+ * @param {bigint} genesisBlockTimestamp - Genesis block timestamp for epoch
  *   calculation
+ * @param {bigint} toEpoch - Target epoch to aggregate data up to
  * @returns {Promise<
  *   {
  *     data_set_id: string
@@ -14,12 +14,8 @@
  *   }[]
  * >}
  */
-export async function aggregateUsageData(
-  db,
-  targetEpoch,
-  genesisBlockTimestamp,
-) {
-  // Query aggregates total usage data between last_reported_epoch and targetEpoch
+export async function aggregateUsageData(db, genesisBlockTimestamp, toEpoch) {
+  // Query aggregates total usage data between last_reported_epoch and toEpoch
   // Returns sum of CDN bytes, cache-miss bytes, and max epoch for each dataset
   const query = `
     WITH retrieval_logs_with_epoch AS (
@@ -50,7 +46,7 @@ export async function aggregateUsageData(
 
   const { results } = await db
     .prepare(query)
-    .bind(genesisBlockTimestamp, targetEpoch, targetEpoch)
+    .bind(Number(genesisBlockTimestamp), Number(toEpoch), Number(toEpoch))
     .all()
 
   return results
