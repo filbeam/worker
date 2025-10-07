@@ -4,7 +4,6 @@
  */
 
 export const BYTES_PER_TIB = 1024n ** 4n
-export const USDFC_DECIMALS = 18n
 
 /**
  * Convert rate per TiB to rate per byte
