@@ -22,7 +22,7 @@ describe('rollup worker scheduled entrypoint', () => {
       ENVIRONMENT: 'dev',
       RPC_URL: 'https://mock-rpc.example.com',
       FILBEAM_CONTRACT_ADDRESS: '0xMockFilBeamAddress',
-      FILBEAM_CONTROLLER_ADDRESS_PRIVATE_KEY: '0xMockPrivateKey',
+      FILBEAM_CONTROLLER_PRIVATE_KEY: '0xMockPrivateKey',
       GENESIS_BLOCK_TIMESTAMP: '1598306400',
     }
 
@@ -67,8 +67,8 @@ describe('rollup worker scheduled entrypoint', () => {
 
   it('should report usage data for multiple datasets', async () => {
     // Setup: Create datasets with usage data
-    await withDataSet(env, { id: '1', lastReportedEpoch: 99 })
-    await withDataSet(env, { id: '2', lastReportedEpoch: 98 })
+    await withDataSet(env, { id: '1', lastRollupReportedAtEpoch: 99 })
+    await withDataSet(env, { id: '2', lastRollupReportedAtEpoch: 98 })
 
     const epoch100Timestamp = filecoinEpochToTimestamp(100)
 
@@ -118,7 +118,7 @@ describe('rollup worker scheduled entrypoint', () => {
     expect(simulateCall.functionName).toBe('reportUsageRollupBatch')
     expect(simulateCall.args[0]).toEqual(['1', '2']) // dataSetIds
     expect(simulateCall.args[1]).toEqual([100, 100]) // epochs
-    expect(simulateCall.args[2]).toEqual([2000n, 3000n]) // cdnBytesUsed
+    expect(simulateCall.args[2]).toEqual([2500n, 4000n]) // cdnBytesUsed (all egress)
     expect(simulateCall.args[3]).toEqual([500n, 1000n]) // cacheMissBytesUsed
     expect(simulateCall.account).toBe(mockAccount)
 
@@ -129,7 +129,7 @@ describe('rollup worker scheduled entrypoint', () => {
 
   it('should handle when no usage data exists', async () => {
     // Setup: Create dataset but with no retrieval logs
-    await withDataSet(env, { id: '1', lastReportedEpoch: 99 })
+    await withDataSet(env, { id: '1', lastRollupReportedAtEpoch: 99 })
 
     // Execute scheduled function
     await worker.scheduled(null, env, null, {
@@ -147,9 +147,9 @@ describe('rollup worker scheduled entrypoint', () => {
 
   it('should filter out datasets with zero usage', async () => {
     // Setup: Create datasets with mixed usage
-    await withDataSet(env, { id: '1', lastReportedEpoch: 99 })
+    await withDataSet(env, { id: '1', lastRollupReportedAtEpoch: 99 })
     await withDataSet(env, { id: '2', lastReportedEpoch: 99 })
-    await withDataSet(env, { id: '3', lastReportedEpoch: 99 })
+    await withDataSet(env, { id: '3', lastRollupReportedAtEpoch: 99 })
 
     const epoch100Timestamp = filecoinEpochToTimestamp(100)
 
@@ -181,14 +181,14 @@ describe('rollup worker scheduled entrypoint', () => {
     const simulateCall = simulateContractCalls[0]
     expect(simulateCall.args[0]).toEqual(['1', '3']) // Only datasets 1 and 3
     expect(simulateCall.args[1]).toEqual([100, 100])
-    expect(simulateCall.args[2]).toEqual([1000n, 0n]) // cdnBytesUsed
+    expect(simulateCall.args[2]).toEqual([1000n, 2000n]) // cdnBytesUsed (all egress)
     expect(simulateCall.args[3]).toEqual([0n, 2000n]) // cacheMissBytesUsed
   })
 
   it('should not report datasets that are already up to date', async () => {
     // Setup: Create datasets with different last_reported_epoch values
-    await withDataSet(env, { id: '1', lastReportedEpoch: 99 }) // Should be included
-    await withDataSet(env, { id: '2', lastReportedEpoch: 100 }) // Should NOT be included (already reported)
+    await withDataSet(env, { id: '1', lastRollupReportedAtEpoch: 99 }) // Should be included
+    await withDataSet(env, { id: '2', lastRollupReportedAtEpoch: 100 }) // Should NOT be included (already reported)
 
     const epoch100Timestamp = filecoinEpochToTimestamp(100)
 
@@ -215,7 +215,7 @@ describe('rollup worker scheduled entrypoint', () => {
 
   it('should handle contract simulation errors', async () => {
     // Setup: Create dataset with usage data
-    await withDataSet(env, { id: '1', lastReportedEpoch: 99 })
+    await withDataSet(env, { id: '1', lastRollupReportedAtEpoch: 99 })
     const epoch100Timestamp = filecoinEpochToTimestamp(100)
     await withRetrievalLog(env, {
       timestamp: epoch100Timestamp,
@@ -240,7 +240,7 @@ describe('rollup worker scheduled entrypoint', () => {
 
   it('should handle transaction write errors', async () => {
     // Setup: Create dataset with usage data
-    await withDataSet(env, { id: '1', lastReportedEpoch: 99 })
+    await withDataSet(env, { id: '1', lastRollupReportedAtEpoch: 99 })
     const epoch100Timestamp = filecoinEpochToTimestamp(100)
     await withRetrievalLog(env, {
       timestamp: epoch100Timestamp,
@@ -267,7 +267,7 @@ describe('rollup worker scheduled entrypoint', () => {
     // Setup: Mock different block numbers to verify epoch calculation
     mockPublicClient.getBlockNumber.mockResolvedValue(105n)
 
-    await withDataSet(env, { id: '1', lastReportedEpoch: 99 })
+    await withDataSet(env, { id: '1', lastRollupReportedAtEpoch: 99 })
 
     // Add logs for multiple epochs
     for (let epoch = 100; epoch <= 104; epoch++) {
@@ -293,7 +293,7 @@ describe('rollup worker scheduled entrypoint', () => {
 
   it('should aggregate usage correctly across epochs', async () => {
     // Setup: Create dataset with usage across multiple epochs
-    await withDataSet(env, { id: '1', lastReportedEpoch: 95 })
+    await withDataSet(env, { id: '1', lastRollupReportedAtEpoch: 95 })
 
     // Add retrieval logs across epochs 96-100
     for (let epoch = 96; epoch <= 100; epoch++) {
@@ -321,13 +321,13 @@ describe('rollup worker scheduled entrypoint', () => {
     const simulateCall = simulateContractCalls[0]
     expect(simulateCall.args[0]).toEqual(['1'])
     expect(simulateCall.args[1]).toEqual([100]) // max_epoch
-    expect(simulateCall.args[2]).toEqual([5000n]) // 5 epochs × 1000 bytes CDN
+    expect(simulateCall.args[2]).toEqual([7500n]) // 5 epochs × (1000 + 500) bytes all egress
     expect(simulateCall.args[3]).toEqual([2500n]) // 5 epochs × 500 bytes cache miss
   })
 
   it('should handle datasets with null last_reported_epoch', async () => {
     // Setup: Create dataset with null last_reported_epoch (never reported)
-    await withDataSet(env, { id: '1', lastReportedEpoch: null })
+    await withDataSet(env, { id: '1', lastRollupReportedAtEpoch: null })
 
     const epoch100Timestamp = filecoinEpochToTimestamp(100)
     await withRetrievalLog(env, {

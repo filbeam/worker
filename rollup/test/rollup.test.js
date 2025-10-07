@@ -25,8 +25,8 @@ describe('rollup', () => {
     describe('aggregateUsageData', () => {
       it('should aggregate usage data by cache miss status', async () => {
         // Set last_reported_epoch to 99 so data for epoch 100 will be included
-        await withDataSet(env, { id: '1', lastReportedEpoch: 99 })
-        await withDataSet(env, { id: '2', lastReportedEpoch: 99 })
+        await withDataSet(env, { id: '1', lastRollupReportedAtEpoch: 99 })
+        await withDataSet(env, { id: '2', lastRollupReportedAtEpoch: 99 })
 
         // Create timestamps for specific epochs
         const epoch99imestamp = filecoinEpochToTimestamp(99)
@@ -89,7 +89,7 @@ describe('rollup', () => {
         const usage1 = usageData.find((u) => u.data_set_id === '1')
         expect(usage1).toEqual({
           data_set_id: '1',
-          cdn_bytes: 2000, // 2000 from cache hits
+          cdn_bytes: 2500, // 2000 from cache hits + 500 from cache misses
           cache_miss_bytes: 500, // 500 from cache miss
           max_epoch: 100,
         })
@@ -97,7 +97,7 @@ describe('rollup', () => {
         const usage2 = usageData.find((u) => u.data_set_id === '2')
         expect(usage2).toEqual({
           data_set_id: '2',
-          cdn_bytes: 0,
+          cdn_bytes: 3000, // All cache misses
           cache_miss_bytes: 3000,
           max_epoch: 100,
         })
@@ -105,7 +105,7 @@ describe('rollup', () => {
 
       it('should include non-200 responses but filter out null egress_bytes', async () => {
         // Set last_reported_epoch to 99 so data for epoch 100 will be included
-        await withDataSet(env, { id: '1', lastReportedEpoch: 99 })
+        await withDataSet(env, { id: '1', lastRollupReportedAtEpoch: 99 })
 
         const epochTimestamp = filecoinEpochToTimestamp(100)
 
@@ -152,7 +152,7 @@ describe('rollup', () => {
         const usage = usageData.find((u) => u.data_set_id === '1')
         expect(usage).toEqual({
           data_set_id: '1',
-          cdn_bytes: 1500, // 404 (1000) + 200 (500) responses with cache_miss=0
+          cdn_bytes: 1800, // All egress: 404 (1000) + 200 (500) + 500 (300)
           cache_miss_bytes: 300, // 500 response with cache_miss=1
           max_epoch: 100,
         })
@@ -160,10 +160,10 @@ describe('rollup', () => {
 
       it('should only aggregate data for datasets where last_reported_epoch < currentEpoch - 1', async () => {
         // Set different last_reported_epoch values
-        await withDataSet(env, { id: '1', lastReportedEpoch: null }) // Should be included
-        await withDataSet(env, { id: '2', lastReportedEpoch: 98 }) // Should be included
-        await withDataSet(env, { id: '3', lastReportedEpoch: 99 }) // Should be included (99 < 100)
-        await withDataSet(env, { id: '4', lastReportedEpoch: 100 }) // Should NOT be included (100 >= 100)
+        await withDataSet(env, { id: '1', lastRollupReportedAtEpoch: null }) // Should be included
+        await withDataSet(env, { id: '2', lastRollupReportedAtEpoch: 98 }) // Should be included
+        await withDataSet(env, { id: '3', lastRollupReportedAtEpoch: 99 }) // Should be included (99 < 100)
+        await withDataSet(env, { id: '4', lastRollupReportedAtEpoch: 100 }) // Should NOT be included (100 >= 100)
 
         const epoch100Timestamp = filecoinEpochToTimestamp(100)
 

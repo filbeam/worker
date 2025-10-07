@@ -7,7 +7,7 @@ import { aggregateUsageData, prepareBatchData } from '../lib/rollup.js'
  *   ENVIRONMENT: 'dev' | 'calibration' | 'mainnet'
  *   RPC_URL: string
  *   FILBEAM_CONTRACT_ADDRESS: string
- *   FILBEAM_CONTROLLER_ADDRESS_PRIVATE_KEY: string
+ *   FILBEAM_CONTROLLER_PRIVATE_KEY: string
  *   GENESIS_BLOCK_TIMESTAMP: string
  *   DB: D1Database
  * }} RollupEnv

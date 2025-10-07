@@ -33,12 +33,14 @@ export async function aggregateUsageData(
     )
     SELECT
       rle.data_set_id,
-      SUM(CASE WHEN rle.cache_miss = 0 THEN rle.egress_bytes ELSE 0 END) as cdn_bytes,
+      -- Note: cdn_bytes tracks all egress (cache hits + cache misses)
+      -- cache_miss_bytes tracks only cache misses (subset of cdn_bytes)
+      SUM(rle.egress_bytes) as cdn_bytes,
       SUM(CASE WHEN rle.cache_miss = 1 THEN rle.egress_bytes ELSE 0 END) as cache_miss_bytes,
       MAX(rle.epoch) as max_epoch
     FROM retrieval_logs_with_epoch rle
     INNER JOIN data_sets ds ON rle.data_set_id = ds.id
-    WHERE rle.epoch > COALESCE(ds.last_reported_epoch, -1)
+    WHERE rle.epoch > COALESCE(ds.last_rollup_reported_at_epoch, -1)
       AND rle.epoch <= ?
       AND rle.egress_bytes IS NOT NULL
     GROUP BY rle.data_set_id
