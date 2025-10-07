@@ -220,7 +220,15 @@ export default {
           typeof payload.data_set_id === 'string'
         ) ||
         payload.total_cdn_lockup === undefined ||
-        payload.total_cache_miss_lockup === undefined
+        !(
+          typeof payload.total_cdn_lockup === 'string' ||
+          typeof payload.total_cdn_lockup === 'number'
+        ) ||
+        payload.total_cache_miss_lockup === undefined ||
+        !(
+          typeof payload.total_cache_miss_lockup === 'string' ||
+          typeof payload.total_cache_miss_lockup === 'number'
+        )
       ) {
         console.error('FWSS.CDNPaymentRailsToppedUp: Invalid payload', payload)
         return new Response('Bad Request', { status: 400 })

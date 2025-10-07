@@ -1094,6 +1094,40 @@ describe('POST /fwss/cdn-payment-rails-topped-up', () => {
     expect(await res.text()).toBe('Bad Request')
   })
 
+  it('returns 400 if total_cdn_lockup has invalid type', async () => {
+    const req = new Request('https://host/fwss/cdn-payment-rails-topped-up', {
+      method: 'POST',
+      headers: {
+        [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+      },
+      body: JSON.stringify({
+        data_set_id: '123',
+        total_cdn_lockup: { invalid: 'object' },
+        total_cache_miss_lockup: '2000000000000000000',
+      }),
+    })
+    const res = await workerImpl.fetch(req, env)
+    expect(res.status).toBe(400)
+    expect(await res.text()).toBe('Bad Request')
+  })
+
+  it('returns 400 if total_cache_miss_lockup has invalid type', async () => {
+    const req = new Request('https://host/fwss/cdn-payment-rails-topped-up', {
+      method: 'POST',
+      headers: {
+        [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+      },
+      body: JSON.stringify({
+        data_set_id: '123',
+        total_cdn_lockup: '1000000000000000000',
+        total_cache_miss_lockup: null,
+      }),
+    })
+    const res = await workerImpl.fetch(req, env)
+    expect(res.status).toBe(400)
+    expect(await res.text()).toBe('Bad Request')
+  })
+
   it('calculates and stores egress quotas', async () => {
     const dataSetId = await withDataSet(env, {
       withCDN: true,
