@@ -54,11 +54,6 @@ export default {
       // Prepare usage rollup data for contract call
       const usageRollupData = prepareUsageRollupData(usageData)
 
-      if (usageRollupData.dataSetIds.length === 0) {
-        console.log('No datasets with non-zero usage to report')
-        return
-      }
-
       console.log(
         `Reporting usage for ${usageRollupData.dataSetIds.length} data sets`,
       )

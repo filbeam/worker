@@ -235,7 +235,7 @@ describe('rollup', () => {
       })
     })
 
-    it('should filter out datasets with zero usage', () => {
+    it('should process all datasets', () => {
       const usageData = [
         {
           data_set_id: '1',
@@ -243,7 +243,12 @@ describe('rollup', () => {
           cache_miss_bytes: 500,
           max_epoch: 100,
         },
-        { data_set_id: '2', cdn_bytes: 0, cache_miss_bytes: 0, max_epoch: 100 }, // Zero usage
+        {
+          data_set_id: '2',
+          cdn_bytes: 2000,
+          cache_miss_bytes: 0,
+          max_epoch: 100,
+        },
         {
           data_set_id: '3',
           cdn_bytes: 0,
@@ -254,10 +259,10 @@ describe('rollup', () => {
 
       const batchData = prepareUsageRollupData(usageData)
 
-      expect(batchData.dataSetIds).toEqual(['1', '3'])
-      expect(batchData.epochs).toEqual([100, 100])
-      expect(batchData.cdnBytesUsed).toEqual([1000n, 0n])
-      expect(batchData.cacheMissBytesUsed).toEqual([500n, 3000n])
+      expect(batchData.dataSetIds).toEqual(['1', '2', '3'])
+      expect(batchData.epochs).toEqual([100, 100, 100])
+      expect(batchData.cdnBytesUsed).toEqual([1000n, 2000n, 0n])
+      expect(batchData.cacheMissBytesUsed).toEqual([500n, 0n, 3000n])
     })
 
     it('should handle empty usage data', () => {

@@ -45,6 +45,7 @@ export async function aggregateUsageData(
       AND rle.egress_bytes IS NOT NULL
     GROUP BY rle.data_set_id
     HAVING max_epoch <= ?
+      AND (cdn_bytes > 0 OR cache_miss_bytes > 0)
   `
 
   const { results } = await db
@@ -78,11 +79,6 @@ export function prepareUsageRollupData(usageData) {
   const cacheMissBytesUsed = []
 
   for (const usage of usageData) {
-    // Skip datasets with zero usage
-    if (usage.cdn_bytes === 0 && usage.cache_miss_bytes === 0) {
-      continue
-    }
-
     dataSetIds.push(usage.data_set_id)
     epochs.push(usage.max_epoch)
     cdnBytesUsed.push(BigInt(usage.cdn_bytes))
