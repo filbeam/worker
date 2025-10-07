@@ -199,6 +199,61 @@ describe('rollup', () => {
           max_epoch: 100,
         })
       })
+
+      it('should filter out datasets with zero cdn and cache-miss bytes', async () => {
+        // Set last_reported_epoch to 99
+        await withDataSet(env, { id: '1', lastRollupReportedAtEpoch: 99 })
+        await withDataSet(env, { id: '2', lastRollupReportedAtEpoch: 99 })
+        await withDataSet(env, { id: '3', lastRollupReportedAtEpoch: 99 })
+
+        const epoch100Timestamp = filecoinEpochToTimestamp(100)
+
+        // Dataset 1: Has usage
+        await withRetrievalLog(env, {
+          timestamp: epoch100Timestamp,
+          dataSetId: '1',
+          egressBytes: 1000,
+          cacheMiss: 0,
+        })
+
+        // Dataset 2: Zero usage (egress_bytes = null)
+        await withRetrievalLog(env, {
+          timestamp: epoch100Timestamp,
+          dataSetId: '2',
+          egressBytes: null,
+          cacheMiss: 0,
+        })
+
+        // Dataset 3: Has usage
+        await withRetrievalLog(env, {
+          timestamp: epoch100Timestamp,
+          dataSetId: '3',
+          egressBytes: 500,
+          cacheMiss: 1,
+        })
+
+        const usageData = await aggregateUsageData(
+          env.DB,
+          100,
+          FILECOIN_GENESIS_UNIX_TIMESTAMP,
+        )
+
+        // Should only have datasets 1 and 3 (dataset 2 has null egress_bytes and is filtered out)
+        expect(usageData).toEqual([
+          {
+            data_set_id: '1',
+            cdn_bytes: 1000,
+            cache_miss_bytes: 0,
+            max_epoch: 100,
+          },
+          {
+            data_set_id: '3',
+            cdn_bytes: 500,
+            cache_miss_bytes: 500,
+            max_epoch: 100,
+          },
+        ])
+      })
     })
   })
 
