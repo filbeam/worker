@@ -1,27 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import {
-  BYTES_PER_TIB,
-  calculateRatePerByte,
-  calculateEgressQuota,
-} from '../lib/rate-helpers.js'
-
-describe('calculateRatePerByte', () => {
-  it('calculates rate per byte from rate per TiB', () => {
-    expect(calculateRatePerByte('5000000000000000000')).toBe(4547473n)
-  })
-
-  it('handles string input', () => {
-    expect(calculateRatePerByte('1099511627776000000000')).toBe(1000000000n)
-  })
-
-  it('handles BigInt input', () => {
-    expect(calculateRatePerByte(1099511627776000000000n)).toBe(1000000000n)
-  })
-
-  it('returns zero for zero rate', () => {
-    expect(calculateRatePerByte('0')).toBe(0n)
-  })
-})
+import { BYTES_PER_TIB, calculateEgressQuota } from '../lib/rate-helpers.js'
 
 describe('calculateEgressQuota', () => {
   it('calculates quota for standard values', () => {

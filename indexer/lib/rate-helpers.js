@@ -6,17 +6,6 @@
 export const BYTES_PER_TIB = 1024n ** 4n
 
 /**
- * Convert rate per TiB to rate per byte
- *
- * @param {string | bigint} ratePerTiB - Rate in USDFC units per TiB (e.g.,
- *   "5000000000000000000" for 5 USDFC per TiB)
- * @returns {bigint} Rate in USDFC units per byte
- */
-export function calculateRatePerByte(ratePerTiB) {
-  return BigInt(ratePerTiB) / BYTES_PER_TIB
-}
-
-/**
  * Calculate egress quota in bytes given a lockup amount and rate per TiB
  *
  * @param {string | bigint} lockupAmount - Total lockup amount in USDFC units
