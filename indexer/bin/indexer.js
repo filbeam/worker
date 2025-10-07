@@ -218,15 +218,22 @@ export default {
         payload.new_epoch === undefined ||
         typeof payload.new_epoch !== 'number' ||
         payload.cdn_bytes_used === undefined ||
-        payload.cache_miss_bytes_used === undefined
+        !(
+          typeof payload.cdn_bytes_used === 'number' ||
+          typeof payload.cdn_bytes_used === 'string'
+        ) ||
+        payload.cache_miss_bytes_used === undefined ||
+        !(
+          typeof payload.cache_miss_bytes_used === 'number' ||
+          typeof payload.cache_miss_bytes_used === 'string'
+        )
       ) {
         console.error('FilBeam.UsageReported: Invalid payload', payload)
         return new Response('Bad Request: Invalid payload', { status: 400 })
       }
 
       console.log(
-        `FilBeam usage reported (data_set_id=${payload.data_set_id}, new_epoch=${payload.new_epoch}, ` +
-          `cdn_bytes_used=${payload.cdn_bytes_used}, cache_miss_bytes_used=${payload.cache_miss_bytes_used})`,
+        `FilBeam usage reported (data_set_id=${payload.data_set_id}, new_epoch=${payload.new_epoch}`,
       )
 
       return await handleFilBeamUsageReported(env, payload)

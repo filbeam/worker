@@ -161,7 +161,7 @@ describe('filbeam-handlers', () => {
       expect(result.last_rollup_reported_at_epoch).toBe(100) // Should remain unchanged
     })
 
-    it('should return 200 but not update when dataset does not exist', async () => {
+    it('should return 400 when dataset does not exist', async () => {
       const payload = {
         data_set_id: '999', // Non-existent dataset
         new_epoch: 200,
@@ -171,8 +171,8 @@ describe('filbeam-handlers', () => {
 
       const response = await handleFilBeamUsageReported(env, payload)
 
-      expect(response.status).toBe(200) // Still returns OK
-      expect(await response.text()).toBe('OK')
+      expect(response.status).toBe(400)
+      expect(await response.text()).toContain('Dataset 999 not found')
 
       // Verify no dataset was created
       const result = await env.DB.prepare(
