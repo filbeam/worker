@@ -16,7 +16,7 @@ export async function withDataSet(
     payerAddress = '0xPayer',
     withCDN = true,
     terminateServiceTxHash = null,
-    lastReportedEpoch = null,
+    lastRollupReportedAtEpoch = null,
   },
 ) {
   // Ensure service provider exists
@@ -27,7 +27,7 @@ export async function withDataSet(
     .run()
 
   await env.DB.prepare(
-    `INSERT INTO data_sets (id, service_provider_id, payer_address, with_cdn, terminate_service_tx_hash, last_reported_epoch) VALUES (?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO data_sets (id, service_provider_id, payer_address, with_cdn, terminate_service_tx_hash, last_rollup_reported_at_epoch) VALUES (?, ?, ?, ?, ?, ?)`,
   )
     .bind(
       String(id),
@@ -35,7 +35,7 @@ export async function withDataSet(
       payerAddress,
       withCDN,
       terminateServiceTxHash,
-      lastReportedEpoch,
+      lastRollupReportedAtEpoch,
     )
     .run()
 }

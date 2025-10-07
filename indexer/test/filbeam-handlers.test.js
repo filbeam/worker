@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { env } from 'cloudflare:test'
-import { handleFilBeamUsageReported } from '../lib/filbeam-handlers.js'
+import { handleFilBeamOperatorUsageReported as handleFilBeamUsageReported } from '../lib/filbeam-operator-handlers.js'
 
-// Helper function to create a dataset with optional last_reported_epoch
+// Helper function to create a dataset with optional last_rollup_reported_at_epoch
 async function withDataSet(
   env,
   {
@@ -26,7 +26,7 @@ async function withDataSet(
       service_provider_id,
       payer_address,
       with_cdn,
-      last_reported_epoch
+      last_rollup_reported_at_epoch
     )
     VALUES (?, ?, ?, ?, ?)`,
   )
@@ -42,8 +42,8 @@ async function withDataSet(
 
 describe('filbeam-handlers', () => {
   describe('handleFilBeamUsageReported', () => {
-    it('should update last_reported_epoch when new_epoch is greater', async () => {
-      // Setup: Create a dataset with last_reported_epoch = 100
+    it('should update last_rollup_reported_at_epoch when epoch is greater', async () => {
+      // Setup: Create a dataset with last_rollup_reported_at_epoch = 100
       await withDataSet(env, {
         id: '1',
         lastReportedEpoch: 100,
@@ -51,7 +51,7 @@ describe('filbeam-handlers', () => {
 
       const payload = {
         data_set_id: '1',
-        new_epoch: 150,
+        epoch: 150,
         cdn_bytes_used: '1000',
         cache_miss_bytes_used: '500',
       }
@@ -63,16 +63,16 @@ describe('filbeam-handlers', () => {
 
       // Verify the epoch was updated
       const result = await env.DB.prepare(
-        'SELECT last_reported_epoch FROM data_sets WHERE id = ?',
+        'SELECT last_rollup_reported_at_epoch FROM data_sets WHERE id = ?',
       )
         .bind('1')
         .first()
 
-      expect(result.last_reported_epoch).toBe(150)
+      expect(result.last_rollup_reported_at_epoch).toBe(150)
     })
 
-    it('should update last_reported_epoch when current value is NULL', async () => {
-      // Setup: Create a dataset with no last_reported_epoch
+    it('should update last_rollup_reported_at_epoch when current value is NULL', async () => {
+      // Setup: Create a dataset with no last_rollup_reported_at_epoch
       await withDataSet(env, {
         id: '2',
         lastReportedEpoch: null,
@@ -80,7 +80,7 @@ describe('filbeam-handlers', () => {
 
       const payload = {
         data_set_id: '2',
-        new_epoch: 50,
+        epoch: 50,
         cdn_bytes_used: '2000',
         cache_miss_bytes_used: '1000',
       }
@@ -91,16 +91,16 @@ describe('filbeam-handlers', () => {
 
       // Verify the epoch was updated
       const result = await env.DB.prepare(
-        'SELECT last_reported_epoch FROM data_sets WHERE id = ?',
+        'SELECT last_rollup_reported_at_epoch FROM data_sets WHERE id = ?',
       )
         .bind('2')
         .first()
 
-      expect(result.last_reported_epoch).toBe(50)
+      expect(result.last_rollup_reported_at_epoch).toBe(50)
     })
 
-    it('should return 400 when new_epoch is less than last_reported_epoch', async () => {
-      // Setup: Create a dataset with last_reported_epoch = 100
+    it('should return 400 when epoch is less than last_rollup_reported_at_epoch', async () => {
+      // Setup: Create a dataset with last_rollup_reported_at_epoch = 100
       await withDataSet(env, {
         id: '3',
         lastReportedEpoch: 100,
@@ -108,7 +108,7 @@ describe('filbeam-handlers', () => {
 
       const payload = {
         data_set_id: '3',
-        new_epoch: 90, // Less than current
+        epoch: 90, // Less than current
         cdn_bytes_used: '1000',
         cache_miss_bytes_used: '500',
       }
@@ -117,21 +117,21 @@ describe('filbeam-handlers', () => {
 
       expect(response.status).toBe(400)
       expect(await response.text()).toContain(
-        'must be greater than last_reported_epoch',
+        'must be greater than last_rollup_reported_at_epoch',
       )
 
       // Verify the epoch was NOT updated
       const result = await env.DB.prepare(
-        'SELECT last_reported_epoch FROM data_sets WHERE id = ?',
+        'SELECT last_rollup_reported_at_epoch FROM data_sets WHERE id = ?',
       )
         .bind('3')
         .first()
 
-      expect(result.last_reported_epoch).toBe(100) // Should remain unchanged
+      expect(result.last_rollup_reported_at_epoch).toBe(100) // Should remain unchanged
     })
 
-    it('should return 400 when new_epoch equals last_reported_epoch', async () => {
-      // Setup: Create a dataset with last_reported_epoch = 100
+    it('should return 400 when epoch equals last_rollup_reported_at_epoch', async () => {
+      // Setup: Create a dataset with last_rollup_reported_at_epoch = 100
       await withDataSet(env, {
         id: '4',
         lastReportedEpoch: 100,
@@ -139,7 +139,7 @@ describe('filbeam-handlers', () => {
 
       const payload = {
         data_set_id: '4',
-        new_epoch: 100, // Equal to current
+        epoch: 100, // Equal to current
         cdn_bytes_used: '1000',
         cache_miss_bytes_used: '500',
       }
@@ -148,31 +148,31 @@ describe('filbeam-handlers', () => {
 
       expect(response.status).toBe(400)
       expect(await response.text()).toContain(
-        'must be greater than last_reported_epoch',
+        'must be greater than last_rollup_reported_at_epoch',
       )
 
       // Verify the epoch was NOT updated
       const result = await env.DB.prepare(
-        'SELECT last_reported_epoch FROM data_sets WHERE id = ?',
+        'SELECT last_rollup_reported_at_epoch FROM data_sets WHERE id = ?',
       )
         .bind('4')
         .first()
 
-      expect(result.last_reported_epoch).toBe(100) // Should remain unchanged
+      expect(result.last_rollup_reported_at_epoch).toBe(100) // Should remain unchanged
     })
 
-    it('should return 200 but not update when dataset does not exist', async () => {
+    it('should return 400 when dataset does not exist', async () => {
       const payload = {
         data_set_id: '999', // Non-existent dataset
-        new_epoch: 200,
+        epoch: 200,
         cdn_bytes_used: '1000',
         cache_miss_bytes_used: '500',
       }
 
       const response = await handleFilBeamUsageReported(env, payload)
 
-      expect(response.status).toBe(200) // Still returns OK
-      expect(await response.text()).toBe('OK')
+      expect(response.status).toBe(400)
+      expect(await response.text()).toContain('Data set 999 not found')
 
       // Verify no dataset was created
       const result = await env.DB.prepare(
@@ -193,7 +193,7 @@ describe('filbeam-handlers', () => {
 
       const payload = {
         data_set_id: 5, // Numeric instead of string
-        new_epoch: 20,
+        epoch: 20,
         cdn_bytes_used: '1000',
         cache_miss_bytes_used: '500',
       }
@@ -204,12 +204,12 @@ describe('filbeam-handlers', () => {
 
       // Verify the epoch was updated
       const result = await env.DB.prepare(
-        'SELECT last_reported_epoch FROM data_sets WHERE id = ?',
+        'SELECT last_rollup_reported_at_epoch FROM data_sets WHERE id = ?',
       )
         .bind('5')
         .first()
 
-      expect(result.last_reported_epoch).toBe(20)
+      expect(result.last_rollup_reported_at_epoch).toBe(20)
     })
   })
 })

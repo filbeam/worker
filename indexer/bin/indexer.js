@@ -14,7 +14,7 @@ import {
   removeDataSetPieces,
   insertDataSetPiece,
 } from '../lib/pdp-verifier-handlers.js'
-import { handleFilBeamUsageReported } from '../lib/filbeam-handlers.js'
+import { handleFilBeamOperatorUsageReported } from '../lib/filbeam-operator-handlers.js'
 import { screenWallets } from '../lib/wallet-screener.js'
 import { CID } from 'multiformats/cid'
 
@@ -231,43 +231,30 @@ export default {
           `total_cdn_lockup=${payload.total_cdn_lockup}, total_cache_miss_lockup=${payload.total_cache_miss_lockup})`,
       )
 
-      try {
-        // @ts-ignore - env type includes the new dollar rate variables
-        await handleFWSSCDNPaymentRailsToppedUp(env, payload)
-      } catch (err) {
-        console.error(`Error handling CDN payment rails top-up: ${err}`)
-        // Queue for retry if needed
-        // @ts-ignore
-        env.RETRY_QUEUE.send({
-          type: 'fwss-cdn-payment-rails-topped-up',
-          payload,
-        })
-      }
+      await handleFWSSCDNPaymentRailsToppedUp(env, payload)
 
       return new Response('OK', { status: 200 })
-    } else if (pathname === '/filbeam/usage-reported') {
-      // Validate required fields
+    } else if (pathname === '/filbeam-operator/usage-reported') {
       if (
         !payload.data_set_id ||
         !(
           typeof payload.data_set_id === 'number' ||
           typeof payload.data_set_id === 'string'
         ) ||
-        payload.new_epoch === undefined ||
-        typeof payload.new_epoch !== 'number' ||
-        payload.cdn_bytes_used === undefined ||
-        payload.cache_miss_bytes_used === undefined
+        payload.epoch === undefined ||
+        !(
+          typeof payload.epoch === 'number' || typeof payload.epoch === 'string'
+        )
       ) {
         console.error('FilBeam.UsageReported: Invalid payload', payload)
         return new Response('Bad Request: Invalid payload', { status: 400 })
       }
 
       console.log(
-        `FilBeam usage reported (data_set_id=${payload.data_set_id}, new_epoch=${payload.new_epoch}, ` +
-          `cdn_bytes_used=${payload.cdn_bytes_used}, cache_miss_bytes_used=${payload.cache_miss_bytes_used})`,
+        `FilBeam usage reported (data_set_id=${payload.data_set_id}, epoch=${payload.epoch}`,
       )
 
-      return await handleFilBeamUsageReported(env, payload)
+      return await handleFilBeamOperatorUsageReported(env, payload)
     } else {
       return new Response('Not Found', { status: 404 })
     }

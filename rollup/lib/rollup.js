@@ -2,9 +2,9 @@
  * Aggregate usage data for all datasets that need reporting
  *
  * @param {D1Database} db
- * @param {number} targetEpoch - Target epoch to aggregate data up to
- * @param {number} genesisBlockTimestamp - Genesis block timestamp for epoch
+ * @param {bigint} genesisBlockTimestamp - Genesis block timestamp for epoch
  *   calculation
+ * @param {bigint} toEpoch - Target epoch to aggregate data up to
  * @returns {Promise<
  *   {
  *     data_set_id: string
@@ -14,12 +14,8 @@
  *   }[]
  * >}
  */
-export async function aggregateUsageData(
-  db,
-  targetEpoch,
-  genesisBlockTimestamp,
-) {
-  // Query aggregates total usage data between last_reported_epoch and targetEpoch
+export async function aggregateUsageData(db, genesisBlockTimestamp, toEpoch) {
+  // Query aggregates total usage data between last_rollup_reported_at_epoch and toEpoch
   // Returns sum of CDN bytes, cache-miss bytes, and max epoch for each dataset
   const query = `
     WITH retrieval_logs_with_epoch AS (
@@ -33,28 +29,31 @@ export async function aggregateUsageData(
     )
     SELECT
       rle.data_set_id,
-      SUM(CASE WHEN rle.cache_miss = 0 THEN rle.egress_bytes ELSE 0 END) as cdn_bytes,
+      -- Note: cdn_bytes tracks all egress (cache hits + cache misses)
+      -- cache_miss_bytes tracks only cache misses (subset of cdn_bytes)
+      SUM(rle.egress_bytes) as cdn_bytes,
       SUM(CASE WHEN rle.cache_miss = 1 THEN rle.egress_bytes ELSE 0 END) as cache_miss_bytes,
       MAX(rle.epoch) as max_epoch
     FROM retrieval_logs_with_epoch rle
     INNER JOIN data_sets ds ON rle.data_set_id = ds.id
-    WHERE rle.epoch > COALESCE(ds.last_reported_epoch, -1)
+    WHERE rle.epoch > COALESCE(ds.last_rollup_reported_at_epoch, -1)
       AND rle.epoch <= ?
       AND rle.egress_bytes IS NOT NULL
     GROUP BY rle.data_set_id
     HAVING max_epoch <= ?
+      AND (cdn_bytes > 0 OR cache_miss_bytes > 0)
   `
 
   const { results } = await db
     .prepare(query)
-    .bind(genesisBlockTimestamp, targetEpoch, targetEpoch)
+    .bind(Number(genesisBlockTimestamp), Number(toEpoch), Number(toEpoch))
     .all()
 
   return results
 }
 
 /**
- * Prepare batch data for FilBeam contract call
+ * Prepare usage rollup data for FilBeam contract call
  *
  * @param {{
  *   data_set_id: string
@@ -69,18 +68,13 @@ export async function aggregateUsageData(
  *   cacheMissBytesUsed: bigint[]
  * }}
  */
-export function prepareBatchData(usageData) {
+export function prepareUsageRollupData(usageData) {
   const dataSetIds = []
   const epochs = []
   const cdnBytesUsed = []
   const cacheMissBytesUsed = []
 
   for (const usage of usageData) {
-    // Skip datasets with zero usage
-    if (usage.cdn_bytes === 0 && usage.cache_miss_bytes === 0) {
-      continue
-    }
-
     dataSetIds.push(usage.data_set_id)
     epochs.push(usage.max_epoch)
     cdnBytesUsed.push(BigInt(usage.cdn_bytes))

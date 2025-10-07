@@ -3,15 +3,8 @@
  * TiB and converted to per-byte for calculations
  */
 
-// Storage unit constants
-export const BYTES_PER_KIB = 1024n
-export const BYTES_PER_MIB = BYTES_PER_KIB * 1024n
-export const BYTES_PER_GIB = BYTES_PER_MIB * 1024n
-export const BYTES_PER_TIB = BYTES_PER_GIB * 1024n // 1,099,511,627,776 bytes
-
-// USDFC token has 18 decimal places
+export const BYTES_PER_TIB = 1024n ** 4n
 export const USDFC_DECIMALS = 18n
-export const USDFC_UNIT = 10n ** USDFC_DECIMALS // 1e18 units per USDFC
 
 /**
  * Convert rate per TiB to rate per byte
@@ -42,9 +35,6 @@ export function calculateEgressQuota(lockupAmount, ratePerTiB) {
     return 0n
   }
 
-  // Quota in bytes = (Lockup amount / Rate per TiB) * Bytes per TiB
-  // Simplified: Quota = Lockup * BYTES_PER_TIB / Rate
-  // This avoids intermediate division and maintains precision
   return (lockup * BYTES_PER_TIB) / rate
 }
 

@@ -1,4 +1,4 @@
-import { UsageReported as DataSetUsageReportedEvent } from '../generated/FilecoinBeam/FilecoinBeam'
+import { UsageReported as DataSetUsageReportedEvent } from '../generated/FilecoinBeamOperator/FilecoinBeamOperator'
 import { UsageReported } from '../generated/schema'
 import { getEventEntityId } from './utils'
 

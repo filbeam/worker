@@ -96,7 +96,6 @@ export async function handleFWSSServiceTerminated(env, payload) {
 export async function handleFWSSCDNPaymentRailsToppedUp(env, payload) {
   const { CDN_RATE_DOLLARS_PER_TIB, CACHE_MISS_RATE_DOLLARS_PER_TIB } = env
 
-  // Extract event data - handle uint256 as BigInt
   const dataSetId = String(payload.data_set_id)
   const totalCdnLockup = payload.total_cdn_lockup || '0'
   const totalCacheMissLockup = payload.total_cache_miss_lockup || '0'

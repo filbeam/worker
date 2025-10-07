@@ -6,7 +6,7 @@ import { filecoinCalibration, filecoin } from 'viem/chains'
  * @param {{
  *   ENVIRONMENT: 'mainnet' | 'calibration' | 'dev'
  *   RPC_URL: string
- *   FILBEAM_CONTROLLER_ADDRESS_PRIVATE_KEY: string
+ *   FILBEAM_CONTROLLER_PRIVATE_KEY: string
  * }} env
  */
 export function getChainClient(env) {
@@ -18,9 +18,7 @@ export function getChainClient(env) {
     transport,
   })
 
-  const account = privateKeyToAccount(
-    env.FILBEAM_CONTROLLER_ADDRESS_PRIVATE_KEY,
-  )
+  const account = privateKeyToAccount(env.FILBEAM_CONTROLLER_PRIVATE_KEY)
 
   const walletClient = createWalletClient({
     chain,

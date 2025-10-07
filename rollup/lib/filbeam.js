@@ -24,6 +24,6 @@ export const abi = [
     ],
     stateMutability: 'nonpayable',
     type: 'function',
-    name: 'reportUsageRollupBatch',
+    name: 'recordUsageRollups',
   },
 ]
