@@ -1094,6 +1094,40 @@ describe('POST /fwss/cdn-payment-rails-topped-up', () => {
     expect(await res.text()).toBe('Bad Request')
   })
 
+  it('returns 400 if total_cdn_lockup has invalid type', async () => {
+    const req = new Request('https://host/fwss/cdn-payment-rails-topped-up', {
+      method: 'POST',
+      headers: {
+        [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+      },
+      body: JSON.stringify({
+        data_set_id: '123',
+        total_cdn_lockup: { invalid: 'object' },
+        total_cache_miss_lockup: '2000000000000000000',
+      }),
+    })
+    const res = await workerImpl.fetch(req, env)
+    expect(res.status).toBe(400)
+    expect(await res.text()).toBe('Bad Request')
+  })
+
+  it('returns 400 if total_cache_miss_lockup has invalid type', async () => {
+    const req = new Request('https://host/fwss/cdn-payment-rails-topped-up', {
+      method: 'POST',
+      headers: {
+        [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+      },
+      body: JSON.stringify({
+        data_set_id: '123',
+        total_cdn_lockup: '1000000000000000000',
+        total_cache_miss_lockup: null,
+      }),
+    })
+    const res = await workerImpl.fetch(req, env)
+    expect(res.status).toBe(400)
+    expect(await res.text()).toBe('Bad Request')
+  })
+
   it('calculates and stores egress quotas', async () => {
     const dataSetId = await withDataSet(env, {
       withCDN: true,
@@ -1296,40 +1330,19 @@ describe('POST /fwss/cdn-payment-rails-topped-up', () => {
   })
 })
 
-describe('POST /filbeam/usage-reported', () => {
+describe('POST /filbeam-operator/usage-reported', () => {
   it('validates required fields', async () => {
     const testCases = [
       { payload: {}, expectedError: 'Invalid payload' },
       { payload: { data_set_id: '1' }, expectedError: 'Invalid payload' },
       {
-        payload: { data_set_id: '1', new_epoch: 100 },
+        payload: { epoch: 100 },
         expectedError: 'Invalid payload',
       },
-      {
-        payload: { data_set_id: '1', new_epoch: 100, cdn_bytes_used: '1000' },
-        expectedError: 'Invalid payload',
-      },
-      {
-        payload: {
-          new_epoch: 100,
-          cdn_bytes_used: '1000',
-          cache_miss_bytes_used: '500',
-        },
-        expectedError: 'Invalid payload',
-      },
-      {
-        payload: {
-          data_set_id: '1',
-          new_epoch: '100',
-          cdn_bytes_used: '1000',
-          cache_miss_bytes_used: '500',
-        },
-        expectedError: 'Invalid payload',
-      }, // new_epoch must be number
     ]
 
     for (const { payload, expectedError } of testCases) {
-      const req = new Request('https://host/filbeam/usage-reported', {
+      const req = new Request('https://host/filbeam-operator/usage-reported', {
         method: 'POST',
         headers: {
           [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
@@ -1349,16 +1362,14 @@ describe('POST /filbeam/usage-reported', () => {
       payerAddress: '0xPayerAddress',
     })
 
-    const req = new Request('https://host/filbeam/usage-reported', {
+    const req = new Request('https://host/filbeam-operator/usage-reported', {
       method: 'POST',
       headers: {
         [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
       },
       body: JSON.stringify({
         data_set_id: dataSetId,
-        new_epoch: 100,
-        cdn_bytes_used: '1000',
-        cache_miss_bytes_used: '500',
+        epoch: 100,
       }),
     })
 
@@ -1368,11 +1379,11 @@ describe('POST /filbeam/usage-reported', () => {
 
     // Verify the epoch was updated
     const result = await env.DB.prepare(
-      'SELECT last_reported_epoch FROM data_sets WHERE id = ?',
+      'SELECT last_rollup_reported_at_epoch FROM data_sets WHERE id = ?',
     )
       .bind(dataSetId)
       .first()
-    expect(result.last_reported_epoch).toBe(100)
+    expect(result.last_rollup_reported_at_epoch).toBe(100)
   })
 
   it('accepts valid payload with numeric data_set_id', async () => {
@@ -1384,16 +1395,14 @@ describe('POST /filbeam/usage-reported', () => {
       payerAddress: '0xPayerAddress',
     })
 
-    const req = new Request('https://host/filbeam/usage-reported', {
+    const req = new Request('https://host/filbeam-operator/usage-reported', {
       method: 'POST',
       headers: {
         [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
       },
       body: JSON.stringify({
         data_set_id: 123, // Numeric
-        new_epoch: 150,
-        cdn_bytes_used: '2000',
-        cache_miss_bytes_used: '1000',
+        epoch: 150,
       }),
     })
 
@@ -1403,44 +1412,42 @@ describe('POST /filbeam/usage-reported', () => {
 
     // Verify the epoch was updated
     const result = await env.DB.prepare(
-      'SELECT last_reported_epoch FROM data_sets WHERE id = ?',
+      'SELECT last_rollup_reported_at_epoch FROM data_sets WHERE id = ?',
     )
       .bind(dataSetId)
       .first()
-    expect(result.last_reported_epoch).toBe(150)
+    expect(result.last_rollup_reported_at_epoch).toBe(150)
   })
 
-  it('returns 400 when new_epoch is not greater than last_reported_epoch', async () => {
+  it('returns 400 when epoch is not greater than last_rollup_reported_at_epoch', async () => {
     const dataSetId = await withDataSet(env, {
       withCDN: true,
       serviceProviderId: '1',
       payerAddress: '0xPayerAddress',
     })
 
-    // First update to set last_reported_epoch to 100
+    // First update to set last_rollup_reported_at_epoch to 100
     await env.DB.prepare(
-      'UPDATE data_sets SET last_reported_epoch = ? WHERE id = ?',
+      'UPDATE data_sets SET last_rollup_reported_at_epoch = ? WHERE id = ?',
     )
       .bind(100, dataSetId)
       .run()
 
-    const req = new Request('https://host/filbeam/usage-reported', {
+    const req = new Request('https://host/filbeam-operator/usage-reported', {
       method: 'POST',
       headers: {
         [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
       },
       body: JSON.stringify({
         data_set_id: dataSetId,
-        new_epoch: 100, // Same as current
-        cdn_bytes_used: '1000',
-        cache_miss_bytes_used: '500',
+        epoch: 100, // Same as current
       }),
     })
 
     const res = await workerImpl.fetch(req, env)
     expect(res.status).toBe(400)
     expect(await res.text()).toContain(
-      'must be greater than last_reported_epoch',
+      'must be greater than last_rollup_reported_at_epoch',
     )
   })
 })

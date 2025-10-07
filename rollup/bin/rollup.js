@@ -1,13 +1,13 @@
 import { getChainClient as defaultGetChainClient } from '../lib/chain.js'
 import { abi } from '../lib/filbeam.js'
-import { aggregateUsageData, prepareBatchData } from '../lib/rollup.js'
+import { aggregateUsageData, prepareUsageRollupData } from '../lib/rollup.js'
 
 /**
  * @typedef {{
  *   ENVIRONMENT: 'dev' | 'calibration' | 'mainnet'
  *   RPC_URL: string
  *   FILBEAM_CONTRACT_ADDRESS: string
- *   FILBEAM_CONTROLLER_ADDRESS_PRIVATE_KEY: string
+ *   FILBEAM_CONTROLLER_PRIVATE_KEY: string
  *   GENESIS_BLOCK_TIMESTAMP: string
  *   DB: D1Database
  * }} RollupEnv
@@ -38,44 +38,39 @@ export default {
       )
 
       // Aggregate usage data for all datasets that need reporting
-      const allUsageData = await aggregateUsageData(
+      const usageData = await aggregateUsageData(
         env.DB,
-        Number(targetEpoch),
-        Number(env.GENESIS_BLOCK_TIMESTAMP),
+        BigInt(env.GENESIS_BLOCK_TIMESTAMP),
+        targetEpoch,
       )
 
-      if (allUsageData.length === 0) {
-        console.log('No usage data to report')
+      if (usageData.length === 0) {
+        console.log('No usage data found')
         return
       }
 
-      console.log(`Found usage data for ${allUsageData.length} datasets`)
+      console.log(`Found usage data for ${usageData.length} data sets`)
 
-      // Prepare batch data for contract call
-      const batchData = prepareBatchData(allUsageData)
+      // Prepare usage rollup data for contract call
+      const usageRollupData = prepareUsageRollupData(usageData)
 
-      if (batchData.dataSetIds.length === 0) {
-        console.log('No datasets with non-zero usage to report')
-        return
-      }
+      console.log(
+        `Reporting usage for ${usageRollupData.dataSetIds.length} data sets`,
+      )
 
-      console.log(`Reporting usage for ${batchData.dataSetIds.length} datasets`)
-
-      // Simulate the transaction first
       const { request } = await publicClient.simulateContract({
         address: env.FILBEAM_CONTRACT_ADDRESS,
         abi,
-        functionName: 'reportUsageRollupBatch',
+        functionName: 'recordUsageRollups',
         args: [
-          batchData.dataSetIds,
-          batchData.epochs,
-          batchData.cdnBytesUsed,
-          batchData.cacheMissBytesUsed,
+          usageRollupData.dataSetIds,
+          usageRollupData.epochs,
+          usageRollupData.cdnBytesUsed,
+          usageRollupData.cacheMissBytesUsed,
         ],
         account,
       })
 
-      // Execute the transaction
       const hash = await walletClient.writeContract(request)
       console.log(`Transaction submitted: ${hash}`)
     } catch (error) {

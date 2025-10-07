@@ -18,7 +18,7 @@
         "internalType": "uint256"
       },
       {
-        "name": "_filBeamController",
+        "name": "_filBeamOperatorController",
         "type": "address",
         "internalType": "address"
       }
@@ -63,12 +63,12 @@
     ],
     "outputs": [
       {
-        "name": "cdnBytesUsed",
+        "name": "cdnAmount",
         "type": "uint256",
         "internalType": "uint256"
       },
       {
-        "name": "cacheMissBytesUsed",
+        "name": "cacheMissAmount",
         "type": "uint256",
         "internalType": "uint256"
       },
@@ -92,7 +92,7 @@
   },
   {
     "type": "function",
-    "name": "filBeamController",
+    "name": "filBeamOperatorController",
     "inputs": [],
     "outputs": [
       {
@@ -128,12 +128,12 @@
     ],
     "outputs": [
       {
-        "name": "cdnBytesUsed",
+        "name": "cdnAmount",
         "type": "uint256",
         "internalType": "uint256"
       },
       {
-        "name": "cacheMissBytesUsed",
+        "name": "cacheMissAmount",
         "type": "uint256",
         "internalType": "uint256"
       },
@@ -170,42 +170,7 @@
   },
   {
     "type": "function",
-    "name": "renounceOwnership",
-    "inputs": [],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "reportUsageRollup",
-    "inputs": [
-      {
-        "name": "dataSetId",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "newEpoch",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "cdnBytesUsed",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "cacheMissBytesUsed",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "reportUsageRollupBatch",
+    "name": "recordUsageRollups",
     "inputs": [
       {
         "name": "dataSetIds",
@@ -228,6 +193,13 @@
         "internalType": "uint256[]"
       }
     ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "renounceOwnership",
+    "inputs": [],
     "outputs": [],
     "stateMutability": "nonpayable"
   },
@@ -259,10 +231,10 @@
   },
   {
     "type": "function",
-    "name": "setFilBeamController",
+    "name": "setFilBeamOperatorController",
     "inputs": [
       {
-        "name": "_filBeamController",
+        "name": "_filBeamOperatorController",
         "type": "address",
         "internalType": "address"
       }
@@ -272,20 +244,7 @@
   },
   {
     "type": "function",
-    "name": "settleCDNPaymentRail",
-    "inputs": [
-      {
-        "name": "dataSetId",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "settleCDNPaymentRailBatch",
+    "name": "settleCDNPaymentRails",
     "inputs": [
       {
         "name": "dataSetIds",
@@ -298,20 +257,7 @@
   },
   {
     "type": "function",
-    "name": "settleCacheMissPaymentRail",
-    "inputs": [
-      {
-        "name": "dataSetId",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "settleCacheMissPaymentRailBatch",
+    "name": "settleCacheMissPaymentRails",
     "inputs": [
       {
         "name": "dataSetIds",

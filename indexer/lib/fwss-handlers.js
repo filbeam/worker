@@ -1,5 +1,5 @@
 import { checkIfAddressIsSanctioned as defaultCheckIfAddressIsSanctioned } from './chainalysis.js'
-import { calculateEgressQuota, formatUsdfcAmount } from './rate-helpers.js'
+import { calculateEgressQuota } from './rate-helpers.js'
 
 /**
  * Handle proof set rail creation
@@ -86,31 +86,26 @@ export async function handleFWSSServiceTerminated(env, payload) {
  * for a data set based on lockup amounts
  *
  * @param {{
- *   CDN_RATE_DOLLARS_PER_TIB: string
- *   CACHE_MISS_RATE_DOLLARS_PER_TIB: string
+ *   CDN_RATE_PER_TIB: string
+ *   CACHE_MISS_RATE_PER_TIB: string
  *   DB: D1Database
  * }} env
  * @param {any} payload
  * @throws {Error} If there is an error during the database operation
  */
 export async function handleFWSSCDNPaymentRailsToppedUp(env, payload) {
-  const { CDN_RATE_DOLLARS_PER_TIB, CACHE_MISS_RATE_DOLLARS_PER_TIB } = env
+  const { CDN_RATE_PER_TIB, CACHE_MISS_RATE_PER_TIB } = env
 
-  // Extract event data - handle uint256 as BigInt
   const dataSetId = String(payload.data_set_id)
   const totalCdnLockup = payload.total_cdn_lockup || '0'
   const totalCacheMissLockup = payload.total_cache_miss_lockup || '0'
 
-  // Convert dollar rates to USDFC units
-  const cdnRatePerTiB = formatUsdfcAmount(CDN_RATE_DOLLARS_PER_TIB)
-  const cacheMissRatePerTiB = formatUsdfcAmount(CACHE_MISS_RATE_DOLLARS_PER_TIB)
-
   // Calculate quotas in bytes using the helper function
-  // This handles the conversion from rate per TiB to actual quota
-  const cdnEgressQuota = calculateEgressQuota(totalCdnLockup, cdnRatePerTiB)
+  // Rates are already in USDFC units (1e18), no conversion needed
+  const cdnEgressQuota = calculateEgressQuota(totalCdnLockup, CDN_RATE_PER_TIB)
   const cacheMissEgressQuota = calculateEgressQuota(
     totalCacheMissLockup,
-    cacheMissRatePerTiB,
+    CACHE_MISS_RATE_PER_TIB,
   )
 
   // Store as strings since quotas can be very large uint256 values

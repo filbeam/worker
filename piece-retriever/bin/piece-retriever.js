@@ -113,6 +113,7 @@ export default {
       const { response: originResponse, cacheMiss } = await retrieveFile(
         serviceUrl,
         pieceCid,
+        request,
         env.ORIGIN_CACHE_TTL,
         { signal: request.signal },
       )

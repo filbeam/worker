@@ -3,8 +3,8 @@
  *
  * @param {string} baseUrl - The base URL to service provider serving the piece.
  * @param {string} pieceCid - The CID of the piece to retrieve.
- * @param {number} [cacheTtl=86400] - Cache TTL in seconds (default: 86400).
- *   Default is `86400`
+ * @param {Request} request - Worker request
+ * @param {number} [cacheTtl=86400] - Cache TTL in seconds. Default is `86400`
  * @param {object} [options] - Optional parameters.
  * @param {AbortSignal} [options.signal] - An optional AbortSignal to cancel the
  *   fetch request.
@@ -18,27 +18,35 @@
 export async function retrieveFile(
   baseUrl,
   pieceCid,
+  request,
   cacheTtl = 86400,
   { signal } = {},
 ) {
   const url = getRetrievalUrl(baseUrl, pieceCid)
-  const response = await fetch(url, {
-    cf: {
-      cacheTtlByStatus: {
-        '200-299': cacheTtl,
-        404: 0,
-        '500-599': 0,
-      },
-      cacheEverything: true,
-    },
-    signal,
-  })
-  const cacheStatus = response.headers.get('CF-Cache-Status')
-  if (!cacheStatus) {
-    console.log(`CF-Cache-Status was not provided for ${url}`)
-  }
 
-  const cacheMiss = cacheStatus !== 'HIT'
+  const cacheKey = new Request(url, request)
+  let response = await caches.default.match(cacheKey)
+  let cacheMiss = true
+
+  if (response) {
+    cacheMiss = false
+  } else {
+    response = await fetch(url, { signal })
+    if (response.ok) {
+      const [body1, body2] = response.body?.tee() ?? [null, null]
+      await caches.default.put(
+        url,
+        new Response(body1, {
+          ...response,
+          headers: {
+            ...Object.fromEntries(response.headers),
+            'Cache-Control': `public, max-age=${cacheTtl}`,
+          },
+        }),
+      )
+      response = new Response(body2, response)
+    }
+  }
 
   return { response, cacheMiss }
 }
