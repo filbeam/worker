@@ -27,7 +27,7 @@ export async function insertDataSetPiece(
 }
 
 /**
- * @param {Env} env
+ * @param {{ DB: D1Database; KV: KVNamespace }} env
  * @param {number | string} dataSetId
  * @param {(number | string)[]} pieceIds
  */
@@ -47,7 +47,7 @@ export async function removeDataSetPieces(env, dataSetId, pieceIds) {
 }
 
 /**
- * @param {Env} env
+ * @param {{ DB: D1Database; KV: KVNamespace }} env
  * @param {number | string} dataSetId
  * @param {(number | string)[]} pieceIds
  */

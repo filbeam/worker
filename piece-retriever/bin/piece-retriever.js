@@ -85,10 +85,13 @@ export default {
       const fetchStartedAt = performance.now()
 
       const indexCacheKey = `${payerWalletAddress}/${pieceCid}`
-      let [dataSetId, serviceUrl] =
-        (await env.KV.get(indexCacheKey, {
-          type: 'json',
-        })) ?? []
+      const indexCacheValue = await env.KV.get(indexCacheKey, { type: 'json' })
+      httpAssert(
+        Array.isArray(indexCacheValue) || indexCacheValue === null,
+        500,
+        'Invalid index cache value',
+      )
+      let [dataSetId, serviceUrl] = indexCacheValue ?? []
 
       if (!serviceUrl) {
         let serviceProviderId

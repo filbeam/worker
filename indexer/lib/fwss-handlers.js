@@ -64,7 +64,7 @@ export async function handleFWSSDataSetCreated(
 /**
  * Handle Filecoin Warm Storage Service service termination
  *
- * @param {Env} env
+ * @param {{ DB: D1Database; KV: KVNamespace }} env
  * @param {any} payload
  * @throws {Error}
  */
@@ -82,7 +82,7 @@ export async function handleFWSSServiceTerminated(env, payload) {
 }
 
 /**
- * @param {Env} env
+ * @param {{ DB: D1Database; KV: KVNamespace }} env
  * @param {string | number} dataSetId
  */
 async function clearDataSetIndexCache(env, dataSetId) {

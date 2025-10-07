@@ -3,7 +3,7 @@ import validator from 'validator'
 const PRODUCT_TYPE_PDP = 0
 
 /**
- * @param {Env} env
+ * @param {{ DB: D1Database; KV: KVNamespace }} env
  * @param {string | number} providerId
  * @param {string | number} productType
  * @param {string} serviceUrl
@@ -34,7 +34,7 @@ export async function handleProductAdded(
 }
 
 /**
- * @param {Env} env
+ * @param {{ DB: D1Database; KV: KVNamespace }} env
  * @param {string | number} providerId
  * @param {string | number} productType
  * @param {string} serviceUrl
@@ -65,7 +65,7 @@ export async function handleProductUpdated(
 }
 
 /**
- * @param {Env} env
+ * @param {{ DB: D1Database; KV: KVNamespace }} env
  * @param {string | number} providerId
  * @param {string | number} productType
  * @returns {Promise<Response>}
@@ -100,7 +100,7 @@ export async function handleProductRemoved(env, providerId, productType) {
 }
 
 /**
- * @param {Env} env
+ * @param {{ DB: D1Database; KV: KVNamespace }} env
  * @param {string | number} providerId
  * @returns {Promise<Response>}
  */
@@ -127,7 +127,7 @@ export async function handleProviderRemoved(env, providerId) {
 }
 
 /**
- * @param {Env} env
+ * @param {{ DB: D1Database; KV: KVNamespace }} env
  * @param {string | number} providerId
  * @param {string} serviceUrl
  * @returns {Promise<Response>}
@@ -161,7 +161,7 @@ async function handleProviderServiceUrlUpdate(env, providerId, serviceUrl) {
 }
 
 /**
- * @param {Env} env
+ * @param {{ DB: D1Database; KV: KVNamespace }} env
  * @param {string | number} providerId
  */
 async function clearServiceProviderIndexCache(env, providerId) {
