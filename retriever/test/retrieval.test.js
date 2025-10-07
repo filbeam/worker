@@ -14,7 +14,7 @@ describe('retrieveFile', () => {
     global.fetch = fetchMock
     cachesMock = {
       match: vi.fn(),
-      put: vi.fn().mockResolvedValueOnce()
+      put: vi.fn().mockResolvedValueOnce(),
     }
     global.caches = { default: cachesMock }
   })
@@ -31,13 +31,17 @@ describe('retrieveFile', () => {
   it('uses the default cacheTtl if not provided', async () => {
     cachesMock.match.mockResolvedValueOnce(null)
     await retrieveFile(baseUrl, pieceCid, new Request(baseUrl))
-    expect(cachesMock.put.mock.calls[0][1].headers.get('Cache-Control')).toBe('public, max-age=86400')
+    expect(cachesMock.put.mock.calls[0][1].headers.get('Cache-Control')).toBe(
+      'public, max-age=86400',
+    )
   })
 
   it('uses the provided cacheTtl', async () => {
     cachesMock.match.mockResolvedValueOnce(null)
     await retrieveFile(baseUrl, pieceCid, new Request(baseUrl), 1234)
-    expect(cachesMock.put.mock.calls[0][1].headers.get('Cache-Control')).toBe('public, max-age=1234')
+    expect(cachesMock.put.mock.calls[0][1].headers.get('Cache-Control')).toBe(
+      'public, max-age=1234',
+    )
   })
 
   it('returns the cached response', async () => {
@@ -57,7 +61,11 @@ describe('retrieveFile', () => {
 
   it('caches and returns a newly cached response', async () => {
     cachesMock.match.mockResolvedValueOnce(null)
-    const response = { ok: true, status: 201, headers: new Headers({ foo: 'bar' }) }
+    const response = {
+      ok: true,
+      status: 201,
+      headers: new Headers({ foo: 'bar' }),
+    }
     fetchMock.mockResolvedValueOnce(response)
     const result = await retrieveFile(baseUrl, pieceCid, new Request(baseUrl))
     expect(result.response.status).toBe(201)

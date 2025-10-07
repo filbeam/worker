@@ -4,7 +4,7 @@
  * @param {string} baseUrl - The base URL to service provider serving the piece.
  * @param {string} pieceCid - The CID of the piece to retrieve.
  * @param {Request} request - Worker request
- * @param {number} [cacheTtl=86400] - Cache TTL in seconds.
+ * @param {number} [cacheTtl=86400] - Cache TTL in seconds. Default is `86400`
  * @param {object} [options] - Optional parameters.
  * @param {AbortSignal} [options.signal] - An optional AbortSignal to cancel the
  *   fetch request.
@@ -34,13 +34,16 @@ export async function retrieveFile(
     response = await fetch(url, { signal })
     if (response.ok) {
       const [body1, body2] = response.body?.tee() ?? [null, null]
-      await caches.default.put(url, new Response(body1, {
-        ...response,
-        headers: {
-          ...Object.fromEntries(response.headers),
-        'Cache-Control': `public, max-age=${cacheTtl}`
-        }
-      }))
+      await caches.default.put(
+        url,
+        new Response(body1, {
+          ...response,
+          headers: {
+            ...Object.fromEntries(response.headers),
+            'Cache-Control': `public, max-age=${cacheTtl}`,
+          },
+        }),
+      )
       response = new Response(body2, response)
     }
   }
