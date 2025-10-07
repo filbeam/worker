@@ -209,7 +209,6 @@ export default {
       const { provider_id: providerId } = payload
       return await handleProviderRemoved(env, providerId)
     } else if (pathname === '/filbeam/usage-reported') {
-      // Validate required fields
       if (
         !payload.data_set_id ||
         !(
