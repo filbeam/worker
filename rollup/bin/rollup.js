@@ -75,7 +75,6 @@ export default {
         account,
       })
 
-      // Execute the transaction
       const hash = await walletClient.writeContract(request)
       console.log(`Transaction submitted: ${hash}`)
     } catch (error) {
