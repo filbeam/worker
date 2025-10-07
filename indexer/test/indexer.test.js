@@ -1043,40 +1043,19 @@ describe('POST /fwss/service-terminated', () => {
   })
 })
 
-describe('POST /filbeam/usage-reported', () => {
+describe('POST /filbeam-operator/usage-reported', () => {
   it('validates required fields', async () => {
     const testCases = [
       { payload: {}, expectedError: 'Invalid payload' },
       { payload: { data_set_id: '1' }, expectedError: 'Invalid payload' },
       {
-        payload: { data_set_id: '1', new_epoch: 100 },
+        payload: { epoch: 100 },
         expectedError: 'Invalid payload',
       },
-      {
-        payload: { data_set_id: '1', new_epoch: 100, cdn_bytes_used: '1000' },
-        expectedError: 'Invalid payload',
-      },
-      {
-        payload: {
-          new_epoch: 100,
-          cdn_bytes_used: '1000',
-          cache_miss_bytes_used: '500',
-        },
-        expectedError: 'Invalid payload',
-      },
-      {
-        payload: {
-          data_set_id: '1',
-          new_epoch: '100',
-          cdn_bytes_used: '1000',
-          cache_miss_bytes_used: '500',
-        },
-        expectedError: 'Invalid payload',
-      }, // new_epoch must be number
     ]
 
     for (const { payload, expectedError } of testCases) {
-      const req = new Request('https://host/filbeam/usage-reported', {
+      const req = new Request('https://host/filbeam-operator/usage-reported', {
         method: 'POST',
         headers: {
           [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
@@ -1096,16 +1075,14 @@ describe('POST /filbeam/usage-reported', () => {
       payerAddress: '0xPayerAddress',
     })
 
-    const req = new Request('https://host/filbeam/usage-reported', {
+    const req = new Request('https://host/filbeam-operator/usage-reported', {
       method: 'POST',
       headers: {
         [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
       },
       body: JSON.stringify({
         data_set_id: dataSetId,
-        new_epoch: 100,
-        cdn_bytes_used: '1000',
-        cache_miss_bytes_used: '500',
+        epoch: 100,
       }),
     })
 
@@ -1131,16 +1108,14 @@ describe('POST /filbeam/usage-reported', () => {
       payerAddress: '0xPayerAddress',
     })
 
-    const req = new Request('https://host/filbeam/usage-reported', {
+    const req = new Request('https://host/filbeam-operator/usage-reported', {
       method: 'POST',
       headers: {
         [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
       },
       body: JSON.stringify({
         data_set_id: 123, // Numeric
-        new_epoch: 150,
-        cdn_bytes_used: '2000',
-        cache_miss_bytes_used: '1000',
+        epoch: 150,
       }),
     })
 
@@ -1157,7 +1132,7 @@ describe('POST /filbeam/usage-reported', () => {
     expect(result.last_rollup_reported_at_epoch).toBe(150)
   })
 
-  it('returns 400 when new_epoch is not greater than last_rollup_reported_at_epoch', async () => {
+  it('returns 400 when epoch is not greater than last_rollup_reported_at_epoch', async () => {
     const dataSetId = await withDataSet(env, {
       withCDN: true,
       serviceProviderId: '1',
@@ -1171,16 +1146,14 @@ describe('POST /filbeam/usage-reported', () => {
       .bind(100, dataSetId)
       .run()
 
-    const req = new Request('https://host/filbeam/usage-reported', {
+    const req = new Request('https://host/filbeam-operator/usage-reported', {
       method: 'POST',
       headers: {
         [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
       },
       body: JSON.stringify({
         data_set_id: dataSetId,
-        new_epoch: 100, // Same as current
-        cdn_bytes_used: '1000',
-        cache_miss_bytes_used: '500',
+        epoch: 100, // Same as current
       }),
     })
 

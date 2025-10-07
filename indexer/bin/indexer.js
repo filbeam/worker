@@ -13,7 +13,7 @@ import {
   removeDataSetPieces,
   insertDataSetPiece,
 } from '../lib/pdp-verifier-handlers.js'
-import { handleFilBeamUsageReported } from '../lib/filbeam-handlers.js'
+import { handleFilBeamOperatorUsageReported } from '../lib/filbeam-operator-handlers.js'
 import { screenWallets } from '../lib/wallet-screener.js'
 import { CID } from 'multiformats/cid'
 
@@ -208,24 +208,16 @@ export default {
     } else if (pathname === '/service-provider-registry/provider-removed') {
       const { provider_id: providerId } = payload
       return await handleProviderRemoved(env, providerId)
-    } else if (pathname === '/filbeam/usage-reported') {
+    } else if (pathname === '/filbeam-operator/usage-reported') {
       if (
         !payload.data_set_id ||
         !(
           typeof payload.data_set_id === 'number' ||
           typeof payload.data_set_id === 'string'
         ) ||
-        payload.new_epoch === undefined ||
-        typeof payload.new_epoch !== 'number' ||
-        payload.cdn_bytes_used === undefined ||
+        payload.epoch === undefined ||
         !(
-          typeof payload.cdn_bytes_used === 'number' ||
-          typeof payload.cdn_bytes_used === 'string'
-        ) ||
-        payload.cache_miss_bytes_used === undefined ||
-        !(
-          typeof payload.cache_miss_bytes_used === 'number' ||
-          typeof payload.cache_miss_bytes_used === 'string'
+          typeof payload.epoch === 'number' || typeof payload.epoch === 'string'
         )
       ) {
         console.error('FilBeam.UsageReported: Invalid payload', payload)
@@ -233,10 +225,10 @@ export default {
       }
 
       console.log(
-        `FilBeam usage reported (data_set_id=${payload.data_set_id}, new_epoch=${payload.new_epoch}`,
+        `FilBeam usage reported (data_set_id=${payload.data_set_id}, epoch=${payload.epoch}`,
       )
 
-      return await handleFilBeamUsageReported(env, payload)
+      return await handleFilBeamOperatorUsageReported(env, payload)
     } else {
       return new Response('Not Found', { status: 404 })
     }
