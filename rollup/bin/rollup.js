@@ -45,11 +45,11 @@ export default {
       )
 
       if (usageData.length === 0) {
-        console.log('No usage data to report')
+        console.log('No usage data found')
         return
       }
 
-      console.log(`Found usage data for ${usageData.length} datasets`)
+      console.log(`Found usage data for ${usageData.length} data sets`)
 
       // Prepare usage rollup data for contract call
       const usageRollupData = prepareUsageRollupData(usageData)
