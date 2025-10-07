@@ -61,7 +61,6 @@ export default {
 
       console.log(`Reporting usage for ${batchData.dataSetIds.length} datasets`)
 
-      // Simulate the transaction first
       const { request } = await publicClient.simulateContract({
         address: env.FILBEAM_CONTRACT_ADDRESS,
         abi,
