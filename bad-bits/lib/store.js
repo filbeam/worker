@@ -1,7 +1,7 @@
 /**
  * Updates the bad bits database with new hashes
  *
- * @param {Env} env - Environment containing database connection
+ * @param {{ DB: D1Database, KV: KVNamespace }} env - Environment containing database connection
  * @param {Set<string>} currentHashes - Set of current valid hashes from
  *   denylist
  * @param {string | null} etag - ETag for the current denylist
@@ -33,7 +33,7 @@ export async function updateBadBitsDatabase(env, currentHashes, etag) {
   }
 
   const statements = [
-    env.DB.prepare('DELETE FROM bad_bits WHERE last_modified_at < ?').bind(
+    env.DB.prepare('DELETE FROM bad_bits WHERE last_modified_at < ? RETURNING *').bind(
       timestamp,
     ),
   ]
@@ -46,7 +46,16 @@ export async function updateBadBitsDatabase(env, currentHashes, etag) {
     )
   }
 
-  await env.DB.batch(statements)
+  const batchRes = await env.DB.batch(statements)
+
+  for (const hash of currentHashes) {
+    await env.KV.put(`bad:${hash}`, 'true')
+  }
+  for (const stmt of batchRes) {
+    for (const result of stmt.results) {
+      await env.KV.delete(`bad:${result.hash}`)
+    }
+  }
 }
 
 /** @param {Env} env */

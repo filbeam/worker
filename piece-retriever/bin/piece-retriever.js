@@ -11,7 +11,6 @@ import {
 } from '../lib/store.js'
 import { httpAssert } from '../lib/http-assert.js'
 import { setContentSecurityPolicy } from '../lib/content-security-policy.js'
-import { findInBadBits } from '../lib/bad-bits-util.js'
 
 // We need to keep an explicit definition of RetrieverEnv because our monorepo has multiple
 // worker-configuration.d.ts files, each file (re)defining the global Env interface, causing the
@@ -85,33 +84,30 @@ export default {
       const fetchStartedAt = performance.now()
 
       const indexCacheKey = `${payerWalletAddress}/${pieceCid}`
-      const indexCacheValue = await env.KV.get(indexCacheKey, { type: 'json' })
+      const [indexCacheValue, isBadBit] = await Promise.all([
+        env.KV.get(indexCacheKey, { type: 'json' }),
+        env.KV.get(`bad:${pieceCid}`, { type: 'json' })
+      ])
       httpAssert(
         Array.isArray(indexCacheValue) || indexCacheValue === null,
         500,
         'Invalid index cache value',
       )
       let [dataSetId, serviceUrl] = indexCacheValue ?? []
+      httpAssert(
+        !isBadBit,
+        404,
+        'The requested CID was flagged by the Bad Bits Denylist at https://badbits.dwebops.pub',
+      )
 
       if (!serviceUrl) {
         let serviceProviderId
-        let isBadBit
-        ;[{ serviceProviderId, serviceUrl, dataSetId }, isBadBit] =
-          await Promise.all([
-            getStorageProviderAndValidatePayer(
-              env,
-              payerWalletAddress,
-              pieceCid,
-            ),
-            findInBadBits(env, pieceCid),
-          ])
-
-        httpAssert(
-          !isBadBit,
-          404,
-          'The requested CID was flagged by the Bad Bits Denylist at https://badbits.dwebops.pub',
-        )
-
+        ;({ serviceProviderId, serviceUrl, dataSetId } = await getStorageProviderAndValidatePayer(
+          env,
+          payerWalletAddress,
+          pieceCid,
+        ))
+        
         httpAssert(
           serviceProviderId,
           404,
