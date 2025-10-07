@@ -56,7 +56,7 @@ export async function aggregateUsageData(
 }
 
 /**
- * Prepare batch data for FilBeam contract call
+ * Prepare usage rollup data for FilBeam contract call
  *
  * @param {{
  *   data_set_id: string
@@ -71,7 +71,7 @@ export async function aggregateUsageData(
  *   cacheMissBytesUsed: bigint[]
  * }}
  */
-export function prepareBatchData(usageData) {
+export function prepareUsageRollupData(usageData) {
   const dataSetIds = []
   const epochs = []
   const cdnBytesUsed = []

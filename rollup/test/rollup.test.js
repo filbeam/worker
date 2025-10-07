@@ -6,7 +6,7 @@ import {
   filecoinEpochToTimestamp,
   FILECOIN_GENESIS_UNIX_TIMESTAMP,
 } from './test-helpers.js'
-import { aggregateUsageData, prepareBatchData } from '../lib/rollup.js'
+import { aggregateUsageData, prepareUsageRollupData } from '../lib/rollup.js'
 
 describe('rollup', () => {
   describe('database operations', () => {
@@ -202,7 +202,7 @@ describe('rollup', () => {
     })
   })
 
-  describe('prepareBatchData', () => {
+  describe('prepareUsageRollupData', () => {
     it('should prepare batch data for contract call', () => {
       const usageData = [
         {
@@ -225,7 +225,7 @@ describe('rollup', () => {
         },
       ]
 
-      const batchData = prepareBatchData(usageData)
+      const batchData = prepareUsageRollupData(usageData)
 
       expect(batchData).toEqual({
         dataSetIds: ['1', '2', '3'],
@@ -252,7 +252,7 @@ describe('rollup', () => {
         },
       ]
 
-      const batchData = prepareBatchData(usageData)
+      const batchData = prepareUsageRollupData(usageData)
 
       expect(batchData.dataSetIds).toEqual(['1', '3'])
       expect(batchData.epochs).toEqual([100, 100])
@@ -262,7 +262,7 @@ describe('rollup', () => {
 
     it('should handle empty usage data', () => {
       const usageData = []
-      const batchData = prepareBatchData(usageData)
+      const batchData = prepareUsageRollupData(usageData)
 
       expect(batchData).toEqual({
         dataSetIds: [],

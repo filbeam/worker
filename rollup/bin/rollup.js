@@ -1,6 +1,6 @@
 import { getChainClient as defaultGetChainClient } from '../lib/chain.js'
 import { abi } from '../lib/filbeam.js'
-import { aggregateUsageData, prepareBatchData } from '../lib/rollup.js'
+import { aggregateUsageData, prepareUsageRollupData } from '../lib/rollup.js'
 
 /**
  * @typedef {{
@@ -38,38 +38,40 @@ export default {
       )
 
       // Aggregate usage data for all datasets that need reporting
-      const allUsageData = await aggregateUsageData(
+      const usageData = await aggregateUsageData(
         env.DB,
         Number(targetEpoch),
         Number(env.GENESIS_BLOCK_TIMESTAMP),
       )
 
-      if (allUsageData.length === 0) {
+      if (usageData.length === 0) {
         console.log('No usage data to report')
         return
       }
 
-      console.log(`Found usage data for ${allUsageData.length} datasets`)
+      console.log(`Found usage data for ${usageData.length} datasets`)
 
-      // Prepare batch data for contract call
-      const batchData = prepareBatchData(allUsageData)
+      // Prepare usage rollup data for contract call
+      const usageRollupData = prepareUsageRollupData(usageData)
 
-      if (batchData.dataSetIds.length === 0) {
+      if (usageRollupData.dataSetIds.length === 0) {
         console.log('No datasets with non-zero usage to report')
         return
       }
 
-      console.log(`Reporting usage for ${batchData.dataSetIds.length} datasets`)
+      console.log(
+        `Reporting usage for ${usageRollupData.dataSetIds.length} data sets`,
+      )
 
       const { request } = await publicClient.simulateContract({
         address: env.FILBEAM_CONTRACT_ADDRESS,
         abi,
         functionName: 'recordUsageRollups',
         args: [
-          batchData.dataSetIds,
-          batchData.epochs,
-          batchData.cdnBytesUsed,
-          batchData.cacheMissBytesUsed,
+          usageRollupData.dataSetIds,
+          usageRollupData.epochs,
+          usageRollupData.cdnBytesUsed,
+          usageRollupData.cacheMissBytesUsed,
         ],
         account,
       })
