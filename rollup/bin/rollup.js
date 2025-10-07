@@ -61,7 +61,6 @@ export default {
 
       console.log(`Reporting usage for ${batchData.dataSetIds.length} datasets`)
 
-      // Simulate the transaction first
       const { request } = await publicClient.simulateContract({
         address: env.FILBEAM_CONTRACT_ADDRESS,
         abi,
@@ -75,7 +74,6 @@ export default {
         account,
       })
 
-      // Execute the transaction
       const hash = await walletClient.writeContract(request)
       console.log(`Transaction submitted: ${hash}`)
     } catch (error) {
