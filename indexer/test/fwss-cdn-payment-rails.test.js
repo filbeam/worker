@@ -2,7 +2,7 @@ import { describe, it, beforeEach, afterEach, expect } from 'vitest'
 import { env } from 'cloudflare:test'
 import { handleFWSSCDNPaymentRailsToppedUp } from '../lib/fwss-handlers.js'
 import { withDataSet, withServiceProvider } from './test-helpers.js'
-import { formatUsdfcAmount, BYTES_PER_TIB } from '../lib/rate-helpers.js'
+import { BYTES_PER_TIB } from '../lib/rate-helpers.js'
 
 describe('handleFWSSCDNPaymentRailsToppedUp', () => {
   let testServiceProviderId
@@ -35,14 +35,14 @@ describe('handleFWSSCDNPaymentRailsToppedUp', () => {
   it('calculates and stores egress quotas correctly', async () => {
     const testEnv = {
       ...env,
-      CDN_RATE_DOLLARS_PER_TIB: '5', // $5 per TiB
-      CACHE_MISS_RATE_DOLLARS_PER_TIB: '5', // Same rate for cache miss
+      CDN_RATE_PER_TIB: '5000000000000000000', // 5 USDFC per TiB
+      CACHE_MISS_RATE_PER_TIB: '5000000000000000000', // Same rate for cache miss
     }
 
     const payload = {
       data_set_id: testDataSetId,
-      total_cdn_lockup: formatUsdfcAmount(5), // 5 USDFC = 1 TiB quota
-      total_cache_miss_lockup: formatUsdfcAmount(10), // 10 USDFC = 2 TiB quota
+      total_cdn_lockup: '5000000000000000000', // 5 USDFC = 1 TiB quota
+      total_cache_miss_lockup: '10000000000000000000', // 10 USDFC = 2 TiB quota
     }
 
     await handleFWSSCDNPaymentRailsToppedUp(testEnv, payload)
@@ -61,8 +61,8 @@ describe('handleFWSSCDNPaymentRailsToppedUp', () => {
   it('handles uint256 large numbers correctly', async () => {
     const testEnv = {
       ...env,
-      CDN_RATE_DOLLARS_PER_TIB: '1', // $1 per TiB
-      CACHE_MISS_RATE_DOLLARS_PER_TIB: '2', // $2 per TiB
+      CDN_RATE_PER_TIB: '1000000000000000000', // 1 USDFC per TiB
+      CACHE_MISS_RATE_PER_TIB: '2000000000000000000', // 2 USDFC per TiB
     }
 
     const payload = {
@@ -93,8 +93,8 @@ describe('handleFWSSCDNPaymentRailsToppedUp', () => {
   it('handles zero lockup amounts', async () => {
     const testEnv = {
       ...env,
-      CDN_RATE_DOLLARS_PER_TIB: '5',
-      CACHE_MISS_RATE_DOLLARS_PER_TIB: '5',
+      CDN_RATE_PER_TIB: '5000000000000000000',
+      CACHE_MISS_RATE_PER_TIB: '5000000000000000000',
     }
 
     const payload = {
@@ -118,14 +118,14 @@ describe('handleFWSSCDNPaymentRailsToppedUp', () => {
   it('handles division by zero when rate is zero', async () => {
     const testEnv = {
       ...env,
-      CDN_RATE_DOLLARS_PER_TIB: '0', // Zero rate
-      CACHE_MISS_RATE_DOLLARS_PER_TIB: '0', // Zero rate
+      CDN_RATE_PER_TIB: '0', // Zero rate
+      CACHE_MISS_RATE_PER_TIB: '0', // Zero rate
     }
 
     const payload = {
       data_set_id: testDataSetId,
-      total_cdn_lockup: formatUsdfcAmount(5),
-      total_cache_miss_lockup: formatUsdfcAmount(10),
+      total_cdn_lockup: '5000000000000000000',
+      total_cache_miss_lockup: '10000000000000000000',
     }
 
     await handleFWSSCDNPaymentRailsToppedUp(testEnv, payload)
@@ -144,15 +144,15 @@ describe('handleFWSSCDNPaymentRailsToppedUp', () => {
   it('replaces existing quota values', async () => {
     const testEnv = {
       ...env,
-      CDN_RATE_DOLLARS_PER_TIB: '5',
-      CACHE_MISS_RATE_DOLLARS_PER_TIB: '5',
+      CDN_RATE_PER_TIB: '5000000000000000000',
+      CACHE_MISS_RATE_PER_TIB: '5000000000000000000',
     }
 
     // First update - 1 USDFC = 0.2 TiB
     const payload1 = {
       data_set_id: testDataSetId,
-      total_cdn_lockup: formatUsdfcAmount(1), // 1 USDFC
-      total_cache_miss_lockup: formatUsdfcAmount(2), // 2 USDFC
+      total_cdn_lockup: '1000000000000000000', // 1 USDFC
+      total_cache_miss_lockup: '2000000000000000000', // 2 USDFC
     }
 
     await handleFWSSCDNPaymentRailsToppedUp(testEnv, payload1)
@@ -171,8 +171,8 @@ describe('handleFWSSCDNPaymentRailsToppedUp', () => {
     // Second update with different values (should replace, not add)
     const payload2 = {
       data_set_id: testDataSetId,
-      total_cdn_lockup: formatUsdfcAmount(5), // 5 USDFC = 1 TiB
-      total_cache_miss_lockup: formatUsdfcAmount(10), // 10 USDFC = 2 TiB
+      total_cdn_lockup: '5000000000000000000', // 5 USDFC = 1 TiB
+      total_cache_miss_lockup: '10000000000000000000', // 10 USDFC = 2 TiB
     }
 
     await handleFWSSCDNPaymentRailsToppedUp(testEnv, payload2)
@@ -191,14 +191,14 @@ describe('handleFWSSCDNPaymentRailsToppedUp', () => {
   it('handles missing data set gracefully', async () => {
     const testEnv = {
       ...env,
-      CDN_RATE_DOLLARS_PER_TIB: '5',
-      CACHE_MISS_RATE_DOLLARS_PER_TIB: '5',
+      CDN_RATE_PER_TIB: '5000000000000000000',
+      CACHE_MISS_RATE_PER_TIB: '5000000000000000000',
     }
 
     const payload = {
       data_set_id: 'non-existent-data-set',
-      total_cdn_lockup: formatUsdfcAmount(5),
-      total_cache_miss_lockup: formatUsdfcAmount(10),
+      total_cdn_lockup: '5000000000000000000',
+      total_cache_miss_lockup: '10000000000000000000',
     }
 
     // Should not throw, just log warning
@@ -215,8 +215,8 @@ describe('handleFWSSCDNPaymentRailsToppedUp', () => {
   it('handles missing lockup fields with default values', async () => {
     const testEnv = {
       ...env,
-      CDN_RATE_DOLLARS_PER_TIB: '5',
-      CACHE_MISS_RATE_DOLLARS_PER_TIB: '5',
+      CDN_RATE_PER_TIB: '5000000000000000000',
+      CACHE_MISS_RATE_PER_TIB: '5000000000000000000',
     }
 
     const payload = {

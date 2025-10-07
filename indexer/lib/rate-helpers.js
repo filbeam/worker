@@ -14,10 +14,7 @@ export const USDFC_DECIMALS = 18n
  * @returns {bigint} Rate in USDFC units per byte
  */
 export function calculateRatePerByte(ratePerTiB) {
-  const rate = BigInt(ratePerTiB)
-  // Rate per byte = Rate per TiB / Bytes per TiB
-  // We use BigInt to avoid precision loss
-  return rate / BYTES_PER_TIB
+  return BigInt(ratePerTiB) / BYTES_PER_TIB
 }
 
 /**
@@ -36,14 +33,4 @@ export function calculateEgressQuota(lockupAmount, ratePerTiB) {
   }
 
   return (lockup * BYTES_PER_TIB) / rate
-}
-
-/**
- * Convert USDFC amount to its smallest unit representation (18 decimals)
- *
- * @param {number | string} amount - Amount in USDFC
- * @returns {string} Amount in USDFC smallest units as string
- */
-export function formatUsdfcAmount(amount) {
-  return BigInt(Math.floor(Number(amount) * 1e18)).toString()
 }

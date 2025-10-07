@@ -32,8 +32,8 @@ import { CID } from 'multiformats/cid'
  *   SECRET_HEADER_VALUE: string
  *   CHAINALYSIS_API_KEY: string
  *   GOLDSKY_SUBGRAPH_URL: string
- *   CDN_RATE_DOLLARS_PER_TIB: string
- *   CACHE_MISS_RATE_DOLLARS_PER_TIB: string
+ *   CDN_RATE_PER_TIB: string
+ *   CACHE_MISS_RATE_PER_TIB: string
  * }} IndexerEnv
  */
 

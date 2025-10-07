@@ -6,8 +6,8 @@ declare namespace Cloudflare {
 		mainModule: typeof import("./bin/indexer");
 	}
 	interface Env {
-		CDN_RATE_DOLLARS_PER_TIB: "5";
-		CACHE_MISS_RATE_DOLLARS_PER_TIB: "5";
+		CDN_RATE_PER_TIB: "5000000000000000000";
+		CACHE_MISS_RATE_PER_TIB: "5000000000000000000";
 		ENVIRONMENT: "dev" | "calibration" | "mainnet";
 		WALLET_SCREENING_BATCH_SIZE: 1 | 10;
 		WALLET_SCREENING_STALE_THRESHOLD_MS: 86400000 | 21600000;
