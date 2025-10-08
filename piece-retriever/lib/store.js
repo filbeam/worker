@@ -183,7 +183,7 @@ export async function getStorageProviderAndValidatePayer(
   httpAssert(
     withSufficientCDNQuota.length > 0,
     402,
-    `CDN egress quota exhausted for data set. Payer '${payerAddress}' needs to top up the CDN payment rails for the data set.`,
+    'CDN egress quota exhausted for data set.',
   )
 
   // Check cache-miss quota
@@ -197,7 +197,7 @@ export async function getStorageProviderAndValidatePayer(
   httpAssert(
     withSufficientCacheMissQuota.length > 0,
     402,
-    `Cache miss egress quota exhausted for data set. Payer '${payerAddress}' needs to top up the cache miss payment rails for the data set.`,
+    'Cache miss egress quota exhausted for data set.',
   )
 
   const {
