@@ -3,6 +3,7 @@ import { parseRequest } from '../lib/request.js'
 import {
   retrieveFile as defaultRetrieveFile,
   measureStreamedEgress,
+  createQuotaLimitingStream,
 } from '../lib/retrieval.js'
 import {
   getStorageProviderAndValidatePayer,
@@ -83,11 +84,19 @@ export default {
       // Timestamp to measure file retrieval performance (from cache and from SP)
       const fetchStartedAt = performance.now()
 
-      const [{ serviceProviderId, serviceUrl, dataSetId }, isBadBit] =
-        await Promise.all([
-          getStorageProviderAndValidatePayer(env, payerWalletAddress, pieceCid),
-          findInBadBits(env, pieceCid),
-        ])
+      const [
+        {
+          serviceProviderId,
+          serviceUrl,
+          dataSetId,
+          cdnEgressQuota,
+          cacheMissEgressQuota,
+        },
+        isBadBit,
+      ] = await Promise.all([
+        getStorageProviderAndValidatePayer(env, payerWalletAddress, pieceCid),
+        findInBadBits(env, pieceCid),
+      ])
 
       httpAssert(
         !isBadBit,
@@ -133,21 +142,29 @@ export default {
         return response
       }
 
-      // Stream and count bytes
-      // We create two identical streams, one for the egress measurement and the other for returning the response as soon as possible
-      const [returnedStream, egressMeasurementStream] =
-        originResponse.body.tee()
-      const reader = egressMeasurementStream.getReader()
+      const availableQuota = cacheMiss ? cacheMissEgressQuota : cdnEgressQuota
+
       const firstByteAt = performance.now()
+
+      const quotaLimiter = createQuotaLimitingStream(availableQuota)
+      const enforcedStream = originResponse.body.pipeThrough(
+        quotaLimiter.stream,
+      )
+
+      // Split stream: one for response, one for measurement
+      const [responseStream, measurementStream] = enforcedStream.tee()
 
       ctx.waitUntil(
         (async () => {
+          // Measure bytes from the measurement stream
+          const reader = measurementStream.getReader()
           const egressBytes = await measureStreamedEgress(reader)
           const lastByteFetchedAt = performance.now()
+          const { quotaExceeded } = quotaLimiter.getStatus()
 
           await logRetrievalResult(env, {
             cacheMiss,
-            responseStatus: originResponse.status,
+            responseStatus: quotaExceeded ? 402 : originResponse.status,
             egressBytes,
             requestCountryCode,
             timestamp: requestTimestamp,
@@ -159,12 +176,13 @@ export default {
             dataSetId,
           })
 
-          await updateDataSetStats(env, { dataSetId, egressBytes })
+          // Update stats and decrement quota
+          await updateDataSetStats(env, { dataSetId, egressBytes, cacheMiss })
         })(),
       )
 
-      // Return immediately, proxying the transformed response
-      const response = new Response(returnedStream, {
+      // Return the response stream immediately
+      const response = new Response(responseStream, {
         status: originResponse.status,
         statusText: originResponse.statusText,
         headers: originResponse.headers,

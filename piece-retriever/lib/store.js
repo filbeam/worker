@@ -83,6 +83,8 @@ export async function logRetrievalResult(env, params) {
  *   serviceProviderId: string
  *   serviceUrl: string
  *   dataSetId: string
+ *   cdnEgressQuota: number | null
+ *   cacheMissEgressQuota: number | null
  * }>}
  */
 export async function getStorageProviderAndValidatePayer(
@@ -91,7 +93,9 @@ export async function getStorageProviderAndValidatePayer(
   pieceCid,
 ) {
   const query = `
-   SELECT pieces.data_set_id, data_sets.service_provider_id, data_sets.payer_address, data_sets.with_cdn, service_providers.service_url, wallet_details.is_sanctioned
+   SELECT pieces.data_set_id, data_sets.service_provider_id, data_sets.payer_address, data_sets.with_cdn,
+          data_sets.cdn_egress_quota, data_sets.cache_miss_egress_quota,
+          service_providers.service_url, wallet_details.is_sanctioned
    FROM pieces
    LEFT OUTER JOIN data_sets
      ON pieces.data_set_id = data_sets.id
@@ -108,6 +112,8 @@ export async function getStorageProviderAndValidatePayer(
    *   data_set_id: string
    *   payer_address: string | undefined
    *   with_cdn: number | undefined
+   *   cdn_egress_quota: number | null | undefined
+   *   cache_miss_egress_quota: number | null | undefined
    *   service_url: string | undefined
    *   is_sanctioned: number | undefined
    * }[]}
@@ -166,11 +172,41 @@ export async function getStorageProviderAndValidatePayer(
     `No approved service provider found for payer '${payerAddress}' and piece_cid '${pieceCid}'.`,
   )
 
+  // Check CDN quota first
+  const withSufficientCDNQuota = withApprovedProvider.filter((row) => {
+    return (
+      row.cdn_egress_quota !== null &&
+      row.cdn_egress_quota !== undefined &&
+      row.cdn_egress_quota > 0
+    )
+  })
+  httpAssert(
+    withSufficientCDNQuota.length > 0,
+    402,
+    'CDN egress quota exhausted for data set.',
+  )
+
+  // Check cache-miss quota
+  const withSufficientCacheMissQuota = withSufficientCDNQuota.filter((row) => {
+    return (
+      row.cache_miss_egress_quota !== null &&
+      row.cache_miss_egress_quota !== undefined &&
+      row.cache_miss_egress_quota > 0
+    )
+  })
+  httpAssert(
+    withSufficientCacheMissQuota.length > 0,
+    402,
+    'Cache miss egress quota exhausted for data set.',
+  )
+
   const {
     data_set_id: dataSetId,
     service_provider_id: serviceProviderId,
     service_url: serviceUrl,
-  } = withApprovedProvider[0]
+    cdn_egress_quota: cdnEgressQuota,
+    cache_miss_egress_quota: cacheMissEgressQuota,
+  } = withSufficientCacheMissQuota[0]
 
   // We need this assertion to supress TypeScript error. The compiler is not able to infer that
   // `withCDN.filter()` above returns only rows with `service_url` defined.
@@ -180,7 +216,13 @@ export async function getStorageProviderAndValidatePayer(
     `Looked up Data set ID '${dataSetId}' and service provider id '${serviceProviderId}' for piece_cid '${pieceCid}' and payer '${payerAddress}'. Service URL: ${serviceUrl}`,
   )
 
-  return { serviceProviderId, serviceUrl, dataSetId }
+  return {
+    serviceProviderId,
+    serviceUrl,
+    dataSetId,
+    cdnEgressQuota: cdnEgressQuota ?? null,
+    cacheMissEgressQuota: cacheMissEgressQuota ?? null,
+  }
 }
 
 /**
@@ -188,15 +230,26 @@ export async function getStorageProviderAndValidatePayer(
  * @param {object} params - Parameters for the data set update.
  * @param {string} params.dataSetId - The ID of the data set to update.
  * @param {number} params.egressBytes - The egress bytes used for the response.
+ * @param {boolean} params.cacheMiss - Whether this was a cache miss (true) or
+ *   cache hit (false).
  */
-export async function updateDataSetStats(env, { dataSetId, egressBytes }) {
+export async function updateDataSetStats(
+  env,
+  { dataSetId, egressBytes, cacheMiss },
+) {
+  const quotaColumn = cacheMiss ? 'cache_miss_egress_quota' : 'cdn_egress_quota'
+
   await env.DB.prepare(
     `
     UPDATE data_sets
-    SET total_egress_bytes_used = total_egress_bytes_used + ?
+    SET total_egress_bytes_used = total_egress_bytes_used + ?,
+        ${quotaColumn} = CASE
+          WHEN ${quotaColumn} - ? < 0 THEN 0
+          ELSE ${quotaColumn} - ?
+        END
     WHERE id = ?
     `,
   )
-    .bind(egressBytes, dataSetId)
+    .bind(egressBytes, egressBytes, egressBytes, dataSetId)
     .run()
 }
