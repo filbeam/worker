@@ -156,21 +156,11 @@ export default {
 
       ctx.waitUntil(
         (async () => {
-          let egressBytes = 0
-
-          try {
-            // Measure bytes from the measurement stream
-            const reader = measurementStream.getReader()
-            egressBytes = await measureStreamedEgress(reader)
-          } catch (error) {
-            // Measurement might fail if stream was terminated early
-            // Get the actual bytes transferred from the quota limiter
-            const status = quotaLimiter.getStatus()
-            egressBytes = status.egressBytes
-          }
-
-          const { quotaExceeded } = quotaLimiter.getStatus()
+          // Measure bytes from the measurement stream
+          const reader = measurementStream.getReader()
+          const egressBytes = await measureStreamedEgress(reader)
           const lastByteFetchedAt = performance.now()
+          const { quotaExceeded } = quotaLimiter.getStatus()
 
           await logRetrievalResult(env, {
             cacheMiss,
