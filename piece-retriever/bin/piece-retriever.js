@@ -3,7 +3,7 @@ import { parseRequest } from '../lib/request.js'
 import {
   retrieveFile as defaultRetrieveFile,
   measureStreamedEgress,
-  createQuotaEnforcingStream,
+  createQuotaLimitingStream,
 } from '../lib/retrieval.js'
 import {
   getStorageProviderAndValidatePayer,
@@ -148,7 +148,7 @@ export default {
       const firstByteAt = performance.now()
 
       // Apply quota enforcement and measure egress
-      const quotaEnforcer = createQuotaEnforcingStream(availableQuota)
+      const quotaEnforcer = createQuotaLimitingStream(availableQuota)
       const enforcedStream = originResponse.body.pipeThrough(
         quotaEnforcer.stream,
       )

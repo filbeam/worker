@@ -71,7 +71,7 @@ export async function measureStreamedEgress(reader) {
 }
 
 /**
- * Creates a transform stream that enforces quota limits during streaming. This
+ * Creates a transform stream that limits usage based on available quota. This
  * stream passes data through while tracking bytes and stopping when quota is
  * exceeded.
  *
@@ -82,7 +82,7 @@ export async function measureStreamedEgress(reader) {
  * }}
  *   - Transform stream and status getter
  */
-export function createQuotaEnforcingStream(availableQuota) {
+export function createQuotaLimitingStream(availableQuota) {
   let egressBytes = 0
   let quotaExceeded = false
   const quotaLimit = availableQuota ?? 0
