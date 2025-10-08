@@ -142,15 +142,13 @@ export default {
         return response
       }
 
-      // Determine which quota to use based on cache hit/miss
       const availableQuota = cacheMiss ? cacheMissEgressQuota : cdnEgressQuota
 
       const firstByteAt = performance.now()
 
-      // Apply quota enforcement and measure egress
-      const quotaEnforcer = createQuotaLimitingStream(availableQuota)
+      const quotaLimiter = createQuotaLimitingStream(availableQuota)
       const enforcedStream = originResponse.body.pipeThrough(
-        quotaEnforcer.stream,
+        quotaLimiter.stream,
       )
 
       // Split stream: one for response, one for measurement
@@ -166,14 +164,12 @@ export default {
             egressBytes = await measureStreamedEgress(reader)
           } catch (error) {
             // Measurement might fail if stream was terminated early
-            // Get the actual bytes transferred from the quota enforcer
-            const status = quotaEnforcer.getStatus()
+            // Get the actual bytes transferred from the quota limiter
+            const status = quotaLimiter.getStatus()
             egressBytes = status.egressBytes
           }
 
-          // Check if quota was exceeded
-          const { quotaExceeded } = quotaEnforcer.getStatus()
-
+          const { quotaExceeded } = quotaLimiter.getStatus()
           const lastByteFetchedAt = performance.now()
 
           await logRetrievalResult(env, {
