@@ -9,8 +9,8 @@ import { getBadBitsEntry } from '../lib/bad-bits-util'
  * @param {boolean} options.withCDN
  * @param {string} options.payerAddress
  * @param {string} options.pieceId
- * @param {string} options.cdnEgressQuota
- * @param {string} options.cacheMissEgressQuota
+ * @param {number} options.cdnEgressQuota
+ * @param {number} options.cacheMissEgressQuota
  */
 export async function withDataSetPieces(
   env,
@@ -21,8 +21,8 @@ export async function withDataSetPieces(
     dataSetId = 0,
     withCDN = true,
     pieceId = 0,
-    cdnEgressQuota = '1099511627776', // 1 TiB in bytes
-    cacheMissEgressQuota = '1099511627776', // 1 TiB in bytes
+    cdnEgressQuota = 1099511627776, // 1 TiB in bytes
+    cacheMissEgressQuota = 1099511627776, // 1 TiB in bytes
   } = {},
 ) {
   await env.DB.batch([

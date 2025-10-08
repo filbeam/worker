@@ -1,5 +1,4 @@
-import { describe, it, beforeAll } from 'vitest'
-import assert from 'node:assert/strict'
+import { describe, it, beforeAll, expect } from 'vitest'
 import {
   logRetrievalResult,
   getStorageProviderAndValidatePayer,
@@ -35,7 +34,7 @@ describe('logRetrievalResult', () => {
       WHERE data_set_id = '${DATA_SET_ID}'`,
     ).all()
     const result = readOutput.results
-    assert.deepStrictEqual(result, [
+    expect(result).toEqual([
       {
         data_set_id: DATA_SET_ID,
         response_status: 200,
@@ -69,8 +68,8 @@ describe('getStorageProviderAndValidatePayer', () => {
         APPROVED_SERVICE_PROVIDER_ID,
         payerAddress,
         true,
-        '1099511627776',
-        '1099511627776',
+        1099511627776,
+        1099511627776,
       )
       .run()
     await env.DB.prepare(
@@ -84,20 +83,14 @@ describe('getStorageProviderAndValidatePayer', () => {
       payerAddress,
       pieceCid,
     )
-    assert.strictEqual(result.serviceProviderId, APPROVED_SERVICE_PROVIDER_ID)
+    expect(result.serviceProviderId).toBe(APPROVED_SERVICE_PROVIDER_ID)
   })
 
   it('throws error if pieceCid not found', async () => {
     const payerAddress = '0x1234567890abcdef1234567890abcdef12345678'
-    await assert.rejects(
-      async () =>
-        await getStorageProviderAndValidatePayer(
-          env,
-          payerAddress,
-          'nonexistent-cid',
-        ),
-      /does not exist/,
-    )
+    await expect(
+      getStorageProviderAndValidatePayer(env, payerAddress, 'nonexistent-cid'),
+    ).rejects.toThrow(/does not exist/)
   })
 
   it('throws error if data_set_id exists but has no associated service provider', async () => {
@@ -114,11 +107,9 @@ describe('getStorageProviderAndValidatePayer', () => {
       .bind('piece-1', dataSetId, cid)
       .run()
 
-    await assert.rejects(
-      async () =>
-        await getStorageProviderAndValidatePayer(env, payerAddress, cid),
-      /no associated service provider/,
-    )
+    await expect(
+      getStorageProviderAndValidatePayer(env, payerAddress, cid),
+    ).rejects.toThrow(/no associated service provider/)
   })
 
   it('returns error if no payment rail', async () => {
@@ -135,17 +126,17 @@ describe('getStorageProviderAndValidatePayer', () => {
         serviceProviderId,
         payerAddress.replace('a', 'b'),
         true,
-        '1099511627776',
-        '1099511627776',
+        1099511627776,
+        1099511627776,
       ),
       env.DB.prepare(
         'INSERT INTO pieces (id, data_set_id, cid) VALUES (?, ?, ?)',
       ).bind('piece-2', dataSetId, cid),
     ])
 
-    await assert.rejects(
-      async () =>
-        await getStorageProviderAndValidatePayer(env, payerAddress, cid),
+    await expect(
+      getStorageProviderAndValidatePayer(env, payerAddress, cid),
+    ).rejects.toThrow(
       /There is no Filecoin Warm Storage Service deal for payer/,
     )
   })
@@ -164,19 +155,17 @@ describe('getStorageProviderAndValidatePayer', () => {
         serviceProviderId,
         payerAddress,
         false,
-        '1099511627776',
-        '1099511627776',
+        1099511627776,
+        1099511627776,
       ),
       env.DB.prepare(
         'INSERT INTO pieces (id, data_set_id, cid) VALUES (?, ?, ?)',
       ).bind('piece-2', dataSetId, cid),
     ])
 
-    await assert.rejects(
-      async () =>
-        await getStorageProviderAndValidatePayer(env, payerAddress, cid),
-      /withCDN=false/,
-    )
+    await expect(
+      getStorageProviderAndValidatePayer(env, payerAddress, cid),
+    ).rejects.toThrow(/withCDN=false/)
   })
 
   it('returns serviceProviderId for approved service provider', async () => {
@@ -192,8 +181,8 @@ describe('getStorageProviderAndValidatePayer', () => {
         APPROVED_SERVICE_PROVIDER_ID,
         payerAddress,
         true,
-        '1099511627776',
-        '1099511627776',
+        1099511627776,
+        1099511627776,
       ),
       env.DB.prepare(
         'INSERT INTO pieces (id, data_set_id, cid) VALUES (?, ?, ?)',
@@ -206,7 +195,7 @@ describe('getStorageProviderAndValidatePayer', () => {
       cid,
     )
 
-    assert.strictEqual(result.serviceProviderId, APPROVED_SERVICE_PROVIDER_ID)
+    expect(result.serviceProviderId).toBe(APPROVED_SERVICE_PROVIDER_ID)
   })
   it('returns the service provider first in the ordering when multiple service providers share the same pieceCid', async () => {
     const dataSetId1 = 'data-set-a'
@@ -232,8 +221,8 @@ describe('getStorageProviderAndValidatePayer', () => {
         serviceProviderId1,
         payerAddress,
         true,
-        '1099511627776',
-        '1099511627776',
+        1099511627776,
+        1099511627776,
       )
       .run()
 
@@ -245,8 +234,8 @@ describe('getStorageProviderAndValidatePayer', () => {
         serviceProviderId2,
         payerAddress,
         true,
-        '1099511627776',
-        '1099511627776',
+        1099511627776,
+        1099511627776,
       )
       .run()
 
@@ -269,7 +258,7 @@ describe('getStorageProviderAndValidatePayer', () => {
       payerAddress,
       pieceCid,
     )
-    assert.strictEqual(result.serviceProviderId, serviceProviderId1)
+    expect(result.serviceProviderId).toBe(serviceProviderId1)
   })
 
   it('ignores owners that are not approved by Filecoin Warm Storage Service', async () => {
@@ -310,12 +299,12 @@ describe('getStorageProviderAndValidatePayer', () => {
       payerAddress,
       pieceCid,
     )
-    assert.deepStrictEqual(result, {
+    expect(result).toEqual({
       dataSetId: dataSetId1,
       serviceProviderId: serviceProviderId1.toLowerCase(),
       serviceUrl: 'https://pdp-provider-1.xyz',
-      cdnEgressQuota: '1099511627776',
-      cacheMissEgressQuota: '1099511627776',
+      cdnEgressQuota: 1099511627776,
+      cacheMissEgressQuota: 1099511627776,
     })
   })
 })
@@ -343,8 +332,8 @@ describe('Egress Quota Management', () => {
         APPROVED_SERVICE_PROVIDER_ID,
         payerAddress,
         true,
-        '0',
-        '1000000',
+        0,
+        1000000,
       )
       .run()
     await env.DB.prepare(
@@ -353,11 +342,9 @@ describe('Egress Quota Management', () => {
       .bind('piece-exhausted', dataSetId, pieceCid)
       .run()
 
-    await assert.rejects(
-      async () =>
-        await getStorageProviderAndValidatePayer(env, payerAddress, pieceCid),
-      /CDN egress quota exhausted/,
-    )
+    await expect(
+      getStorageProviderAndValidatePayer(env, payerAddress, pieceCid),
+    ).rejects.toThrow(/CDN egress quota exhausted/)
   })
 
   it('returns error when cache-miss quota is exhausted', async () => {
@@ -373,8 +360,8 @@ describe('Egress Quota Management', () => {
         APPROVED_SERVICE_PROVIDER_ID,
         payerAddress,
         true,
-        '1000000',
-        '0',
+        1000000,
+        0,
       )
       .run()
     await env.DB.prepare(
@@ -383,11 +370,9 @@ describe('Egress Quota Management', () => {
       .bind('piece-cache-miss-exhausted', dataSetId, pieceCid)
       .run()
 
-    await assert.rejects(
-      async () =>
-        await getStorageProviderAndValidatePayer(env, payerAddress, pieceCid),
-      /Cache miss egress quota exhausted/,
-    )
+    await expect(
+      getStorageProviderAndValidatePayer(env, payerAddress, pieceCid),
+    ).rejects.toThrow(/Cache miss egress quota exhausted/)
   })
 
   it('allows retrieval when quota is sufficient', async () => {
@@ -403,8 +388,8 @@ describe('Egress Quota Management', () => {
         APPROVED_SERVICE_PROVIDER_ID,
         payerAddress,
         true,
-        '1000000',
-        '1000000',
+        1000000,
+        1000000,
       )
       .run()
     await env.DB.prepare(
@@ -418,14 +403,14 @@ describe('Egress Quota Management', () => {
       payerAddress,
       pieceCid,
     )
-    assert.strictEqual(result.dataSetId, dataSetId)
-    assert.strictEqual(result.cdnEgressQuota, '1000000')
-    assert.strictEqual(result.cacheMissEgressQuota, '1000000')
+    expect(result.dataSetId).toBe(dataSetId)
+    expect(result.cdnEgressQuota).toBe(1000000)
+    expect(result.cacheMissEgressQuota).toBe(1000000)
   })
 
   it('correctly decrements CDN quota on cache hit', async () => {
     const dataSetId = 'test-quota-decrement-cdn'
-    const initialQuota = '1000000'
+    const initialQuota = 1000000
     const egressBytes = 100000
 
     await env.DB.prepare(
@@ -453,18 +438,14 @@ describe('Egress Quota Management', () => {
       .bind(dataSetId)
       .first()
 
-    // Handle potential decimal formatting from SQLite
-    const expectedQuota = String(BigInt(initialQuota) - BigInt(egressBytes))
-    const actualQuota = result.cdn_egress_quota.endsWith('.0')
-      ? result.cdn_egress_quota.slice(0, -2)
-      : result.cdn_egress_quota
-    assert.strictEqual(actualQuota, expectedQuota)
-    assert.strictEqual(result.cache_miss_egress_quota, initialQuota)
+    const expectedQuota = Number(initialQuota) - egressBytes
+    expect(result.cdn_egress_quota).toBe(expectedQuota)
+    expect(result.cache_miss_egress_quota).toBe(Number(initialQuota))
   })
 
   it('correctly decrements cache miss quota on cache miss', async () => {
     const dataSetId = 'test-quota-decrement-miss'
-    const initialQuota = '1000000'
+    const initialQuota = 1000000
     const egressBytes = 100000
 
     await env.DB.prepare(
@@ -492,18 +473,14 @@ describe('Egress Quota Management', () => {
       .bind(dataSetId)
       .first()
 
-    assert.strictEqual(result.cdn_egress_quota, initialQuota)
-    // Handle potential decimal formatting from SQLite
-    const expectedQuota = String(BigInt(initialQuota) - BigInt(egressBytes))
-    const actualQuota = result.cache_miss_egress_quota.endsWith('.0')
-      ? result.cache_miss_egress_quota.slice(0, -2)
-      : result.cache_miss_egress_quota
-    assert.strictEqual(actualQuota, expectedQuota)
+    expect(result.cdn_egress_quota).toBe(Number(initialQuota))
+    const expectedQuota = Number(initialQuota) - egressBytes
+    expect(result.cache_miss_egress_quota).toBe(expectedQuota)
   })
 
   it('prevents quota from going below zero when egress exceeds quota', async () => {
     const dataSetId = 'test-quota-below-zero'
-    const insufficientQuota = '1000'
+    const insufficientQuota = 1000
     const egressBytes = 2000
 
     await env.DB.prepare(
@@ -533,12 +510,12 @@ describe('Egress Quota Management', () => {
       .first()
 
     // Quota should be 0, not negative
-    assert.strictEqual(result.cache_miss_egress_quota, '0')
+    expect(result.cache_miss_egress_quota).toBe(0)
   })
 
   it('prevents CDN quota from going below zero when egress exceeds quota', async () => {
     const dataSetId = 'test-cdn-quota-below-zero'
-    const insufficientQuota = '500'
+    const insufficientQuota = 500
     const egressBytes = 1500
 
     await env.DB.prepare(
@@ -568,7 +545,7 @@ describe('Egress Quota Management', () => {
       .first()
 
     // CDN quota should be 0, not negative
-    assert.strictEqual(result.cdn_egress_quota, '0')
+    expect(result.cdn_egress_quota).toBe(0)
   })
 
   it('returns error when quota values are null', async () => {
@@ -595,11 +572,9 @@ describe('Egress Quota Management', () => {
       .run()
 
     // Should return 402 error when quotas are null
-    await assert.rejects(
-      async () =>
-        await getStorageProviderAndValidatePayer(env, payerAddress, pieceCid),
-      /CDN egress quota exhausted/,
-    )
+    await expect(
+      getStorageProviderAndValidatePayer(env, payerAddress, pieceCid),
+    ).rejects.toThrow(/CDN egress quota exhausted/)
   })
 
   it('handles quota exactly at piece size', async () => {
@@ -632,7 +607,7 @@ describe('Egress Quota Management', () => {
       payerAddress,
       pieceCid,
     )
-    assert.strictEqual(result.dataSetId, dataSetId)
+    expect(result.dataSetId).toBe(dataSetId)
 
     // Decrement by exact amount should result in 0
     await updateDataSetStats(env, {
@@ -646,11 +621,7 @@ describe('Egress Quota Management', () => {
     )
       .bind(dataSetId)
       .first()
-    // Handle potential decimal formatting from SQLite
-    const actualQuota = afterDecrement.cdn_egress_quota.endsWith('.0')
-      ? afterDecrement.cdn_egress_quota.slice(0, -2)
-      : afterDecrement.cdn_egress_quota
-    assert.strictEqual(actualQuota, '0')
+    expect(afterDecrement.cdn_egress_quota).toBe(0)
   })
 })
 
@@ -675,7 +646,7 @@ describe('updateDataSetStats', () => {
       .bind(DATA_SET_ID)
       .all()
 
-    assert.deepStrictEqual(insertResults, [
+    expect(insertResults).toEqual([
       {
         id: DATA_SET_ID,
         total_egress_bytes_used: EGRESS_BYTES,
@@ -696,7 +667,7 @@ describe('updateDataSetStats', () => {
       .bind(DATA_SET_ID)
       .all()
 
-    assert.deepStrictEqual(updateResults, [
+    expect(updateResults).toEqual([
       {
         id: DATA_SET_ID,
         total_egress_bytes_used: EGRESS_BYTES + 1000,

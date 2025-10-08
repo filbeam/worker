@@ -83,8 +83,8 @@ export async function logRetrievalResult(env, params) {
  *   serviceProviderId: string
  *   serviceUrl: string
  *   dataSetId: string
- *   cdnEgressQuota: string | null
- *   cacheMissEgressQuota: string | null
+ *   cdnEgressQuota: number | null
+ *   cacheMissEgressQuota: number | null
  * }>}
  */
 export async function getStorageProviderAndValidatePayer(
@@ -112,8 +112,8 @@ export async function getStorageProviderAndValidatePayer(
    *   data_set_id: string
    *   payer_address: string | undefined
    *   with_cdn: number | undefined
-   *   cdn_egress_quota: string | null | undefined
-   *   cache_miss_egress_quota: string | null | undefined
+   *   cdn_egress_quota: number | null | undefined
+   *   cache_miss_egress_quota: number | null | undefined
    *   service_url: string | undefined
    *   is_sanctioned: number | undefined
    * }[]}
@@ -177,7 +177,7 @@ export async function getStorageProviderAndValidatePayer(
     return (
       row.cdn_egress_quota !== null &&
       row.cdn_egress_quota !== undefined &&
-      BigInt(row.cdn_egress_quota) > 0n
+      row.cdn_egress_quota > 0
     )
   })
   httpAssert(
@@ -191,7 +191,7 @@ export async function getStorageProviderAndValidatePayer(
     return (
       row.cache_miss_egress_quota !== null &&
       row.cache_miss_egress_quota !== undefined &&
-      BigInt(row.cache_miss_egress_quota) > 0n
+      row.cache_miss_egress_quota > 0
     )
   })
   httpAssert(

@@ -680,8 +680,8 @@ describe('piece-retriever.fetch', () => {
         unsupportedServiceProviderId,
         defaultPayerAddress,
         true,
-        '1099511627776',
-        '1099511627776',
+        1099511627776,
+        1099511627776,
       ),
       env.DB.prepare(
         'INSERT INTO pieces (id, data_set_id, cid) VALUES (?, ?, ?)',
@@ -741,7 +741,7 @@ describe('piece-retriever.fetch', () => {
     await env.DB.prepare(
       'INSERT INTO data_sets (id, service_provider_id, payer_address, with_cdn, cdn_egress_quota, cache_miss_egress_quota) VALUES (?, ?, ?, ?, ?, ?)',
     )
-      .bind(dataSetId, serviceProviderId, payerAddress, true, '100', '100')
+      .bind(dataSetId, serviceProviderId, payerAddress, true, 100, 100)
       .run()
 
     // Set up piece
@@ -798,12 +798,8 @@ describe('piece-retriever.fetch', () => {
       .bind(dataSetId)
       .first()
 
-    const actualQuota = quotaResult.cache_miss_egress_quota.endsWith('.0')
-      ? quotaResult.cache_miss_egress_quota.slice(0, -2)
-      : quotaResult.cache_miss_egress_quota
-
     const remaining = 100 - (results[0].egress_bytes || 0)
-    assert.strictEqual(actualQuota, String(remaining))
+    assert.strictEqual(quotaResult.cache_miss_egress_quota, remaining)
   })
 
   it('allows full transfer when within quota', async () => {
@@ -824,7 +820,7 @@ describe('piece-retriever.fetch', () => {
     await env.DB.prepare(
       'INSERT INTO data_sets (id, service_provider_id, payer_address, with_cdn, cdn_egress_quota, cache_miss_egress_quota) VALUES (?, ?, ?, ?, ?, ?)',
     )
-      .bind(dataSetId, serviceProviderId, payerAddress, true, '1000', '1000')
+      .bind(dataSetId, serviceProviderId, payerAddress, true, 1000, 1000)
       .run()
 
     // Set up piece
@@ -878,10 +874,7 @@ describe('piece-retriever.fetch', () => {
       .bind(dataSetId)
       .first()
 
-    const actualQuota = quotaResult.cdn_egress_quota.endsWith('.0')
-      ? quotaResult.cdn_egress_quota.slice(0, -2)
-      : quotaResult.cdn_egress_quota
-    assert.strictEqual(actualQuota, '900') // 1000 - 100
+    assert.strictEqual(quotaResult.cdn_egress_quota, 900) // 1000 - 100
   })
 })
 

@@ -75,7 +75,7 @@ export async function measureStreamedEgress(reader) {
  * stream passes data through while tracking bytes and stopping when quota is
  * exceeded.
  *
- * @param {string | null} availableQuota - The available quota in bytes
+ * @param {number | null} availableQuota - The available quota in bytes
  * @returns {{
  *   stream: TransformStream<Uint8Array, Uint8Array>
  *   getStatus: () => { egressBytes: number; quotaExceeded: boolean }
@@ -85,15 +85,15 @@ export async function measureStreamedEgress(reader) {
 export function createQuotaEnforcingStream(availableQuota) {
   let egressBytes = 0
   let quotaExceeded = false
-  const quotaLimit = BigInt(availableQuota || '0')
+  const quotaLimit = availableQuota ?? 0
 
   const stream = new TransformStream({
     transform(chunk, controller) {
       const chunkSize = chunk.length
 
-      if (BigInt(egressBytes + chunkSize) > quotaLimit) {
+      if (egressBytes + chunkSize > quotaLimit) {
         // Calculate how many bytes we can still transfer
-        const remainingQuota = Number(quotaLimit - BigInt(egressBytes))
+        const remainingQuota = quotaLimit - egressBytes
 
         if (remainingQuota > 0) {
           // Transfer only what fits in the quota
