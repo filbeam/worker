@@ -108,7 +108,7 @@ export async function handleFWSSCDNPaymentRailsToppedUp(env, payload) {
     CACHE_MISS_RATE_PER_TIB,
   )
 
-  // Store as strings since quotas can be very large uint256 values
+  // Store as integers - quotas are in bytes and fit within INTEGER range for exabyte scale
   await env.DB.prepare(
     `
     UPDATE data_sets
@@ -117,7 +117,7 @@ export async function handleFWSSCDNPaymentRailsToppedUp(env, payload) {
     WHERE id = ?
     `,
   )
-    .bind(cdnEgressQuota.toString(), cacheMissEgressQuota.toString(), dataSetId)
+    .bind(Number(cdnEgressQuota), Number(cacheMissEgressQuota), dataSetId)
     .run()
 
   console.log(
