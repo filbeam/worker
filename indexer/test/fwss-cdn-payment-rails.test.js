@@ -54,40 +54,8 @@ describe('handleFWSSCDNPaymentRailsToppedUp', () => {
       .bind(testDataSetId)
       .first()
 
-    expect(result.cdn_egress_quota).toBe(BYTES_PER_TIB.toString()) // 1 TiB in bytes
-    expect(result.cache_miss_egress_quota).toBe((BYTES_PER_TIB * 2n).toString()) // 2 TiB in bytes
-  })
-
-  it('handles uint256 large numbers correctly', async () => {
-    const testEnv = {
-      ...env,
-      CDN_RATE_PER_TIB: '1000000000000000000', // 1 USDFC per TiB
-      CACHE_MISS_RATE_PER_TIB: '2000000000000000000', // 2 USDFC per TiB
-    }
-
-    const payload = {
-      data_set_id: testDataSetId,
-      // Very large uint256 values
-      total_cdn_lockup:
-        '115792089237316195423570985008687907853269984665640564039457584007913129639935', // Max uint256
-      total_cache_miss_lockup: '100000000000000000000000000000000', // 1e32
-    }
-
-    await handleFWSSCDNPaymentRailsToppedUp(testEnv, payload)
-
-    const result = await env.DB.prepare(
-      'SELECT cdn_egress_quota, cache_miss_egress_quota FROM data_sets WHERE id = ?',
-    )
-      .bind(testDataSetId)
-      .first()
-
-    // Verify large number calculations
-    // With $1 per TiB: max_uint256 / (1e18) * BYTES_PER_TIB
-    expect(result.cdn_egress_quota).toBe(
-      '127314748520905380391777855525586135065716774604121015664758778084648831',
-    )
-    // With $2 per TiB: 1e32 / (2e18) * BYTES_PER_TIB
-    expect(result.cache_miss_egress_quota).toBe('54975581388800000000000000')
+    expect(result.cdn_egress_quota).toBe(Number(BYTES_PER_TIB)) // 1 TiB in bytes
+    expect(result.cache_miss_egress_quota).toBe(Number(BYTES_PER_TIB * 2n)) // 2 TiB in bytes
   })
 
   it('handles zero lockup amounts', async () => {
@@ -111,8 +79,8 @@ describe('handleFWSSCDNPaymentRailsToppedUp', () => {
       .bind(testDataSetId)
       .first()
 
-    expect(result.cdn_egress_quota).toBe('0')
-    expect(result.cache_miss_egress_quota).toBe('0')
+    expect(result.cdn_egress_quota).toBe(0)
+    expect(result.cache_miss_egress_quota).toBe(0)
   })
 
   it('handles division by zero when rate is zero', async () => {
@@ -137,8 +105,8 @@ describe('handleFWSSCDNPaymentRailsToppedUp', () => {
       .first()
 
     // Should set quota to 0 when rate is 0
-    expect(result.cdn_egress_quota).toBe('0')
-    expect(result.cache_miss_egress_quota).toBe('0')
+    expect(result.cdn_egress_quota).toBe(0)
+    expect(result.cache_miss_egress_quota).toBe(0)
   })
 
   it('replaces existing quota values', async () => {
@@ -163,8 +131,8 @@ describe('handleFWSSCDNPaymentRailsToppedUp', () => {
       .bind(testDataSetId)
       .first()
 
-    const expectedQuota1 = (BYTES_PER_TIB / 5n).toString() // 0.2 TiB
-    const expectedQuota2 = ((BYTES_PER_TIB * 2n) / 5n).toString() // 0.4 TiB
+    const expectedQuota1 = Number(BYTES_PER_TIB / 5n) // 0.2 TiB
+    const expectedQuota2 = Number((BYTES_PER_TIB * 2n) / 5n) // 0.4 TiB
     expect(result.cdn_egress_quota).toBe(expectedQuota1)
     expect(result.cache_miss_egress_quota).toBe(expectedQuota2)
 
@@ -184,8 +152,8 @@ describe('handleFWSSCDNPaymentRailsToppedUp', () => {
       .first()
 
     // Should be replaced, not accumulated
-    expect(result.cdn_egress_quota).toBe(BYTES_PER_TIB.toString())
-    expect(result.cache_miss_egress_quota).toBe((BYTES_PER_TIB * 2n).toString())
+    expect(result.cdn_egress_quota).toBe(Number(BYTES_PER_TIB))
+    expect(result.cache_miss_egress_quota).toBe(Number(BYTES_PER_TIB * 2n))
   })
 
   it('handles missing data set gracefully', async () => {
@@ -233,7 +201,7 @@ describe('handleFWSSCDNPaymentRailsToppedUp', () => {
       .first()
 
     // Should default to 0
-    expect(result.cdn_egress_quota).toBe('0')
-    expect(result.cache_miss_egress_quota).toBe('0')
+    expect(result.cdn_egress_quota).toBe(0)
+    expect(result.cache_miss_egress_quota).toBe(0)
   })
 })

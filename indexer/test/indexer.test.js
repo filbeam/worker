@@ -1163,9 +1163,9 @@ describe('POST /fwss/cdn-payment-rails-topped-up', () => {
       .first()
 
     // With 5 USDFC lockup and $5 per TiB rate = 1 TiB = 1099511627776 bytes
-    expect(result.cdn_egress_quota).toBe('1099511627776')
+    expect(result.cdn_egress_quota).toBe(1099511627776)
     // With 10 USDFC lockup and $5 per TiB rate = 2 TiB = 2199023255552 bytes
-    expect(result.cache_miss_egress_quota).toBe('2199023255552')
+    expect(result.cache_miss_egress_quota).toBe(2199023255552)
   })
 
   it('handles numeric data_set_id', async () => {
@@ -1202,8 +1202,8 @@ describe('POST /fwss/cdn-payment-rails-topped-up', () => {
       .bind(dataSetId)
       .first()
 
-    expect(result.cdn_egress_quota).toBe('1099511627776')
-    expect(result.cache_miss_egress_quota).toBe('2199023255552')
+    expect(result.cdn_egress_quota).toBe(1099511627776)
+    expect(result.cache_miss_egress_quota).toBe(2199023255552)
   })
 
   it('handles zero lockup amounts', async () => {
@@ -1238,8 +1238,8 @@ describe('POST /fwss/cdn-payment-rails-topped-up', () => {
       .bind(dataSetId)
       .first()
 
-    expect(result.cdn_egress_quota).toBe('0')
-    expect(result.cache_miss_egress_quota).toBe('0')
+    expect(result.cdn_egress_quota).toBe(0)
+    expect(result.cache_miss_egress_quota).toBe(0)
   })
 
   it('updates quotas for existing data set', async () => {
@@ -1291,8 +1291,8 @@ describe('POST /fwss/cdn-payment-rails-topped-up', () => {
       .first()
 
     // Updated values: 10 USDFC = 2 TiB, 20 USDFC = 4 TiB
-    expect(result.cdn_egress_quota).toBe('2199023255552')
-    expect(result.cache_miss_egress_quota).toBe('4398046511104')
+    expect(result.cdn_egress_quota).toBe(2199023255552)
+    expect(result.cache_miss_egress_quota).toBe(4398046511104)
   })
 
   it('handles missing data set gracefully', async () => {
