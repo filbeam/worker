@@ -1,4 +1,5 @@
 import { checkIfAddressIsSanctioned as defaultCheckIfAddressIsSanctioned } from './chainalysis.js'
+import { calculateEgressQuota } from './rate-helpers.js'
 
 /**
  * Handle proof set rail creation
@@ -78,4 +79,49 @@ export async function handleFWSSServiceTerminated(env, payload) {
   )
     .bind(String(payload.data_set_id))
     .run()
+}
+
+/**
+ * Handle CDN Payment Rails Topped Up event Calculates and updates egress quotas
+ * for a data set based on lockup amounts
+ *
+ * @param {{
+ *   CDN_RATE_PER_TIB: string
+ *   CACHE_MISS_RATE_PER_TIB: string
+ *   DB: D1Database
+ * }} env
+ * @param {any} payload
+ * @throws {Error} If there is an error during the database operation
+ */
+export async function handleFWSSCDNPaymentRailsToppedUp(env, payload) {
+  const { CDN_RATE_PER_TIB, CACHE_MISS_RATE_PER_TIB } = env
+
+  const dataSetId = String(payload.data_set_id)
+  const totalCdnLockup = payload.total_cdn_lockup || '0'
+  const totalCacheMissLockup = payload.total_cache_miss_lockup || '0'
+
+  // Calculate quotas in bytes using the helper function
+  // Rates are already in USDFC units (1e18), no conversion needed
+  const cdnEgressQuota = calculateEgressQuota(totalCdnLockup, CDN_RATE_PER_TIB)
+  const cacheMissEgressQuota = calculateEgressQuota(
+    totalCacheMissLockup,
+    CACHE_MISS_RATE_PER_TIB,
+  )
+
+  // Store as integers - quotas are in bytes and fit within INTEGER range for exabyte scale
+  await env.DB.prepare(
+    `
+    UPDATE data_sets
+    SET cdn_egress_quota = ?,
+        cache_miss_egress_quota = ?
+    WHERE id = ?
+    `,
+  )
+    .bind(Number(cdnEgressQuota), Number(cacheMissEgressQuota), dataSetId)
+    .run()
+
+  console.log(
+    `Updated egress quotas for data_set ${dataSetId}: ` +
+      `cdn_quota=${cdnEgressQuota} bytes, cache_miss_quota=${cacheMissEgressQuota} bytes`,
+  )
 }

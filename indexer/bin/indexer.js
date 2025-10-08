@@ -8,6 +8,7 @@ import { checkIfAddressIsSanctioned as defaultCheckIfAddressIsSanctioned } from 
 import {
   handleFWSSDataSetCreated,
   handleFWSSServiceTerminated,
+  handleFWSSCDNPaymentRailsToppedUp,
 } from '../lib/fwss-handlers.js'
 import {
   removeDataSetPieces,
@@ -31,6 +32,8 @@ import { CID } from 'multiformats/cid'
  *   SECRET_HEADER_VALUE: string
  *   CHAINALYSIS_API_KEY: string
  *   GOLDSKY_SUBGRAPH_URL: string
+ *   CDN_RATE_PER_TIB: string
+ *   CACHE_MISS_RATE_PER_TIB: string
  * }} IndexerEnv
  */
 
@@ -208,6 +211,37 @@ export default {
     } else if (pathname === '/service-provider-registry/provider-removed') {
       const { provider_id: providerId } = payload
       return await handleProviderRemoved(env, providerId)
+    } else if (pathname === '/fwss/cdn-payment-rails-topped-up') {
+      // Validate payload
+      if (
+        !payload.data_set_id ||
+        !(
+          typeof payload.data_set_id === 'number' ||
+          typeof payload.data_set_id === 'string'
+        ) ||
+        payload.total_cdn_lockup === undefined ||
+        !(
+          typeof payload.total_cdn_lockup === 'string' ||
+          typeof payload.total_cdn_lockup === 'number'
+        ) ||
+        payload.total_cache_miss_lockup === undefined ||
+        !(
+          typeof payload.total_cache_miss_lockup === 'string' ||
+          typeof payload.total_cache_miss_lockup === 'number'
+        )
+      ) {
+        console.error('FWSS.CDNPaymentRailsToppedUp: Invalid payload', payload)
+        return new Response('Bad Request', { status: 400 })
+      }
+
+      console.log(
+        `CDN Payment Rails topped up (data_set_id=${payload.data_set_id}, ` +
+          `total_cdn_lockup=${payload.total_cdn_lockup}, total_cache_miss_lockup=${payload.total_cache_miss_lockup})`,
+      )
+
+      await handleFWSSCDNPaymentRailsToppedUp(env, payload)
+
+      return new Response('OK', { status: 200 })
     } else if (pathname === '/filbeam-operator/usage-reported') {
       if (
         !payload.data_set_id ||
