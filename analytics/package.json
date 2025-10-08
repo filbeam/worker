@@ -1,0 +1,19 @@
+{
+  "name": "@filbeam/analytics-worker",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:types": "wrangler types",
+    "deploy:calibration": "wrangler deploy --env calibration",
+    "deploy:mainnet": "wrangler deploy --env mainnet",
+    "deploy:dev": "wrangler deploy --env dev",
+    "start": "wrangler dev",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "^0.9.11",
+    "vitest": "3.1.4",
+    "wrangler": "^4.42.1"
+  }
+}
