@@ -15,7 +15,7 @@
  * >}
  */
 export async function aggregateUsageData(db, genesisBlockTimestamp, toEpoch) {
-  // Query aggregates total usage data between last_reported_epoch and toEpoch
+  // Query aggregates total usage data between last_rollup_reported_at_epoch and toEpoch
   // Returns sum of CDN bytes, cache-miss bytes, and max epoch for each dataset
   const query = `
     WITH retrieval_logs_with_epoch AS (

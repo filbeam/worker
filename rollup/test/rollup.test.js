@@ -24,7 +24,7 @@ describe('rollup', () => {
 
     describe('aggregateUsageData', () => {
       it('should aggregate usage data by cache miss status', async () => {
-        // Set last_reported_epoch to 99 so data for epoch 100 will be included
+        // Set last_rollup_reported_at_epoch to 99 so data for epoch 100 will be included
         await withDataSet(env, { id: '1', lastRollupReportedAtEpoch: 99 })
         await withDataSet(env, { id: '2', lastRollupReportedAtEpoch: 99 })
 
@@ -104,7 +104,7 @@ describe('rollup', () => {
       })
 
       it('should include non-200 responses but filter out null egress_bytes', async () => {
-        // Set last_reported_epoch to 99 so data for epoch 100 will be included
+        // Set last_rollup_reported_at_epoch to 99 so data for epoch 100 will be included
         await withDataSet(env, { id: '1', lastRollupReportedAtEpoch: 99 })
 
         const epochTimestamp = filecoinEpochToTimestamp(100)
@@ -158,8 +158,8 @@ describe('rollup', () => {
         })
       })
 
-      it('should only aggregate data for datasets where last_reported_epoch < currentEpoch - 1', async () => {
-        // Set different last_reported_epoch values
+      it('should only aggregate data for datasets where last_rollup_reported_at_epoch < currentEpoch - 1', async () => {
+        // Set different last_rollup_reported_at_epoch values
         await withDataSet(env, { id: '1', lastRollupReportedAtEpoch: null }) // Should be included
         await withDataSet(env, { id: '2', lastRollupReportedAtEpoch: 98 }) // Should be included
         await withDataSet(env, { id: '3', lastRollupReportedAtEpoch: 99 }) // Should be included (99 < 100)
@@ -201,7 +201,7 @@ describe('rollup', () => {
       })
 
       it('should filter out datasets with zero cdn and cache-miss bytes', async () => {
-        // Set last_reported_epoch to 99
+        // Set last_rollup_reported_at_epoch to 99
         await withDataSet(env, { id: '1', lastRollupReportedAtEpoch: 99 })
         await withDataSet(env, { id: '2', lastRollupReportedAtEpoch: 99 })
         await withDataSet(env, { id: '3', lastRollupReportedAtEpoch: 99 })
