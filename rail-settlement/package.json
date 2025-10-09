@@ -1,0 +1,23 @@
+{
+  "name": "@filbeam/rail-settlement",
+  "version": "1.0.0",
+  "private": true,
+  "description": "FilBeam Rail Settlement Worker",
+  "author": "Space Meridian <filbeam@meridian.space>",
+  "type": "module",
+  "main": "bin/rail-settlement.js",
+  "scripts": {
+    "build:types": "wrangler types",
+    "deploy:calibration": "wrangler deploy --env calibration",
+    "deploy:mainnet": "wrangler deploy --env mainnet",
+    "start": "wrangler d1 migrations apply dev-db --local --env dev --cwd ../db  && wrangler dev --env dev",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "viem": "^2.37.9"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "^0.9.7",
+    "@types/validator": "^13.15.2"
+  }
+}

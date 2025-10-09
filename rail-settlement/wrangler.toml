@@ -1,5 +1,5 @@
-name = "filcdn-indexer"
-main = "bin/indexer.js"
+name = "filcdn-rail-settlement"
+main = "bin/rail-settlement.js"
 compatibility_date = "2024-12-05"
 compatibility_flags = ["nodejs_compat"]
 logpush = true
@@ -15,10 +15,8 @@ database_id = "8cc92155-16f6-426a-b782-2965e0daf100"
 
 [env.dev.vars]
 ENVIRONMENT = "dev"
-WALLET_SCREENING_BATCH_SIZE = 1
-WALLET_SCREENING_STALE_THRESHOLD_MS = 86400000 # one day
-GOLDSKY_SUBGRAPH_URL="https://api.goldsky.com/api/public/project_cmb91qc80slyu01wca6e2eupl/subgraphs/filbeam-alpha-calibnet/1.0.0/gn"
 RPC_URL = "https://api.calibration.node.glif.io/"
+FILBEAM_CONTRACT_ADDRESS = "0x96e13bC98fA0cdf01b07985c804960117EAB76E8"
 DEFAULT_LOCKUP_PERIOD = 86400 # 30 days in epochs (1 epoch = 30 seconds)
 
 [[env.dev.d1_databases]]
@@ -28,11 +26,9 @@ database_id = "8cc92155-16f6-426a-b782-2965e0daf101"
 
 [env.calibration.vars]
 ENVIRONMENT = "calibration"
-WALLET_SCREENING_BATCH_SIZE = 1
-WALLET_SCREENING_STALE_THRESHOLD_MS = 86400000 # one day
 RPC_URL = "https://api.calibration.node.glif.io/"
+FILBEAM_CONTRACT_ADDRESS = "0x"
 DEFAULT_LOCKUP_PERIOD = 86400 # 30 days in epochs (1 epoch = 30 seconds)
-GOLDSKY_SUBGRAPH_URL="https://api.goldsky.com/api/public/project_cmb91qc80slyu01wca6e2eupl/subgraphs/filbeam-alpha-calibnet/1.0.0/gn"
 
 [[env.calibration.d1_databases]]
 binding = "DB"
@@ -42,21 +38,10 @@ database_id = "78f15bbb-391f-4797-9016-a6cb86c0b9b8"
 [env.calibration.triggers]
 crons = ["*/1 * * * *"]  # Run every minute
 
-[[env.calibration.queues.producers]]
-queue = "indexer-retry-queue-calibration"
-binding = "RETRY_QUEUE"
-
-[[env.calibration.queues.consumers]]
-queue = "indexer-retry-queue-calibration"
-max_batch_size = 100
-max_batch_timeout = 30
-
 [env.mainnet.vars]
 ENVIRONMENT = "mainnet"
-WALLET_SCREENING_BATCH_SIZE = 10
-WALLET_SCREENING_STALE_THRESHOLD_MS = 21600000 # 6 hours
-GOLDSKY_SUBGRAPH_URL="https://api.goldsky.com/api/public/project_cmb91qc80slyu01wca6e2eupl/subgraphs/filbeam-alpha-mainnet/1.0.0/gn"
 RPC_URL = "https://api.node.glif.io/"
+FILBEAM_CONTRACT_ADDRESS = "0x" # TODO
 DEFAULT_LOCKUP_PERIOD = 86400 # 30 days in epochs (1 epoch = 30 seconds)
 
 [[env.mainnet.d1_databases]]
@@ -66,12 +51,3 @@ database_id = "e8de6418-2cb7-4413-9ba0-a9c8aacf9a66"
 
 [env.mainnet.triggers]
 crons = ["*/1 * * * *"]  # Run every minute
-
-[[env.mainnet.queues.producers]]
-queue = "indexer-retry-queue-mainnet"
-binding = "RETRY_QUEUE"
-
-[[env.mainnet.queues.consumers]]
-queue = "indexer-retry-queue-mainnet"
-max_batch_size = 100
-max_batch_timeout = 30
