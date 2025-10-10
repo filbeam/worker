@@ -1,5 +1,5 @@
 /** @import {MessageBatch} from 'cloudflare:workers' */
-import { TransactionMonitorWorkflow } from '../lib/transaction-monitor-workflow.js'
+import { TransactionMonitorWorkflow } from '@filbeam/workflows'
 import { terminateCDNServiceForSanctionedWallets as defaultTerminateCDNServiceForSanctionedWallets } from '../lib/terminate-cdn-service.js'
 import {
   handleTerminateCdnServiceQueueMessage as defaultHandleTerminateCdnServiceQueueMessage,
