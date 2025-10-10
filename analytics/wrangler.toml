@@ -1,0 +1,22 @@
+name = "filbeam-analytics-worker"
+main = "bin/analytics-worker.js"
+compatibility_date = "2024-01-01"
+compatibility_flags = ["nodejs_compat"]
+logpush = true
+
+[observability]
+enabled = true
+head_sampling_rate = 1
+
+[[analytics_engine_datasets]]
+dataset = "ttfb_metrics"
+binding = "analytics-engine"
+
+[env.dev.vars]
+ENVIRONMENT = "dev"
+
+[env.calibration.vars]
+ENVIRONMENT = "calibration"
+
+[env.mainnet.vars]
+ENVIRONMENT = "mainnet"
