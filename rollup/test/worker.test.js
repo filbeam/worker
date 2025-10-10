@@ -4,7 +4,9 @@ import {
   withDataSet,
   withRetrievalLog,
   filecoinEpochToTimestamp,
+  FILECOIN_GENESIS_UNIX_TIMESTAMP,
 } from './test-helpers.js'
+import { epochToTimestamp } from '../lib/rollup.js'
 import worker from '../bin/rollup.js'
 
 describe('rollup worker scheduled entrypoint', () => {
@@ -67,8 +69,16 @@ describe('rollup worker scheduled entrypoint', () => {
 
   it('should report usage data for multiple datasets', async () => {
     // Setup: Create datasets with usage data
-    await withDataSet(env, { id: '1', lastRollupReportedAtEpoch: 99 })
-    await withDataSet(env, { id: '2', lastRollupReportedAtEpoch: 98 })
+    const epoch99Timestamp = epochToTimestamp(
+      99n,
+      BigInt(FILECOIN_GENESIS_UNIX_TIMESTAMP),
+    )
+    const epoch98Timestamp = epochToTimestamp(
+      98n,
+      BigInt(FILECOIN_GENESIS_UNIX_TIMESTAMP),
+    )
+    await withDataSet(env, { id: '1', usageReportedUntil: epoch99Timestamp })
+    await withDataSet(env, { id: '2', usageReportedUntil: epoch98Timestamp })
 
     const epoch100Timestamp = filecoinEpochToTimestamp(100)
 
@@ -129,7 +139,11 @@ describe('rollup worker scheduled entrypoint', () => {
 
   it('should handle when no usage data exists', async () => {
     // Setup: Create dataset but with no retrieval logs
-    await withDataSet(env, { id: '1', lastRollupReportedAtEpoch: 99 })
+    const epoch99Timestamp = epochToTimestamp(
+      99n,
+      BigInt(FILECOIN_GENESIS_UNIX_TIMESTAMP),
+    )
+    await withDataSet(env, { id: '1', usageReportedUntil: epoch99Timestamp })
 
     // Execute scheduled function
     await worker.scheduled(null, env, null, {
@@ -147,9 +161,13 @@ describe('rollup worker scheduled entrypoint', () => {
 
   it('should filter out datasets with zero usage', async () => {
     // Setup: Create datasets with mixed usage
-    await withDataSet(env, { id: '1', lastRollupReportedAtEpoch: 99 })
-    await withDataSet(env, { id: '2', lastReportedEpoch: 99 })
-    await withDataSet(env, { id: '3', lastRollupReportedAtEpoch: 99 })
+    const epoch99Timestamp = epochToTimestamp(
+      99n,
+      BigInt(FILECOIN_GENESIS_UNIX_TIMESTAMP),
+    )
+    await withDataSet(env, { id: '1', usageReportedUntil: epoch99Timestamp })
+    await withDataSet(env, { id: '2', usageReportedUntil: epoch99Timestamp })
+    await withDataSet(env, { id: '3', usageReportedUntil: epoch99Timestamp })
 
     const epoch100Timestamp = filecoinEpochToTimestamp(100)
 
@@ -187,8 +205,21 @@ describe('rollup worker scheduled entrypoint', () => {
 
   it('should not report datasets that are already up to date', async () => {
     // Setup: Create datasets with different last_reported_epoch values
-    await withDataSet(env, { id: '1', lastRollupReportedAtEpoch: 99 }) // Should be included
-    await withDataSet(env, { id: '2', lastRollupReportedAtEpoch: 100 }) // Should NOT be included (already reported)
+    // Set usage_reported_until to timestamp for epoch 99 and 100
+    const epoch99Timestamp = epochToTimestamp(
+      99n,
+      BigInt(FILECOIN_GENESIS_UNIX_TIMESTAMP),
+    )
+    const epoch100TimestampISO = epochToTimestamp(
+      100n,
+      BigInt(FILECOIN_GENESIS_UNIX_TIMESTAMP),
+    )
+
+    await withDataSet(env, { id: '1', usageReportedUntil: epoch99Timestamp }) // Should be included
+    await withDataSet(env, {
+      id: '2',
+      usageReportedUntil: epoch100TimestampISO,
+    }) // Should NOT be included (already reported)
 
     const epoch100Timestamp = filecoinEpochToTimestamp(100)
 
@@ -215,7 +246,11 @@ describe('rollup worker scheduled entrypoint', () => {
 
   it('should handle contract simulation errors', async () => {
     // Setup: Create dataset with usage data
-    await withDataSet(env, { id: '1', lastRollupReportedAtEpoch: 99 })
+    const epoch99Timestamp = epochToTimestamp(
+      99n,
+      BigInt(FILECOIN_GENESIS_UNIX_TIMESTAMP),
+    )
+    await withDataSet(env, { id: '1', usageReportedUntil: epoch99Timestamp })
     const epoch100Timestamp = filecoinEpochToTimestamp(100)
     await withRetrievalLog(env, {
       timestamp: epoch100Timestamp,
@@ -240,7 +275,11 @@ describe('rollup worker scheduled entrypoint', () => {
 
   it('should handle transaction write errors', async () => {
     // Setup: Create dataset with usage data
-    await withDataSet(env, { id: '1', lastRollupReportedAtEpoch: 99 })
+    const epoch99Timestamp = epochToTimestamp(
+      99n,
+      BigInt(FILECOIN_GENESIS_UNIX_TIMESTAMP),
+    )
+    await withDataSet(env, { id: '1', usageReportedUntil: epoch99Timestamp })
     const epoch100Timestamp = filecoinEpochToTimestamp(100)
     await withRetrievalLog(env, {
       timestamp: epoch100Timestamp,
@@ -267,7 +306,11 @@ describe('rollup worker scheduled entrypoint', () => {
     // Setup: Mock different block numbers to verify epoch calculation
     mockPublicClient.getBlockNumber.mockResolvedValue(105n)
 
-    await withDataSet(env, { id: '1', lastRollupReportedAtEpoch: 99 })
+    const epoch99Timestamp = epochToTimestamp(
+      99n,
+      BigInt(FILECOIN_GENESIS_UNIX_TIMESTAMP),
+    )
+    await withDataSet(env, { id: '1', usageReportedUntil: epoch99Timestamp })
 
     // Add logs for multiple epochs
     for (let epoch = 100; epoch <= 104; epoch++) {
@@ -293,7 +336,11 @@ describe('rollup worker scheduled entrypoint', () => {
 
   it('should aggregate usage correctly across epochs', async () => {
     // Setup: Create dataset with usage across multiple epochs
-    await withDataSet(env, { id: '1', lastRollupReportedAtEpoch: 95 })
+    const epoch95Timestamp = epochToTimestamp(
+      95n,
+      BigInt(FILECOIN_GENESIS_UNIX_TIMESTAMP),
+    )
+    await withDataSet(env, { id: '1', usageReportedUntil: epoch95Timestamp })
 
     // Add retrieval logs across epochs 96-100
     for (let epoch = 96; epoch <= 100; epoch++) {
@@ -327,7 +374,7 @@ describe('rollup worker scheduled entrypoint', () => {
 
   it('should handle datasets with null last_reported_epoch', async () => {
     // Setup: Create dataset with null last_reported_epoch (never reported)
-    await withDataSet(env, { id: '1', lastRollupReportedAtEpoch: null })
+    await withDataSet(env, { id: '1', usageReportedUntil: null })
 
     const epoch100Timestamp = filecoinEpochToTimestamp(100)
     await withRetrievalLog(env, {

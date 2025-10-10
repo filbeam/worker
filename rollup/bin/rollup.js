@@ -1,6 +1,10 @@
 import { getChainClient as defaultGetChainClient } from '../lib/chain.js'
 import { abi } from '../lib/filbeam.js'
-import { aggregateUsageData, prepareUsageRollupData } from '../lib/rollup.js'
+import {
+  aggregateUsageData,
+  prepareUsageRollupData,
+  epochToTimestamp,
+} from '../lib/rollup.js'
 
 /**
  * @typedef {{
@@ -37,11 +41,18 @@ export default {
         `Current epoch: ${currentEpoch}, reporting up to epoch: ${targetEpoch}`,
       )
 
+      // Convert target epoch to ISO timestamp for SQL query
+      const upToTimestamp = epochToTimestamp(
+        targetEpoch,
+        BigInt(env.GENESIS_BLOCK_TIMESTAMP),
+      )
+      console.log(`Aggregating usage data up to timestamp: ${upToTimestamp}`)
+
       // Aggregate usage data for all datasets that need reporting
       const usageData = await aggregateUsageData(
         env.DB,
+        upToTimestamp,
         BigInt(env.GENESIS_BLOCK_TIMESTAMP),
-        targetEpoch,
       )
 
       if (usageData.length === 0) {
@@ -64,7 +75,7 @@ export default {
         functionName: 'recordUsageRollups',
         args: [
           usageRollupData.dataSetIds,
-          usageRollupData.epochs,
+          usageRollupData.maxEpochs,
           usageRollupData.cdnBytesUsed,
           usageRollupData.cacheMissBytesUsed,
         ],
@@ -73,6 +84,22 @@ export default {
 
       const hash = await walletClient.writeContract(request)
       console.log(`Transaction submitted: ${hash}`)
+
+      // Store transaction hash to prevent double-counting
+      // Multiple datasets might share the same transaction, so update all of them
+      await env.DB.batch(
+        usageRollupData.dataSetIds.map((dataSetId) =>
+          env.DB.prepare(
+            `UPDATE data_sets SET pending_rollup_tx_hash = ? WHERE id = ?`,
+          ).bind(hash, dataSetId),
+        ),
+      )
+      console.log(
+        `Stored pending transaction hash for ${usageRollupData.dataSetIds.length} datasets`,
+      )
+
+      // Note: The transaction will be confirmed and usage_reported_until will be updated
+      // by a separate webhook or indexer process when the transaction is mined
     } catch (error) {
       console.error('Error in rollup worker:', error)
       throw error

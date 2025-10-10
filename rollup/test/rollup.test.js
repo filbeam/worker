@@ -6,7 +6,11 @@ import {
   filecoinEpochToTimestamp,
   FILECOIN_GENESIS_UNIX_TIMESTAMP,
 } from './test-helpers.js'
-import { aggregateUsageData, prepareUsageRollupData } from '../lib/rollup.js'
+import {
+  aggregateUsageData,
+  prepareUsageRollupData,
+  epochToTimestamp,
+} from '../lib/rollup.js'
 
 describe('rollup', () => {
   describe('database operations', () => {
@@ -24,18 +28,28 @@ describe('rollup', () => {
 
     describe('aggregateUsageData', () => {
       it('should aggregate usage data by cache miss status', async () => {
-        // Set last_reported_epoch to 99 so data for epoch 100 will be included
-        await withDataSet(env, { id: '1', lastRollupReportedAtEpoch: 99 })
-        await withDataSet(env, { id: '2', lastRollupReportedAtEpoch: 99 })
+        // Set usage_reported_until to timestamp for epoch 99 so data for epoch 100 will be included
+        const epoch99Timestamp = epochToTimestamp(
+          99n,
+          BigInt(FILECOIN_GENESIS_UNIX_TIMESTAMP),
+        )
+        await withDataSet(env, {
+          id: '1',
+          usageReportedUntil: epoch99Timestamp,
+        })
+        await withDataSet(env, {
+          id: '2',
+          usageReportedUntil: epoch99Timestamp,
+        })
 
         // Create timestamps for specific epochs
-        const epoch99imestamp = filecoinEpochToTimestamp(99)
+        const epoch99UnixTimestamp = filecoinEpochToTimestamp(99)
         const epoch100Timestamp = filecoinEpochToTimestamp(100)
         const epoch101Timestamp = filecoinEpochToTimestamp(101)
 
         // Outside the range (should not be included)
         await withRetrievalLog(env, {
-          timestamp: epoch99imestamp,
+          timestamp: epoch99UnixTimestamp,
           dataSetId: '1',
           egressBytes: 1000,
           cacheMiss: 0,
@@ -80,32 +94,39 @@ describe('rollup', () => {
         })
 
         // Call with targetEpoch = 100 to get data up to epoch 100
+        const upToTimestamp = epochToTimestamp(
+          100n,
+          BigInt(FILECOIN_GENESIS_UNIX_TIMESTAMP),
+        )
         const usageData = await aggregateUsageData(
           env.DB,
+          upToTimestamp,
           BigInt(FILECOIN_GENESIS_UNIX_TIMESTAMP),
-          100n,
         )
 
         const usage1 = usageData.find((u) => u.data_set_id === '1')
-        expect(usage1).toEqual({
-          data_set_id: '1',
-          cdn_bytes: 2500, // 2000 from cache hits + 500 from cache misses
-          cache_miss_bytes: 500, // 500 from cache miss
-          max_epoch: 100,
-        })
+        expect(usage1.data_set_id).toBe('1')
+        expect(usage1.cdn_bytes).toBe(2500) // 2000 from cache hits + 500 from cache misses
+        expect(usage1.cache_miss_bytes).toBe(500) // 500 from cache miss
+        expect(usage1.max_epoch).toBe(100)
 
         const usage2 = usageData.find((u) => u.data_set_id === '2')
-        expect(usage2).toEqual({
-          data_set_id: '2',
-          cdn_bytes: 3000, // All cache misses
-          cache_miss_bytes: 3000,
-          max_epoch: 100,
-        })
+        expect(usage2.data_set_id).toBe('2')
+        expect(usage2.cdn_bytes).toBe(3000) // All cache misses
+        expect(usage2.cache_miss_bytes).toBe(3000)
+        expect(usage2.max_epoch).toBe(100)
       })
 
       it('should include non-200 responses but filter out null egress_bytes', async () => {
-        // Set last_reported_epoch to 99 so data for epoch 100 will be included
-        await withDataSet(env, { id: '1', lastRollupReportedAtEpoch: 99 })
+        // Set usage_reported_until to timestamp for epoch 99 so data for epoch 100 will be included
+        const epoch99Timestamp = epochToTimestamp(
+          99n,
+          BigInt(FILECOIN_GENESIS_UNIX_TIMESTAMP),
+        )
+        await withDataSet(env, {
+          id: '1',
+          usageReportedUntil: epoch99Timestamp,
+        })
 
         const epochTimestamp = filecoinEpochToTimestamp(100)
 
@@ -143,45 +164,73 @@ describe('rollup', () => {
         })
 
         // Call with targetEpoch = 100 to get data up to epoch 100
+        const upToTimestamp = epochToTimestamp(
+          100n,
+          BigInt(FILECOIN_GENESIS_UNIX_TIMESTAMP),
+        )
         const usageData = await aggregateUsageData(
           env.DB,
+          upToTimestamp,
           BigInt(FILECOIN_GENESIS_UNIX_TIMESTAMP),
-          100n,
         )
 
         const usage = usageData.find((u) => u.data_set_id === '1')
-        expect(usage).toEqual({
-          data_set_id: '1',
-          cdn_bytes: 1800, // All egress: 404 (1000) + 200 (500) + 500 (300)
-          cache_miss_bytes: 300, // 500 response with cache_miss=1
-          max_epoch: 100,
-        })
+        expect(usage.data_set_id).toBe('1')
+        expect(usage.cdn_bytes).toBe(1800) // All egress: 404 (1000) + 200 (500) + 500 (300)
+        expect(usage.cache_miss_bytes).toBe(300) // 500 response with cache_miss=1
+        expect(usage.max_epoch).toBe(100)
       })
 
-      it('should only aggregate data for datasets where last_reported_epoch < currentEpoch - 1', async () => {
-        // Set different last_reported_epoch values
-        await withDataSet(env, { id: '1', lastRollupReportedAtEpoch: null }) // Should be included
-        await withDataSet(env, { id: '2', lastRollupReportedAtEpoch: 98 }) // Should be included
-        await withDataSet(env, { id: '3', lastRollupReportedAtEpoch: 99 }) // Should be included (99 < 100)
-        await withDataSet(env, { id: '4', lastRollupReportedAtEpoch: 100 }) // Should NOT be included (100 >= 100)
+      it('should only aggregate data for datasets with usage_reported_until < upToTimestamp', async () => {
+        // Set different usage_reported_until values
+        const epoch98Timestamp = epochToTimestamp(
+          98n,
+          BigInt(FILECOIN_GENESIS_UNIX_TIMESTAMP),
+        )
+        const epoch99Timestamp = epochToTimestamp(
+          99n,
+          BigInt(FILECOIN_GENESIS_UNIX_TIMESTAMP),
+        )
+        const epoch100Timestamp = epochToTimestamp(
+          100n,
+          BigInt(FILECOIN_GENESIS_UNIX_TIMESTAMP),
+        )
 
-        const epoch100Timestamp = filecoinEpochToTimestamp(100)
+        await withDataSet(env, { id: '1', usageReportedUntil: null }) // Should be included
+        await withDataSet(env, {
+          id: '2',
+          usageReportedUntil: epoch98Timestamp,
+        }) // Should be included
+        await withDataSet(env, {
+          id: '3',
+          usageReportedUntil: epoch99Timestamp,
+        }) // Should be included
+        await withDataSet(env, {
+          id: '4',
+          usageReportedUntil: epoch100Timestamp,
+        }) // Should NOT be included
+
+        const epoch100UnixTimestamp = filecoinEpochToTimestamp(100)
 
         // Add logs for all datasets in epoch 100
         for (const id of ['1', '2', '3', '4']) {
           await withRetrievalLog(env, {
-            timestamp: epoch100Timestamp,
+            timestamp: epoch100UnixTimestamp,
             dataSetId: id,
             egressBytes: 1000,
             cacheMiss: 0,
           })
         }
 
-        // Call with targetEpoch = 100 to get data up to epoch 100
+        // Call with upToTimestamp for epoch 100
+        const upToTimestamp = epochToTimestamp(
+          100n,
+          BigInt(FILECOIN_GENESIS_UNIX_TIMESTAMP),
+        )
         const usageData = await aggregateUsageData(
           env.DB,
+          upToTimestamp,
           BigInt(FILECOIN_GENESIS_UNIX_TIMESTAMP),
-          100n,
         )
 
         // Should have data for 1, 2, 3 but NOT 4
@@ -192,25 +241,36 @@ describe('rollup', () => {
 
         // Verify the data for included datasets
         const usage1 = usageData.find((u) => u.data_set_id === '1')
-        expect(usage1).toEqual({
-          data_set_id: '1',
-          cdn_bytes: 1000,
-          cache_miss_bytes: 0,
-          max_epoch: 100,
-        })
+        expect(usage1.data_set_id).toBe('1')
+        expect(usage1.cdn_bytes).toBe(1000)
+        expect(usage1.cache_miss_bytes).toBe(0)
+        expect(usage1.max_epoch).toBe(100)
       })
 
       it('should filter out datasets with zero cdn and cache-miss bytes', async () => {
-        // Set last_reported_epoch to 99
-        await withDataSet(env, { id: '1', lastRollupReportedAtEpoch: 99 })
-        await withDataSet(env, { id: '2', lastRollupReportedAtEpoch: 99 })
-        await withDataSet(env, { id: '3', lastRollupReportedAtEpoch: 99 })
+        // Set usage_reported_until to epoch 99 timestamp
+        const epoch99Timestamp = epochToTimestamp(
+          99n,
+          BigInt(FILECOIN_GENESIS_UNIX_TIMESTAMP),
+        )
+        await withDataSet(env, {
+          id: '1',
+          usageReportedUntil: epoch99Timestamp,
+        })
+        await withDataSet(env, {
+          id: '2',
+          usageReportedUntil: epoch99Timestamp,
+        })
+        await withDataSet(env, {
+          id: '3',
+          usageReportedUntil: epoch99Timestamp,
+        })
 
-        const epoch100Timestamp = filecoinEpochToTimestamp(100)
+        const epoch100UnixTimestamp = filecoinEpochToTimestamp(100)
 
         // Dataset 1: Has usage
         await withRetrievalLog(env, {
-          timestamp: epoch100Timestamp,
+          timestamp: epoch100UnixTimestamp,
           dataSetId: '1',
           egressBytes: 1000,
           cacheMiss: 0,
@@ -218,7 +278,7 @@ describe('rollup', () => {
 
         // Dataset 2: Zero usage (egress_bytes = null)
         await withRetrievalLog(env, {
-          timestamp: epoch100Timestamp,
+          timestamp: epoch100UnixTimestamp,
           dataSetId: '2',
           egressBytes: null,
           cacheMiss: 0,
@@ -226,33 +286,98 @@ describe('rollup', () => {
 
         // Dataset 3: Has usage
         await withRetrievalLog(env, {
-          timestamp: epoch100Timestamp,
+          timestamp: epoch100UnixTimestamp,
           dataSetId: '3',
           egressBytes: 500,
           cacheMiss: 1,
         })
 
+        const upToTimestamp = epochToTimestamp(
+          100n,
+          BigInt(FILECOIN_GENESIS_UNIX_TIMESTAMP),
+        )
         const usageData = await aggregateUsageData(
           env.DB,
+          upToTimestamp,
           BigInt(FILECOIN_GENESIS_UNIX_TIMESTAMP),
-          100n,
         )
 
         // Should only have datasets 1 and 3 (dataset 2 has null egress_bytes and is filtered out)
-        expect(usageData).toEqual([
-          {
-            data_set_id: '1',
-            cdn_bytes: 1000,
-            cache_miss_bytes: 0,
-            max_epoch: 100,
-          },
-          {
-            data_set_id: '3',
-            cdn_bytes: 500,
-            cache_miss_bytes: 500,
-            max_epoch: 100,
-          },
-        ])
+        expect(usageData.length).toBe(2)
+
+        const usage1 = usageData.find((u) => u.data_set_id === '1')
+        expect(usage1.data_set_id).toBe('1')
+        expect(usage1.cdn_bytes).toBe(1000)
+        expect(usage1.cache_miss_bytes).toBe(0)
+        expect(usage1.max_epoch).toBe(100)
+
+        const usage3 = usageData.find((u) => u.data_set_id === '3')
+        expect(usage3.data_set_id).toBe('3')
+        expect(usage3.cdn_bytes).toBe(500)
+        expect(usage3.cache_miss_bytes).toBe(500)
+        expect(usage3.max_epoch).toBe(100)
+      })
+
+      it('should exclude datasets with pending rollup transactions', async () => {
+        // Set usage_reported_until to epoch 99 timestamp
+        const epoch99Timestamp = epochToTimestamp(
+          99n,
+          BigInt(FILECOIN_GENESIS_UNIX_TIMESTAMP),
+        )
+
+        // Dataset 1: No pending transaction - should be included
+        await withDataSet(env, {
+          id: '1',
+          usageReportedUntil: epoch99Timestamp,
+          pendingRollupTxHash: null,
+        })
+
+        // Dataset 2: Has pending transaction - should be excluded
+        await withDataSet(env, {
+          id: '2',
+          usageReportedUntil: epoch99Timestamp,
+          pendingRollupTxHash: '0x123abc',
+        })
+
+        const epoch100UnixTimestamp = filecoinEpochToTimestamp(100)
+
+        // Add logs for both datasets
+        await withRetrievalLog(env, {
+          timestamp: epoch100UnixTimestamp,
+          dataSetId: '1',
+          egressBytes: 1000,
+          cacheMiss: 0,
+        })
+
+        await withRetrievalLog(env, {
+          timestamp: epoch100UnixTimestamp,
+          dataSetId: '2',
+          egressBytes: 2000,
+          cacheMiss: 0,
+        })
+
+        const upToTimestamp = epochToTimestamp(
+          100n,
+          BigInt(FILECOIN_GENESIS_UNIX_TIMESTAMP),
+        )
+        const usageData = await aggregateUsageData(
+          env.DB,
+          upToTimestamp,
+          BigInt(FILECOIN_GENESIS_UNIX_TIMESTAMP),
+        )
+
+        // Should only have dataset 1 (dataset 2 has pending transaction)
+        expect(usageData.length).toBe(1)
+
+        const usage1 = usageData.find((u) => u.data_set_id === '1')
+        expect(usage1.data_set_id).toBe('1')
+        expect(usage1.cdn_bytes).toBe(1000)
+        expect(usage1.cache_miss_bytes).toBe(0)
+        expect(usage1.max_epoch).toBe(100)
+
+        // Dataset 2 should not be present
+        const usage2 = usageData.find((u) => u.data_set_id === '2')
+        expect(usage2).toBeUndefined()
       })
     })
   })
@@ -284,9 +409,9 @@ describe('rollup', () => {
 
       expect(batchData).toEqual({
         dataSetIds: ['1', '2', '3'],
-        epochs: [100, 100, 100],
         cdnBytesUsed: [1000n, 2000n, 0n],
         cacheMissBytesUsed: [500n, 0n, 3000n],
+        maxEpochs: [100, 100, 100],
       })
     })
 
@@ -296,13 +421,13 @@ describe('rollup', () => {
           data_set_id: '1',
           cdn_bytes: 1000,
           cache_miss_bytes: 500,
-          max_epoch: 100,
+          max_epoch: 98,
         },
         {
           data_set_id: '2',
           cdn_bytes: 2000,
           cache_miss_bytes: 0,
-          max_epoch: 100,
+          max_epoch: 99,
         },
         {
           data_set_id: '3',
@@ -315,9 +440,9 @@ describe('rollup', () => {
       const batchData = prepareUsageRollupData(usageData)
 
       expect(batchData.dataSetIds).toEqual(['1', '2', '3'])
-      expect(batchData.epochs).toEqual([100, 100, 100])
       expect(batchData.cdnBytesUsed).toEqual([1000n, 2000n, 0n])
       expect(batchData.cacheMissBytesUsed).toEqual([500n, 0n, 3000n])
+      expect(batchData.maxEpochs).toEqual([98, 99, 100])
     })
 
     it('should handle empty usage data', () => {
@@ -326,9 +451,9 @@ describe('rollup', () => {
 
       expect(batchData).toEqual({
         dataSetIds: [],
-        epochs: [],
         cdnBytesUsed: [],
         cacheMissBytesUsed: [],
+        maxEpochs: [],
       })
     })
   })
