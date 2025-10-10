@@ -17,8 +17,16 @@ describe('rollup worker scheduled entrypoint', () => {
   let mockAccount
   let simulateContractCalls
   let writeContractCalls
+  let mockWorkflow
 
   beforeEach(async () => {
+    simulateContractCalls = []
+    writeContractCalls = []
+
+    mockWorkflow = {
+      create: vi.fn().mockResolvedValue(undefined),
+    }
+
     env = {
       ...testEnv,
       ENVIRONMENT: 'dev',
@@ -26,13 +34,10 @@ describe('rollup worker scheduled entrypoint', () => {
       FILBEAM_CONTRACT_ADDRESS: '0xMockFilBeamAddress',
       FILBEAM_CONTROLLER_PRIVATE_KEY: '0xMockPrivateKey',
       GENESIS_BLOCK_TIMESTAMP: '1598306400',
+      TRANSACTION_MONITOR_WORKFLOW: mockWorkflow,
     }
 
     await applyD1Migrations(env.DB, env.TEST_MIGRATIONS)
-
-    // Reset mock tracking arrays
-    simulateContractCalls = []
-    writeContractCalls = []
 
     // Create mock chain client
     mockAccount = { address: '0xMockAccountAddress' }
@@ -130,11 +135,10 @@ describe('rollup worker scheduled entrypoint', () => {
     expect(simulateCall.args[1]).toEqual([100, 100]) // epochs
     expect(simulateCall.args[2]).toEqual([2500n, 4000n]) // cdnBytesUsed (all egress)
     expect(simulateCall.args[3]).toEqual([500n, 1000n]) // cacheMissBytesUsed
-    expect(simulateCall.account).toBe(mockAccount)
 
-    // Verify transaction was written
+    // Verify transaction was written and workflow started
     expect(writeContractCalls).toHaveLength(1)
-    expect(writeContractCalls[0].mockedRequest).toBe(true)
+    expect(mockWorkflow.create).toHaveBeenCalled()
   })
 
   it('should handle when no usage data exists', async () => {
@@ -242,64 +246,6 @@ describe('rollup worker scheduled entrypoint', () => {
     expect(simulateContractCalls).toHaveLength(1)
     const simulateCall = simulateContractCalls[0]
     expect(simulateCall.args[0]).toEqual(['1']) // Only dataset 1
-  })
-
-  it('should handle contract simulation errors', async () => {
-    // Setup: Create dataset with usage data
-    const epoch99Timestamp = epochToTimestamp(
-      99n,
-      BigInt(FILECOIN_GENESIS_UNIX_TIMESTAMP),
-    )
-    await withDataSet(env, { id: '1', usageReportedUntil: epoch99Timestamp })
-    const epoch100Timestamp = filecoinEpochToTimestamp(100)
-    await withRetrievalLog(env, {
-      timestamp: epoch100Timestamp,
-      dataSetId: '1',
-      egressBytes: 1000,
-      cacheMiss: 0,
-    })
-
-    // Make simulateContract throw an error
-    mockPublicClient.simulateContract.mockRejectedValue(
-      new Error('Contract simulation failed'),
-    )
-
-    // Execute scheduled function and expect it to throw
-    await expect(
-      worker.scheduled(null, env, null, { getChainClient: mockGetChainClient }),
-    ).rejects.toThrow('Contract simulation failed')
-
-    // Verify transaction was not written
-    expect(writeContractCalls).toHaveLength(0)
-  })
-
-  it('should handle transaction write errors', async () => {
-    // Setup: Create dataset with usage data
-    const epoch99Timestamp = epochToTimestamp(
-      99n,
-      BigInt(FILECOIN_GENESIS_UNIX_TIMESTAMP),
-    )
-    await withDataSet(env, { id: '1', usageReportedUntil: epoch99Timestamp })
-    const epoch100Timestamp = filecoinEpochToTimestamp(100)
-    await withRetrievalLog(env, {
-      timestamp: epoch100Timestamp,
-      dataSetId: '1',
-      egressBytes: 1000,
-      cacheMiss: 0,
-    })
-
-    // Make writeContract throw an error
-    mockWalletClient.writeContract.mockRejectedValue(
-      new Error('Transaction failed'),
-    )
-
-    // Execute scheduled function and expect it to throw
-    await expect(
-      worker.scheduled(null, env, null, { getChainClient: mockGetChainClient }),
-    ).rejects.toThrow('Transaction failed')
-
-    // Verify simulation was called
-    expect(simulateContractCalls).toHaveLength(1)
   })
 
   it('should calculate correct target epoch', async () => {

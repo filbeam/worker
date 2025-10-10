@@ -51,3 +51,54 @@ database_id = "e8de6418-2cb7-4413-9ba0-a9c8aacf9a66"
 
 [env.mainnet.triggers]
 crons = ["*/1 * * * *"]  # Run every minute
+
+[[env.dev.queues.producers]]
+queue = "rollup-transaction-queue-dev"
+binding = "TRANSACTION_QUEUE"
+
+# queue concurrency has to be set to 1 in order to send
+# transactions one at a time and avoid nonce tracking
+[[env.dev.queues.consumers]]
+queue = "rollup-transaction-queue-dev"
+max_concurrency = 1
+max_retries = 3
+dead_letter_queue = "transaction-dlq"
+
+[[env.calibration.queues.producers]]
+queue = "rollup-transaction-queue-calibration"
+binding = "TRANSACTION_QUEUE"
+
+# queue concurrency has to be set to 1 in order to send
+# transactions one at a time and avoid nonce tracking
+[[env.calibration.queues.consumers]]
+queue = "rollup-transaction-queue-calibration"
+max_concurrency = 1
+max_retries = 3
+dead_letter_queue = "transaction-dlq"
+
+[[env.mainnet.queues.producers]]
+queue = "rollup-transaction-queue-mainnet"
+binding = "TRANSACTION_QUEUE"
+
+# queue concurrency has to be set to 1 in order to send
+# transactions one at a time and avoid nonce tracking
+[[env.mainnet.queues.consumers]]
+queue = "rollup-transaction-queue-mainnet"
+max_concurrency = 1
+max_retries = 3
+dead_letter_queue = "transaction-dlq"
+
+[[env.dev.workflows]]
+name = "rollup-transaction-monitor-workflow-dev"
+binding = "TRANSACTION_MONITOR_WORKFLOW"
+class_name = "TransactionMonitorWorkflow"
+
+[[env.calibration.workflows]]
+name = "rollup-transaction-monitor-workflow-calibration"
+binding = "TRANSACTION_MONITOR_WORKFLOW"
+class_name = "TransactionMonitorWorkflow"
+
+[[env.mainnet.workflows]]
+name = "rollup-transaction-monitor-workflow-mainnet"
+binding = "TRANSACTION_MONITOR_WORKFLOW"
+class_name = "TransactionMonitorWorkflow"

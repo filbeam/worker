@@ -14,6 +14,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@filbeam/workflows": "workspace:*",
     "viem": "^2.37.9"
   },
   "devDependencies": {
