@@ -14,7 +14,6 @@ import {
   removeDataSetPieces,
   insertDataSetPiece,
 } from '../lib/pdp-verifier-handlers.js'
-import { handleFilBeamOperatorUsageReported } from '../lib/filbeam-operator-handlers.js'
 import { screenWallets } from '../lib/wallet-screener.js'
 import { CID } from 'multiformats/cid'
 
@@ -235,27 +234,6 @@ export default {
       }
 
       return new Response('OK', { status: 200 })
-    } else if (pathname === '/filbeam-operator/usage-reported') {
-      if (
-        !payload.data_set_id ||
-        !(
-          typeof payload.data_set_id === 'number' ||
-          typeof payload.data_set_id === 'string'
-        ) ||
-        payload.epoch === undefined ||
-        !(
-          typeof payload.epoch === 'number' || typeof payload.epoch === 'string'
-        )
-      ) {
-        console.error('FilBeam.UsageReported: Invalid payload', payload)
-        return new Response('Bad Request: Invalid payload', { status: 400 })
-      }
-
-      console.log(
-        `FilBeam usage reported (data_set_id=${payload.data_set_id}, epoch=${payload.epoch}`,
-      )
-
-      return await handleFilBeamOperatorUsageReported(env, payload)
     } else {
       return new Response('Not Found', { status: 404 })
     }
