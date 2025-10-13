@@ -10,7 +10,7 @@
     "indexer",
     "piece-retriever",
     "terminator",
-    "rail-settlement"
+    "payment-settler"
   ],
   "scripts": {
     "build:types": "npm run build:types --workspaces --if-present",

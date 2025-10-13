@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { env } from 'cloudflare:test'
 import { withDataSet, randomId } from './test-helpers.js'
-import worker from '../bin/rail-settlement.js'
+import worker from '../bin/payment-settler.js'
 
-describe('rail settlement scheduled handler', () => {
+describe('payment settler scheduled handler', () => {
   let mockPublicClient
   let mockWalletClient
   let mockAccount
