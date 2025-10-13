@@ -212,23 +212,13 @@ export default {
       const { provider_id: providerId } = payload
       return await handleProviderRemoved(env, providerId)
     } else if (pathname === '/fwss/cdn-payment-rails-topped-up') {
-      // Validate payload
+      // Validate payload - all fields must be strings
       if (
-        !payload.data_set_id ||
-        !(
-          typeof payload.data_set_id === 'number' ||
-          typeof payload.data_set_id === 'string'
-        ) ||
-        payload.total_cdn_lockup === undefined ||
-        !(
-          typeof payload.total_cdn_lockup === 'string' ||
-          typeof payload.total_cdn_lockup === 'number'
-        ) ||
-        payload.total_cache_miss_lockup === undefined ||
-        !(
-          typeof payload.total_cache_miss_lockup === 'string' ||
-          typeof payload.total_cache_miss_lockup === 'number'
-        )
+        !(typeof payload.data_set_id === 'string') ||
+        !payload.cdn_amount_added ||
+        !(typeof payload.cdn_amount_added === 'string') ||
+        !payload.cache_miss_amount_added ||
+        !(typeof payload.cache_miss_amount_added === 'string')
       ) {
         console.error('FWSS.CDNPaymentRailsToppedUp: Invalid payload', payload)
         return new Response('Bad Request', { status: 400 })
@@ -236,10 +226,15 @@ export default {
 
       console.log(
         `CDN Payment Rails topped up (data_set_id=${payload.data_set_id}, ` +
-          `total_cdn_lockup=${payload.total_cdn_lockup}, total_cache_miss_lockup=${payload.total_cache_miss_lockup})`,
+          `cdn_amount_added=${payload.cdn_amount_added}, cache_miss_amount_added=${payload.cache_miss_amount_added})`,
       )
 
-      await handleFWSSCDNPaymentRailsToppedUp(env, payload)
+      try {
+        await handleFWSSCDNPaymentRailsToppedUp(env, payload)
+      } catch (err) {
+        console.error('Error handling CDN Payment Rails top-up:', err)
+        return new Response('Internal Server Error', { status: 500 })
+      }
 
       return new Response('OK', { status: 200 })
     } else if (pathname === '/filbeam-operator/usage-reported') {

@@ -1053,8 +1053,8 @@ describe('POST /fwss/cdn-payment-rails-topped-up', () => {
         [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
       },
       body: JSON.stringify({
-        total_cdn_lockup: '1000000000000000000',
-        total_cache_miss_lockup: '2000000000000000000',
+        cdn_amount_added: '1000000000000000000',
+        cache_miss_amount_added: '2000000000000000000',
       }),
     })
     const res = await workerImpl.fetch(req, env)
@@ -1062,15 +1062,15 @@ describe('POST /fwss/cdn-payment-rails-topped-up', () => {
     expect(await res.text()).toBe('Bad Request')
   })
 
-  it('returns 400 if total_cdn_lockup is missing', async () => {
+  it('returns 400 if cdn_amount_added is missing', async () => {
     const req = new Request('https://host/fwss/cdn-payment-rails-topped-up', {
       method: 'POST',
       headers: {
         [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
       },
       body: JSON.stringify({
-        data_set_id: '123',
-        total_cache_miss_lockup: '2000000000000000000',
+        data_set_id: 'test-data-set-1',
+        cache_miss_amount_added: '5000000000000000000',
       }),
     })
     const res = await workerImpl.fetch(req, env)
@@ -1078,15 +1078,15 @@ describe('POST /fwss/cdn-payment-rails-topped-up', () => {
     expect(await res.text()).toBe('Bad Request')
   })
 
-  it('returns 400 if total_cache_miss_lockup is missing', async () => {
+  it('returns 400 if cache_miss_amount_added is missing', async () => {
     const req = new Request('https://host/fwss/cdn-payment-rails-topped-up', {
       method: 'POST',
       headers: {
         [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
       },
       body: JSON.stringify({
-        data_set_id: '123',
-        total_cdn_lockup: '1000000000000000000',
+        data_set_id: 'test-data-set-1',
+        cdn_amount_added: '5000000000000000000',
       }),
     })
     const res = await workerImpl.fetch(req, env)
@@ -1094,16 +1094,16 @@ describe('POST /fwss/cdn-payment-rails-topped-up', () => {
     expect(await res.text()).toBe('Bad Request')
   })
 
-  it('returns 400 if total_cdn_lockup has invalid type', async () => {
+  it('returns 400 if cdn_amount_added has invalid type', async () => {
     const req = new Request('https://host/fwss/cdn-payment-rails-topped-up', {
       method: 'POST',
       headers: {
         [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
       },
       body: JSON.stringify({
-        data_set_id: '123',
-        total_cdn_lockup: { invalid: 'object' },
-        total_cache_miss_lockup: '2000000000000000000',
+        data_set_id: 'test-data-set-1',
+        cdn_amount_added: { invalid: 'object' },
+        cache_miss_amount_added: '2000000000000000000',
       }),
     })
     const res = await workerImpl.fetch(req, env)
@@ -1111,16 +1111,16 @@ describe('POST /fwss/cdn-payment-rails-topped-up', () => {
     expect(await res.text()).toBe('Bad Request')
   })
 
-  it('returns 400 if total_cache_miss_lockup has invalid type', async () => {
+  it('returns 400 if cache_miss_amount_added is null', async () => {
     const req = new Request('https://host/fwss/cdn-payment-rails-topped-up', {
       method: 'POST',
       headers: {
         [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
       },
       body: JSON.stringify({
-        data_set_id: '123',
-        total_cdn_lockup: '1000000000000000000',
-        total_cache_miss_lockup: null,
+        data_set_id: 'test-data-set-1',
+        cdn_amount_added: '5000000000000000000',
+        cache_miss_amount_added: null,
       }),
     })
     const res = await workerImpl.fetch(req, env)
@@ -1136,8 +1136,8 @@ describe('POST /fwss/cdn-payment-rails-topped-up', () => {
     })
 
     // Set environment rates
-    env.CDN_RATE_DOLLARS_PER_TIB = '5'
-    env.CACHE_MISS_RATE_DOLLARS_PER_TIB = '5'
+    env.CDN_RATE_PER_TIB = '5000000000000000000' // 5 USDFC per TiB
+    env.CACHE_MISS_RATE_PER_TIB = '5000000000000000000' // 5 USDFC per TiB
 
     const req = new Request('https://host/fwss/cdn-payment-rails-topped-up', {
       method: 'POST',
@@ -1146,8 +1146,8 @@ describe('POST /fwss/cdn-payment-rails-topped-up', () => {
       },
       body: JSON.stringify({
         data_set_id: dataSetId,
-        total_cdn_lockup: '5000000000000000000', // 5 USDFC
-        total_cache_miss_lockup: '10000000000000000000', // 10 USDFC
+        cdn_amount_added: '5000000000000000000', // 5 USDFC
+        cache_miss_amount_added: '10000000000000000000', // 10 USDFC
       }),
     })
 
@@ -1168,18 +1168,7 @@ describe('POST /fwss/cdn-payment-rails-topped-up', () => {
     expect(result.cache_miss_egress_quota).toBe(2199023255552)
   })
 
-  it('handles numeric data_set_id', async () => {
-    const dataSetId = '456'
-    await withDataSet(env, {
-      dataSetId,
-      withCDN: true,
-      serviceProviderId: '1',
-      payerAddress: '0xPayerAddress',
-    })
-
-    env.CDN_RATE_DOLLARS_PER_TIB = '5'
-    env.CACHE_MISS_RATE_DOLLARS_PER_TIB = '5'
-
+  it('returns 400 if data_set_id is numeric', async () => {
     const req = new Request('https://host/fwss/cdn-payment-rails-topped-up', {
       method: 'POST',
       headers: {
@@ -1187,23 +1176,14 @@ describe('POST /fwss/cdn-payment-rails-topped-up', () => {
       },
       body: JSON.stringify({
         data_set_id: 456, // Numeric
-        total_cdn_lockup: '5000000000000000000',
-        total_cache_miss_lockup: '10000000000000000000',
+        cdn_amount_added: '5000000000000000000',
+        cache_miss_amount_added: '10000000000000000000',
       }),
     })
 
     const res = await workerImpl.fetch(req, env)
-    expect(res.status).toBe(200)
-    expect(await res.text()).toBe('OK')
-
-    const result = await env.DB.prepare(
-      'SELECT cdn_egress_quota, cache_miss_egress_quota FROM data_sets WHERE id = ?',
-    )
-      .bind(dataSetId)
-      .first()
-
-    expect(result.cdn_egress_quota).toBe(1099511627776)
-    expect(result.cache_miss_egress_quota).toBe(2199023255552)
+    expect(res.status).toBe(400)
+    expect(await res.text()).toBe('Bad Request')
   })
 
   it('handles zero lockup amounts', async () => {
@@ -1223,8 +1203,8 @@ describe('POST /fwss/cdn-payment-rails-topped-up', () => {
       },
       body: JSON.stringify({
         data_set_id: dataSetId,
-        total_cdn_lockup: '0',
-        total_cache_miss_lockup: '0',
+        cdn_amount_added: '0',
+        cache_miss_amount_added: '0',
       }),
     })
 
@@ -1242,7 +1222,7 @@ describe('POST /fwss/cdn-payment-rails-topped-up', () => {
     expect(result.cache_miss_egress_quota).toBe(0)
   })
 
-  it('updates quotas for existing data set', async () => {
+  it('accumulates quotas for existing data set', async () => {
     const dataSetId = await withDataSet(env, {
       withCDN: true,
       serviceProviderId: '1',
@@ -1252,7 +1232,7 @@ describe('POST /fwss/cdn-payment-rails-topped-up', () => {
     env.CDN_RATE_DOLLARS_PER_TIB = '5'
     env.CACHE_MISS_RATE_DOLLARS_PER_TIB = '5'
 
-    // First update
+    // First top-up
     await workerImpl.fetch(
       new Request('https://host/fwss/cdn-payment-rails-topped-up', {
         method: 'POST',
@@ -1261,14 +1241,14 @@ describe('POST /fwss/cdn-payment-rails-topped-up', () => {
         },
         body: JSON.stringify({
           data_set_id: dataSetId,
-          total_cdn_lockup: '5000000000000000000',
-          total_cache_miss_lockup: '10000000000000000000',
+          cdn_amount_added: '5000000000000000000',
+          cache_miss_amount_added: '10000000000000000000',
         }),
       }),
       env,
     )
 
-    // Second update with different values
+    // Second top-up with additional amounts
     const req = new Request('https://host/fwss/cdn-payment-rails-topped-up', {
       method: 'POST',
       headers: {
@@ -1276,8 +1256,8 @@ describe('POST /fwss/cdn-payment-rails-topped-up', () => {
       },
       body: JSON.stringify({
         data_set_id: dataSetId,
-        total_cdn_lockup: '10000000000000000000', // 10 USDFC
-        total_cache_miss_lockup: '20000000000000000000', // 20 USDFC
+        cdn_amount_added: '5000000000000000000', // 5 USDFC more
+        cache_miss_amount_added: '10000000000000000000', // 10 USDFC more
       }),
     })
 
@@ -1290,7 +1270,7 @@ describe('POST /fwss/cdn-payment-rails-topped-up', () => {
       .bind(dataSetId)
       .first()
 
-    // Updated values: 10 USDFC = 2 TiB, 20 USDFC = 4 TiB
+    // Accumulated values: 5+5 USDFC = 2 TiB, 10+10 USDFC = 4 TiB
     expect(result.cdn_egress_quota).toBe(2199023255552)
     expect(result.cache_miss_egress_quota).toBe(4398046511104)
   })
@@ -1309,8 +1289,8 @@ describe('POST /fwss/cdn-payment-rails-topped-up', () => {
       },
       body: JSON.stringify({
         data_set_id: dataSetId,
-        total_cdn_lockup: '5000000000000000000',
-        total_cache_miss_lockup: '10000000000000000000',
+        cdn_amount_added: '5000000000000000000',
+        cache_miss_amount_added: '10000000000000000000',
       }),
     })
 

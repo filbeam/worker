@@ -41,13 +41,13 @@ describe('handleFWSSCDNPaymentRailsToppedUp', () => {
 
     const payload = {
       data_set_id: testDataSetId,
-      total_cdn_lockup: '5000000000000000000', // 5 USDFC = 1 TiB quota
-      total_cache_miss_lockup: '10000000000000000000', // 10 USDFC = 2 TiB quota
+      cdn_amount_added: '5000000000000000000', // 5 USDFC = 1 TiB quota
+      cache_miss_amount_added: '10000000000000000000', // 10 USDFC = 2 TiB quota
     }
 
     await handleFWSSCDNPaymentRailsToppedUp(testEnv, payload)
 
-    // Verify the quotas were set correctly
+    // Verify the quotas were incremented correctly
     const result = await env.DB.prepare(
       'SELECT cdn_egress_quota, cache_miss_egress_quota FROM data_sets WHERE id = ?',
     )
@@ -58,7 +58,7 @@ describe('handleFWSSCDNPaymentRailsToppedUp', () => {
     expect(result.cache_miss_egress_quota).toBe(Number(BYTES_PER_TIB * 2n)) // 2 TiB in bytes
   })
 
-  it('handles zero lockup amounts', async () => {
+  it('handles zero amounts added', async () => {
     const testEnv = {
       ...env,
       CDN_RATE_PER_TIB: '5000000000000000000',
@@ -67,8 +67,8 @@ describe('handleFWSSCDNPaymentRailsToppedUp', () => {
 
     const payload = {
       data_set_id: testDataSetId,
-      total_cdn_lockup: '0',
-      total_cache_miss_lockup: '0',
+      cdn_amount_added: '0',
+      cache_miss_amount_added: '0',
     }
 
     await handleFWSSCDNPaymentRailsToppedUp(testEnv, payload)
@@ -92,8 +92,8 @@ describe('handleFWSSCDNPaymentRailsToppedUp', () => {
 
     const payload = {
       data_set_id: testDataSetId,
-      total_cdn_lockup: '5000000000000000000',
-      total_cache_miss_lockup: '10000000000000000000',
+      cdn_amount_added: '5000000000000000000',
+      cache_miss_amount_added: '10000000000000000000',
     }
 
     await handleFWSSCDNPaymentRailsToppedUp(testEnv, payload)
@@ -104,23 +104,23 @@ describe('handleFWSSCDNPaymentRailsToppedUp', () => {
       .bind(testDataSetId)
       .first()
 
-    // Should set quota to 0 when rate is 0
+    // Should add 0 to quota when rate is 0
     expect(result.cdn_egress_quota).toBe(0)
     expect(result.cache_miss_egress_quota).toBe(0)
   })
 
-  it('replaces existing quota values', async () => {
+  it('accumulates quota values on multiple top-ups', async () => {
     const testEnv = {
       ...env,
       CDN_RATE_PER_TIB: '5000000000000000000',
       CACHE_MISS_RATE_PER_TIB: '5000000000000000000',
     }
 
-    // First update - 1 USDFC = 0.2 TiB
+    // First top-up - 1 USDFC = 0.2 TiB
     const payload1 = {
       data_set_id: testDataSetId,
-      total_cdn_lockup: '1000000000000000000', // 1 USDFC
-      total_cache_miss_lockup: '2000000000000000000', // 2 USDFC
+      cdn_amount_added: '1000000000000000000', // 1 USDFC
+      cache_miss_amount_added: '2000000000000000000', // 2 USDFC
     }
 
     await handleFWSSCDNPaymentRailsToppedUp(testEnv, payload1)
@@ -136,11 +136,11 @@ describe('handleFWSSCDNPaymentRailsToppedUp', () => {
     expect(result.cdn_egress_quota).toBe(expectedQuota1)
     expect(result.cache_miss_egress_quota).toBe(expectedQuota2)
 
-    // Second update with different values (should replace, not add)
+    // Second top-up with different values (should add, not replace)
     const payload2 = {
       data_set_id: testDataSetId,
-      total_cdn_lockup: '5000000000000000000', // 5 USDFC = 1 TiB
-      total_cache_miss_lockup: '10000000000000000000', // 10 USDFC = 2 TiB
+      cdn_amount_added: '5000000000000000000', // 5 USDFC = 1 TiB more
+      cache_miss_amount_added: '10000000000000000000', // 10 USDFC = 2 TiB more
     }
 
     await handleFWSSCDNPaymentRailsToppedUp(testEnv, payload2)
@@ -151,9 +151,12 @@ describe('handleFWSSCDNPaymentRailsToppedUp', () => {
       .bind(testDataSetId)
       .first()
 
-    // Should be replaced, not accumulated
-    expect(result.cdn_egress_quota).toBe(Number(BYTES_PER_TIB))
-    expect(result.cache_miss_egress_quota).toBe(Number(BYTES_PER_TIB * 2n))
+    // Should be accumulated: 0.2 + 1 = 1.2 TiB for CDN, 0.4 + 2 = 2.4 TiB for cache miss
+    const expectedAccumulatedCdn = expectedQuota1 + Number(BYTES_PER_TIB)
+    const expectedAccumulatedCacheMiss =
+      expectedQuota2 + Number(BYTES_PER_TIB * 2n)
+    expect(result.cdn_egress_quota).toBe(expectedAccumulatedCdn)
+    expect(result.cache_miss_egress_quota).toBe(expectedAccumulatedCacheMiss)
   })
 
   it('handles missing data set gracefully', async () => {
@@ -165,8 +168,8 @@ describe('handleFWSSCDNPaymentRailsToppedUp', () => {
 
     const payload = {
       data_set_id: 'non-existent-data-set',
-      total_cdn_lockup: '5000000000000000000',
-      total_cache_miss_lockup: '10000000000000000000',
+      cdn_amount_added: '5000000000000000000',
+      cache_miss_amount_added: '10000000000000000000',
     }
 
     // Should not throw, just log warning
@@ -180,7 +183,7 @@ describe('handleFWSSCDNPaymentRailsToppedUp', () => {
     expect(result).toBeNull()
   })
 
-  it('handles missing lockup fields with default values', async () => {
+  it('handles missing amount fields with default values', async () => {
     const testEnv = {
       ...env,
       CDN_RATE_PER_TIB: '5000000000000000000',
@@ -189,7 +192,7 @@ describe('handleFWSSCDNPaymentRailsToppedUp', () => {
 
     const payload = {
       data_set_id: testDataSetId,
-      // Missing lockup fields
+      // Missing amount fields
     }
 
     await handleFWSSCDNPaymentRailsToppedUp(testEnv, payload)
@@ -200,7 +203,7 @@ describe('handleFWSSCDNPaymentRailsToppedUp', () => {
       .bind(testDataSetId)
       .first()
 
-    // Should default to 0
+    // Should default to 0 (no amounts added)
     expect(result.cdn_egress_quota).toBe(0)
     expect(result.cache_miss_egress_quota).toBe(0)
   })
