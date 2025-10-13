@@ -85,7 +85,9 @@ export function handleCdnPaymentRailsToppedUp(
 ): void {
   const entity = new CdnPaymentRailsToppedUp(getEventEntityId(event))
   entity.dataSetId = event.params.dataSetId.toString()
+  entity.cdnAmountAdded = event.params.cdnAmountAdded.toString()
   entity.totalCdnLockup = event.params.totalCdnLockup.toString()
+  entity.cacheMissAmountAdded = event.params.cacheMissAmountAdded.toString()
   entity.totalCacheMissLockup = event.params.totalCacheMissLockup.toString()
 
   entity.blockNumber = event.block.number

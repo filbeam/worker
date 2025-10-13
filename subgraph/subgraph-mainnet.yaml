@@ -53,6 +53,6 @@ dataSources:
           handler: handleServiceTerminated
         - event: CDNServiceTerminated(indexed address,indexed uint256,uint256,uint256)
           handler: handleCdnServiceTerminated
-        - event: CDNPaymentRailsToppedUp(indexed uint256,uint256,uint256)
+        - event: CDNPaymentRailsToppedUp(indexed uint256,uint256,uint256,uint256,uint256)
           handler: handleCdnPaymentRailsToppedUp
       file: ./src/FilecoinWarmStorageService.ts
