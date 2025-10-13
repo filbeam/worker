@@ -129,9 +129,4 @@ export async function handleFWSSCDNPaymentRailsToppedUp(env, payload) {
       dataSetId,
     )
     .run()
-
-  console.log(
-    `Updated egress quotas for data_set ${dataSetId}: ` +
-      `cdn_quota=${cdnEgressQuotaAdded} bytes, cache_miss_quota=${cacheMissEgressQuotaAdded} bytes`,
-  )
 }
