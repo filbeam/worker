@@ -10,13 +10,18 @@ head_sampling_rate = 1
 
 [[analytics_engine_datasets]]
 dataset = "ttfb_metrics"
-binding = "analytics-engine"
+binding = "analytics_engine"
 
-[env.dev.vars]
-ENVIRONMENT = "dev"
+[env.calibration]
+# Set ANALYTICS_AUTH_KEY as a secret using: wrangler secret put ANALYTICS_AUTH_KEY --env calibration
 
-[env.calibration.vars]
-ENVIRONMENT = "calibration"
+[[env.calibration.analytics_engine_datasets]]
+dataset = "ttfb_metrics"
+binding = "analytics_engine"
 
-[env.mainnet.vars]
-ENVIRONMENT = "mainnet"
+[env.mainnet]
+# Set ANALYTICS_AUTH_KEY as a secret using: wrangler secret put ANALYTICS_AUTH_KEY --env mainnet
+
+[[env.mainnet.analytics_engine_datasets]]
+dataset = "ttfb_metrics"
+binding = "analytics_engine"

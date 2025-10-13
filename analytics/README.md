@@ -6,6 +6,15 @@ Cloudflare Worker that receives TTFB (Time To First Byte) metrics from the FilBe
 
 **POST /** - Send TTFB data
 
+**Authentication Required:** Include the `X-Analytics-Auth` header with your pre-shared key.
+
+**Headers:**
+```
+X-Analytics-Auth: your-secret-key
+Content-Type: application/json
+```
+
+**Request Body:**
 ```json
 {
   "blobs": ["url", "location", "client", "cid"],
@@ -41,6 +50,13 @@ Cloudflare Worker that receives TTFB (Time To First Byte) metrics from the FilBe
 
 ## Development
 
+### Set up authentication
+
+For local development, create a `.dev.vars` file in the `analytics` directory:
+```bash
+echo "ANALYTICS_AUTH_KEY=your-local-dev-key" > .dev.vars
+```
+
 ### Run locally
 ```bash
 npm start
@@ -53,17 +69,18 @@ npm test
 
 ### Deploy
 
-#### Deploy to Dev Environment
+Set the authentication key as a secret (one time for each environment):
 ```bash
-npm run deploy:dev
+wrangler secret put ANALYTICS_AUTH_KEY --env calibration
+wrangler secret put ANALYTICS_AUTH_KEY --env mainnet
 ```
 
-#### Deploy to Calibration
+Deploy to calibration:
 ```bash
 npm run deploy:calibration
 ```
 
-#### Deploy to Mainnet
+Deploy to mainnet:
 ```bash
 npm run deploy:mainnet
 ```
@@ -75,8 +92,13 @@ The worker uses Cloudflare Analytics Engine with the dataset `ttfb_metrics`. The
 ## Error Handling
 
 The worker includes comprehensive error handling:
-- Validates request method (POST only)
+- Validates authentication header (401 if missing or incorrect)
+- Validates request method (POST only, returns 405)
 - Validates JSON payload structure
 - Validates array lengths for blobs and doubles
 - Returns appropriate HTTP status codes
 - Logs server errors (5xx) to console
+
+## Security
+
+The worker uses header-based authentication with a pre-shared key stored as a Cloudflare secret. All requests must include the `X-Analytics-Auth` header with the correct key value to access the API.
