@@ -75,9 +75,11 @@ export async function withDataSet(
       with_cdn,
       with_ipfs_indexing,
       service_provider_id,
-      payer_address
+      payer_address,
+      cdn_egress_quota,
+      cache_miss_egress_quota
     )
-    VALUES (?, ?, ?, ?, ?)`,
+    VALUES (?, ?, ?, ?, ?, ?, ?)`,
   )
     .bind(
       String(dataSetId),
@@ -85,6 +87,8 @@ export async function withDataSet(
       withIPFSIndexing,
       serviceProviderId,
       payerAddress,
+      0, // Initialize cdn_egress_quota to 0
+      0, // Initialize cache_miss_egress_quota to 0
     )
     .run()
 

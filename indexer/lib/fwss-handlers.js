@@ -90,21 +90,27 @@ export async function handleFWSSServiceTerminated(env, payload) {
  *   CACHE_MISS_RATE_PER_TIB: string
  *   DB: D1Database
  * }} env
- * @param {any} payload
+ * @param {object} payload
+ * @param {string} payload.data_set_id
+ * @param {string} payload.cdn_amount_added
+ * @param {string} payload.cache_miss_amount_added
  * @throws {Error} If there is an error during the database operation
  */
 export async function handleFWSSCDNPaymentRailsToppedUp(env, payload) {
   const { CDN_RATE_PER_TIB, CACHE_MISS_RATE_PER_TIB } = env
 
   const dataSetId = String(payload.data_set_id)
-  const totalCdnLockup = payload.total_cdn_lockup || '0'
-  const totalCacheMissLockup = payload.total_cache_miss_lockup || '0'
+  const cdnAmountAdded = payload.cdn_amount_added || '0'
+  const cacheMissAmountAdded = payload.cache_miss_amount_added || '0'
 
   // Calculate quotas in bytes using the helper function
   // Rates are already in USDFC units (1e18), no conversion needed
-  const cdnEgressQuota = calculateEgressQuota(totalCdnLockup, CDN_RATE_PER_TIB)
-  const cacheMissEgressQuota = calculateEgressQuota(
-    totalCacheMissLockup,
+  const cdnEgressQuotaAdded = calculateEgressQuota(
+    cdnAmountAdded,
+    CDN_RATE_PER_TIB,
+  )
+  const cacheMissEgressQuotaAdded = calculateEgressQuota(
+    cacheMissAmountAdded,
     CACHE_MISS_RATE_PER_TIB,
   )
 
@@ -112,16 +118,20 @@ export async function handleFWSSCDNPaymentRailsToppedUp(env, payload) {
   await env.DB.prepare(
     `
     UPDATE data_sets
-    SET cdn_egress_quota = ?,
-        cache_miss_egress_quota = ?
+    SET cdn_egress_quota = cdn_egress_quota + ?,
+        cache_miss_egress_quota = cache_miss_egress_quota + ?
     WHERE id = ?
     `,
   )
-    .bind(Number(cdnEgressQuota), Number(cacheMissEgressQuota), dataSetId)
+    .bind(
+      Number(cdnEgressQuotaAdded),
+      Number(cacheMissEgressQuotaAdded),
+      dataSetId,
+    )
     .run()
 
   console.log(
     `Updated egress quotas for data_set ${dataSetId}: ` +
-      `cdn_quota=${cdnEgressQuota} bytes, cache_miss_quota=${cacheMissEgressQuota} bytes`,
+      `cdn_quota=${cdnEgressQuotaAdded} bytes, cache_miss_quota=${cacheMissEgressQuotaAdded} bytes`,
   )
 }

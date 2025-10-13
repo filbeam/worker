@@ -76,6 +76,31 @@
   },
   {
     "type": "function",
+    "name": "announcePlannedUpgrade",
+    "inputs": [
+      {
+        "name": "plannedUpgrade",
+        "type": "tuple",
+        "internalType": "struct FilecoinWarmStorageService.PlannedUpgrade",
+        "components": [
+          {
+            "name": "nextImplementation",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "afterEpoch",
+            "type": "uint96",
+            "internalType": "uint96"
+          }
+        ]
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "calculateRatesPerEpoch",
     "inputs": [
       {
@@ -629,19 +654,6 @@
   },
   {
     "type": "function",
-    "name": "serviceCommissionBps",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
     "name": "serviceProviderRegistry",
     "inputs": [],
     "outputs": [
@@ -681,7 +693,7 @@
   },
   {
     "type": "function",
-    "name": "settleCDNPaymentRails",
+    "name": "settleFilBeamPaymentRails",
     "inputs": [
       {
         "name": "dataSetId",
@@ -929,7 +941,19 @@
         "internalType": "uint256"
       },
       {
+        "name": "cdnAmountAdded",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
         "name": "totalCdnLockup",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "cacheMissAmountAdded",
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"
@@ -1413,6 +1437,31 @@
   },
   {
     "type": "event",
+    "name": "UpgradeAnnounced",
+    "inputs": [
+      {
+        "name": "plannedUpgrade",
+        "type": "tuple",
+        "indexed": false,
+        "internalType": "struct FilecoinWarmStorageService.PlannedUpgrade",
+        "components": [
+          {
+            "name": "nextImplementation",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "afterEpoch",
+            "type": "uint96",
+            "internalType": "uint96"
+          }
+        ]
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "Upgraded",
     "inputs": [
       {
@@ -1436,6 +1485,17 @@
       }
     ],
     "anonymous": false
+  },
+  {
+    "type": "error",
+    "name": "AddressAlreadySet",
+    "inputs": [
+      {
+        "name": "field",
+        "type": "uint8",
+        "internalType": "enum Errors.AddressField"
+      }
+    ]
   },
   {
     "type": "error",
@@ -1549,6 +1609,17 @@
       },
       {
         "name": "nowBlock",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ClientDataSetAlreadyRegistered",
+    "inputs": [
+      {
+        "name": "clientDataSetId",
         "type": "uint256",
         "internalType": "uint256"
       }
@@ -1784,6 +1855,28 @@
   },
   {
     "type": "error",
+    "name": "InvalidServiceDescriptionLength",
+    "inputs": [
+      {
+        "name": "length",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "InvalidServiceNameLength",
+    "inputs": [
+      {
+        "name": "length",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
     "name": "InvalidSignature",
     "inputs": [
       {
@@ -1981,22 +2074,6 @@
   {
     "type": "error",
     "name": "OnlyPDPVerifierAllowed",
-    "inputs": [
-      {
-        "name": "expected",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "actual",
-        "type": "address",
-        "internalType": "address"
-      }
-    ]
-  },
-  {
-    "type": "error",
-    "name": "OnlySelf",
     "inputs": [
       {
         "name": "expected",
