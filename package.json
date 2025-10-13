@@ -10,7 +10,7 @@
     "indexer",
     "piece-retriever",
     "terminator",
-    "rollup",
+    "usage-reporter",
     "workflows"
   ],
   "scripts": {

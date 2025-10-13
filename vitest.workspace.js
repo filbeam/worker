@@ -5,5 +5,5 @@ export default defineWorkspace([
   'piece-retriever',
   'bad-bits',
   'terminator',
-  'rollup',
+  'usage-reporter',
 ])

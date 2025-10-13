@@ -7,7 +7,7 @@ import {
   FILECOIN_GENESIS_UNIX_TIMESTAMP,
 } from './test-helpers.js'
 import { epochToTimestamp } from '../lib/rollup.js'
-import worker from '../bin/rollup.js'
+import worker from '../bin/usage-reporter.js'
 
 describe('rollup worker scheduled entrypoint', () => {
   let env
