@@ -133,15 +133,15 @@ export default {
         return response
       }
 
+      // Stream and count bytes
+      // We create two identical streams, one for the egress measurement and the other for returning the response as soon as possible
+      const [returnedStream, egressMeasurementStream] =
+        originResponse.body.tee()
+      const reader = egressMeasurementStream.getReader()
       const firstByteAt = performance.now()
-
-      // Split stream: one for response, one for measurement
-      const [responseStream, measurementStream] = originResponse.body.tee()
 
       ctx.waitUntil(
         (async () => {
-          // Measure bytes from the measurement stream
-          const reader = measurementStream.getReader()
           const egressBytes = await measureStreamedEgress(reader)
           const lastByteFetchedAt = performance.now()
 
@@ -159,13 +159,12 @@ export default {
             dataSetId,
           })
 
-          // Update stats and decrement quota
           await updateDataSetStats(env, { dataSetId, egressBytes, cacheMiss })
         })(),
       )
 
-      // Return the response stream immediately
-      const response = new Response(responseStream, {
+      // Return immediately, proxying the transformed response
+      const response = new Response(returnedStream, {
         status: originResponse.status,
         statusText: originResponse.statusText,
         headers: originResponse.headers,
