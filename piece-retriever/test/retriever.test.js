@@ -723,7 +723,7 @@ describe('piece-retriever.fetch', () => {
 
     expect(countAfter).toEqual(countBefore)
   })
-  it('stops streaming when quota is exceeded', async () => {
+  it('allows full transfer even when exceeding quota (quota goes negative)', async () => {
     const payerAddress = '0xaaaa567890abcdef1234567890abcdef12345678'
     const pieceCid =
       'bafkquotatestexceedquotatestexceedquotatestexceedquotatestexce'
@@ -769,13 +769,13 @@ describe('piece-retriever.fetch', () => {
     )
     await waitOnExecutionContext(ctx)
 
-    // Should get partial content when quota is exceeded during streaming
-    // The stream will be cut off but initial response may still be 200
-    // Check the actual bytes transferred
+    // Should get full content even when quota is exceeded
+    // Response should be successful with all 500 bytes
     const body = await res.arrayBuffer()
-    assert(
-      body.byteLength <= 100,
-      `Expected at most 100 bytes, got ${body.byteLength}`,
+    assert.strictEqual(
+      body.byteLength,
+      500,
+      `Expected full 500 bytes, got ${body.byteLength}`,
     )
 
     // Check logs after execution context completes
@@ -786,20 +786,21 @@ describe('piece-retriever.fetch', () => {
       .all()
 
     assert.strictEqual(results.length, 1)
-    assert(
-      results[0].egress_bytes <= 100,
-      `Expected at most 100 bytes logged, got ${results[0].egress_bytes}`,
+    assert.strictEqual(
+      results[0].egress_bytes,
+      500,
+      `Expected full 500 bytes logged, got ${results[0].egress_bytes}`,
     )
+    assert.strictEqual(results[0].response_status, 200)
 
-    // Check that quota was decremented
+    // Check that quota went negative (100 - 500 = -400)
     const quotaResult = await env.DB.prepare(
       'SELECT cache_miss_egress_quota FROM data_sets WHERE id = ?',
     )
       .bind(dataSetId)
       .first()
 
-    const remaining = 100 - (results[0].egress_bytes || 0)
-    assert.strictEqual(quotaResult.cache_miss_egress_quota, remaining)
+    assert.strictEqual(quotaResult.cache_miss_egress_quota, -400)
   })
 
   it('allows full transfer when within quota', async () => {

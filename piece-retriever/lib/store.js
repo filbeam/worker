@@ -243,13 +243,10 @@ export async function updateDataSetStats(
     `
     UPDATE data_sets
     SET total_egress_bytes_used = total_egress_bytes_used + ?,
-        ${quotaColumn} = CASE
-          WHEN ${quotaColumn} - ? < 0 THEN 0
-          ELSE ${quotaColumn} - ?
-        END
+        ${quotaColumn} = ${quotaColumn} - ?
     WHERE id = ?
     `,
   )
-    .bind(egressBytes, egressBytes, egressBytes, dataSetId)
+    .bind(egressBytes, egressBytes, dataSetId)
     .run()
 }

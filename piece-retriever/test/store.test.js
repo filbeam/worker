@@ -478,7 +478,7 @@ describe('Egress Quota Management', () => {
     expect(result.cache_miss_egress_quota).toBe(expectedQuota)
   })
 
-  it('prevents quota from going below zero when egress exceeds quota', async () => {
+  it('allows quota to go negative when egress exceeds quota', async () => {
     const dataSetId = 'test-quota-below-zero'
     const insufficientQuota = 1000
     const egressBytes = 2000
@@ -496,7 +496,7 @@ describe('Egress Quota Management', () => {
       )
       .run()
 
-    // Should not throw an error but set quota to 0
+    // Should allow quota to go negative
     await updateDataSetStats(env, {
       dataSetId,
       egressBytes,
@@ -509,11 +509,11 @@ describe('Egress Quota Management', () => {
       .bind(dataSetId)
       .first()
 
-    // Quota should be 0, not negative
-    expect(result.cache_miss_egress_quota).toBe(0)
+    // Quota should be negative (1000 - 2000 = -1000)
+    expect(result.cache_miss_egress_quota).toBe(-1000)
   })
 
-  it('prevents CDN quota from going below zero when egress exceeds quota', async () => {
+  it('allows CDN quota to go negative when egress exceeds quota', async () => {
     const dataSetId = 'test-cdn-quota-below-zero'
     const insufficientQuota = 500
     const egressBytes = 1500
@@ -531,7 +531,7 @@ describe('Egress Quota Management', () => {
       )
       .run()
 
-    // Should not throw an error but set quota to 0
+    // Should allow CDN quota to go negative
     await updateDataSetStats(env, {
       dataSetId,
       egressBytes,
@@ -544,8 +544,8 @@ describe('Egress Quota Management', () => {
       .bind(dataSetId)
       .first()
 
-    // CDN quota should be 0, not negative
-    expect(result.cdn_egress_quota).toBe(0)
+    // CDN quota should be negative (500 - 1500 = -1000)
+    expect(result.cdn_egress_quota).toBe(-1000)
   })
 
   it('returns error when quota values are null', async () => {

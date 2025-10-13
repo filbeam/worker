@@ -3,7 +3,6 @@ import { parseRequest } from '../lib/request.js'
 import {
   retrieveFile as defaultRetrieveFile,
   measureStreamedEgress,
-  createQuotaLimitingStream,
 } from '../lib/retrieval.js'
 import {
   getStorageProviderAndValidatePayer,
@@ -84,19 +83,11 @@ export default {
       // Timestamp to measure file retrieval performance (from cache and from SP)
       const fetchStartedAt = performance.now()
 
-      const [
-        {
-          serviceProviderId,
-          serviceUrl,
-          dataSetId,
-          cdnEgressQuota,
-          cacheMissEgressQuota,
-        },
-        isBadBit,
-      ] = await Promise.all([
-        getStorageProviderAndValidatePayer(env, payerWalletAddress, pieceCid),
-        findInBadBits(env, pieceCid),
-      ])
+      const [{ serviceProviderId, serviceUrl, dataSetId }, isBadBit] =
+        await Promise.all([
+          getStorageProviderAndValidatePayer(env, payerWalletAddress, pieceCid),
+          findInBadBits(env, pieceCid),
+        ])
 
       httpAssert(
         !isBadBit,
@@ -142,17 +133,10 @@ export default {
         return response
       }
 
-      const availableQuota = cacheMiss ? cacheMissEgressQuota : cdnEgressQuota
-
       const firstByteAt = performance.now()
 
-      const quotaLimiter = createQuotaLimitingStream(availableQuota)
-      const enforcedStream = originResponse.body.pipeThrough(
-        quotaLimiter.stream,
-      )
-
       // Split stream: one for response, one for measurement
-      const [responseStream, measurementStream] = enforcedStream.tee()
+      const [responseStream, measurementStream] = originResponse.body.tee()
 
       ctx.waitUntil(
         (async () => {
@@ -160,11 +144,10 @@ export default {
           const reader = measurementStream.getReader()
           const egressBytes = await measureStreamedEgress(reader)
           const lastByteFetchedAt = performance.now()
-          const { quotaExceeded } = quotaLimiter.getStatus()
 
           await logRetrievalResult(env, {
             cacheMiss,
-            responseStatus: quotaExceeded ? 402 : originResponse.status,
+            responseStatus: originResponse.status,
             egressBytes,
             requestCountryCode,
             timestamp: requestTimestamp,
