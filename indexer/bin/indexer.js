@@ -214,11 +214,9 @@ export default {
     } else if (pathname === '/fwss/cdn-payment-rails-topped-up') {
       // Validate payload - all fields must be strings
       if (
-        !(typeof payload.data_set_id === 'string') ||
-        !payload.cdn_amount_added ||
-        !(typeof payload.cdn_amount_added === 'string') ||
-        !payload.cache_miss_amount_added ||
-        !(typeof payload.cache_miss_amount_added === 'string')
+        typeof payload.data_set_id !== 'string' ||
+        typeof payload.cdn_amount_added !== 'string' ||
+        typeof payload.cache_miss_amount_added !== 'string'
       ) {
         console.error('FWSS.CDNPaymentRailsToppedUp: Invalid payload', payload)
         return new Response('Bad Request', { status: 400 })
