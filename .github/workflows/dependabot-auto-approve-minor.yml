@@ -17,6 +17,7 @@ jobs:
           - 'vitest'
           - typescript
           - viem
+          - 'p-'
     steps:
       - name: Dependabot metadata
         id: metadata

@@ -87,10 +87,10 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           environment: ${{ matrix.environment }}
-      - name: Deploy Rollup
+      - name: Deploy Usage Reporter
         uses: cloudflare/wrangler-action@v3
         with:
-          workingDirectory: rollup
+          workingDirectory: usage-reporter
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           environment: ${{ matrix.environment }}

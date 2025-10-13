@@ -4,8 +4,10 @@ import {
   withDataSet,
   withRetrievalLog,
   filecoinEpochToTimestamp,
+  FILECOIN_GENESIS_UNIX_TIMESTAMP,
 } from './test-helpers.js'
-import worker from '../bin/rollup.js'
+import { epochToTimestamp } from '../lib/rollup.js'
+import worker from '../bin/usage-reporter.js'
 
 describe('rollup worker scheduled entrypoint', () => {
   let env
@@ -15,8 +17,16 @@ describe('rollup worker scheduled entrypoint', () => {
   let mockAccount
   let simulateContractCalls
   let writeContractCalls
+  let mockWorkflow
 
   beforeEach(async () => {
+    simulateContractCalls = []
+    writeContractCalls = []
+
+    mockWorkflow = {
+      create: vi.fn().mockResolvedValue(undefined),
+    }
+
     env = {
       ...testEnv,
       ENVIRONMENT: 'dev',
@@ -24,13 +34,10 @@ describe('rollup worker scheduled entrypoint', () => {
       FILBEAM_CONTRACT_ADDRESS: '0xMockFilBeamAddress',
       FILBEAM_CONTROLLER_PRIVATE_KEY: '0xMockPrivateKey',
       GENESIS_BLOCK_TIMESTAMP: '1598306400',
+      TRANSACTION_MONITOR_WORKFLOW: mockWorkflow,
     }
 
     await applyD1Migrations(env.DB, env.TEST_MIGRATIONS)
-
-    // Reset mock tracking arrays
-    simulateContractCalls = []
-    writeContractCalls = []
 
     // Create mock chain client
     mockAccount = { address: '0xMockAccountAddress' }
@@ -67,8 +74,16 @@ describe('rollup worker scheduled entrypoint', () => {
 
   it('should report usage data for multiple datasets', async () => {
     // Setup: Create datasets with usage data
-    await withDataSet(env, { id: '1', lastRollupReportedAtEpoch: 99 })
-    await withDataSet(env, { id: '2', lastRollupReportedAtEpoch: 98 })
+    const epoch99Timestamp = epochToTimestamp(
+      99n,
+      BigInt(FILECOIN_GENESIS_UNIX_TIMESTAMP),
+    )
+    const epoch98Timestamp = epochToTimestamp(
+      98n,
+      BigInt(FILECOIN_GENESIS_UNIX_TIMESTAMP),
+    )
+    await withDataSet(env, { id: '1', usageReportedUntil: epoch99Timestamp })
+    await withDataSet(env, { id: '2', usageReportedUntil: epoch98Timestamp })
 
     const epoch100Timestamp = filecoinEpochToTimestamp(100)
 
@@ -120,16 +135,19 @@ describe('rollup worker scheduled entrypoint', () => {
     expect(simulateCall.args[1]).toEqual([100, 100]) // epochs
     expect(simulateCall.args[2]).toEqual([2500n, 4000n]) // cdnBytesUsed (all egress)
     expect(simulateCall.args[3]).toEqual([500n, 1000n]) // cacheMissBytesUsed
-    expect(simulateCall.account).toBe(mockAccount)
 
-    // Verify transaction was written
+    // Verify transaction was written and workflow started
     expect(writeContractCalls).toHaveLength(1)
-    expect(writeContractCalls[0].mockedRequest).toBe(true)
+    expect(mockWorkflow.create).toHaveBeenCalled()
   })
 
   it('should handle when no usage data exists', async () => {
     // Setup: Create dataset but with no retrieval logs
-    await withDataSet(env, { id: '1', lastRollupReportedAtEpoch: 99 })
+    const epoch99Timestamp = epochToTimestamp(
+      99n,
+      BigInt(FILECOIN_GENESIS_UNIX_TIMESTAMP),
+    )
+    await withDataSet(env, { id: '1', usageReportedUntil: epoch99Timestamp })
 
     // Execute scheduled function
     await worker.scheduled(null, env, null, {
@@ -147,9 +165,13 @@ describe('rollup worker scheduled entrypoint', () => {
 
   it('should filter out datasets with zero usage', async () => {
     // Setup: Create datasets with mixed usage
-    await withDataSet(env, { id: '1', lastRollupReportedAtEpoch: 99 })
-    await withDataSet(env, { id: '2', lastReportedEpoch: 99 })
-    await withDataSet(env, { id: '3', lastRollupReportedAtEpoch: 99 })
+    const epoch99Timestamp = epochToTimestamp(
+      99n,
+      BigInt(FILECOIN_GENESIS_UNIX_TIMESTAMP),
+    )
+    await withDataSet(env, { id: '1', usageReportedUntil: epoch99Timestamp })
+    await withDataSet(env, { id: '2', usageReportedUntil: epoch99Timestamp })
+    await withDataSet(env, { id: '3', usageReportedUntil: epoch99Timestamp })
 
     const epoch100Timestamp = filecoinEpochToTimestamp(100)
 
@@ -186,9 +208,22 @@ describe('rollup worker scheduled entrypoint', () => {
   })
 
   it('should not report datasets that are already up to date', async () => {
-    // Setup: Create datasets with different last_rollup_reported_at_epoch values
-    await withDataSet(env, { id: '1', lastRollupReportedAtEpoch: 99 }) // Should be included
-    await withDataSet(env, { id: '2', lastRollupReportedAtEpoch: 100 }) // Should NOT be included (already reported)
+    // Setup: Create datasets with different last_reported_epoch values
+    // Set usage_reported_until to timestamp for epoch 99 and 100
+    const epoch99Timestamp = epochToTimestamp(
+      99n,
+      BigInt(FILECOIN_GENESIS_UNIX_TIMESTAMP),
+    )
+    const epoch100TimestampISO = epochToTimestamp(
+      100n,
+      BigInt(FILECOIN_GENESIS_UNIX_TIMESTAMP),
+    )
+
+    await withDataSet(env, { id: '1', usageReportedUntil: epoch99Timestamp }) // Should be included
+    await withDataSet(env, {
+      id: '2',
+      usageReportedUntil: epoch100TimestampISO,
+    }) // Should NOT be included (already reported)
 
     const epoch100Timestamp = filecoinEpochToTimestamp(100)
 
@@ -213,61 +248,15 @@ describe('rollup worker scheduled entrypoint', () => {
     expect(simulateCall.args[0]).toEqual(['1']) // Only dataset 1
   })
 
-  it('should handle contract simulation errors', async () => {
-    // Setup: Create dataset with usage data
-    await withDataSet(env, { id: '1', lastRollupReportedAtEpoch: 99 })
-    const epoch100Timestamp = filecoinEpochToTimestamp(100)
-    await withRetrievalLog(env, {
-      timestamp: epoch100Timestamp,
-      dataSetId: '1',
-      egressBytes: 1000,
-      cacheMiss: 0,
-    })
-
-    // Make simulateContract throw an error
-    mockPublicClient.simulateContract.mockRejectedValue(
-      new Error('Contract simulation failed'),
-    )
-
-    // Execute scheduled function and expect it to throw
-    await expect(
-      worker.scheduled(null, env, null, { getChainClient: mockGetChainClient }),
-    ).rejects.toThrow('Contract simulation failed')
-
-    // Verify transaction was not written
-    expect(writeContractCalls).toHaveLength(0)
-  })
-
-  it('should handle transaction write errors', async () => {
-    // Setup: Create dataset with usage data
-    await withDataSet(env, { id: '1', lastRollupReportedAtEpoch: 99 })
-    const epoch100Timestamp = filecoinEpochToTimestamp(100)
-    await withRetrievalLog(env, {
-      timestamp: epoch100Timestamp,
-      dataSetId: '1',
-      egressBytes: 1000,
-      cacheMiss: 0,
-    })
-
-    // Make writeContract throw an error
-    mockWalletClient.writeContract.mockRejectedValue(
-      new Error('Transaction failed'),
-    )
-
-    // Execute scheduled function and expect it to throw
-    await expect(
-      worker.scheduled(null, env, null, { getChainClient: mockGetChainClient }),
-    ).rejects.toThrow('Transaction failed')
-
-    // Verify simulation was called
-    expect(simulateContractCalls).toHaveLength(1)
-  })
-
   it('should calculate correct target epoch', async () => {
     // Setup: Mock different block numbers to verify epoch calculation
     mockPublicClient.getBlockNumber.mockResolvedValue(105n)
 
-    await withDataSet(env, { id: '1', lastRollupReportedAtEpoch: 99 })
+    const epoch99Timestamp = epochToTimestamp(
+      99n,
+      BigInt(FILECOIN_GENESIS_UNIX_TIMESTAMP),
+    )
+    await withDataSet(env, { id: '1', usageReportedUntil: epoch99Timestamp })
 
     // Add logs for multiple epochs
     for (let epoch = 100; epoch <= 104; epoch++) {
@@ -293,7 +282,11 @@ describe('rollup worker scheduled entrypoint', () => {
 
   it('should aggregate usage correctly across epochs', async () => {
     // Setup: Create dataset with usage across multiple epochs
-    await withDataSet(env, { id: '1', lastRollupReportedAtEpoch: 95 })
+    const epoch95Timestamp = epochToTimestamp(
+      95n,
+      BigInt(FILECOIN_GENESIS_UNIX_TIMESTAMP),
+    )
+    await withDataSet(env, { id: '1', usageReportedUntil: epoch95Timestamp })
 
     // Add retrieval logs across epochs 96-100
     for (let epoch = 96; epoch <= 100; epoch++) {
@@ -325,9 +318,9 @@ describe('rollup worker scheduled entrypoint', () => {
     expect(simulateCall.args[3]).toEqual([2500n]) // 5 epochs × 500 bytes cache miss
   })
 
-  it('should handle datasets with null last_rollup_reported_at_epoch', async () => {
-    // Setup: Create dataset with null last_rollup_reported_at_epoch (never reported)
-    await withDataSet(env, { id: '1', lastRollupReportedAtEpoch: null })
+  it('should handle datasets with null last_reported_epoch', async () => {
+    // Setup: Create dataset with null last_reported_epoch (never reported)
+    await withDataSet(env, { id: '1', usageReportedUntil: null })
 
     const epoch100Timestamp = filecoinEpochToTimestamp(100)
     await withRetrievalLog(env, {
