@@ -10,6 +10,8 @@
     "indexer",
     "piece-retriever",
     "terminator",
+    "usage-reporter",
+    "workflows",
     "payment-settler"
   ],
   "scripts": {

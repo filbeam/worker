@@ -1,11 +1,11 @@
 {
-  "name": "@filbeam/terminator",
+  "name": "@filbeam/rollup",
   "version": "1.0.0",
   "private": true,
-  "description": "FilBeam Terminator Worker",
+  "description": "FilBeam Rollup Worker",
   "author": "Space Meridian <filbeam@meridian.space>",
   "type": "module",
-  "main": "bin/terminator.js",
+  "main": "bin/rollup.js",
   "scripts": {
     "build:types": "wrangler types",
     "deploy:calibration": "wrangler deploy --env calibration",
@@ -15,10 +15,10 @@
   },
   "dependencies": {
     "@filbeam/workflows": "file:../workflows",
-    "viem": "^2.38.2"
+    "viem": "^2.37.9"
   },
   "devDependencies": {
-    "@cloudflare/vitest-pool-workers": "^0.9.12",
+    "@cloudflare/vitest-pool-workers": "^0.9.7",
     "@types/validator": "^13.15.2"
   }
 }
