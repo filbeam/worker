@@ -33,7 +33,7 @@ export default {
    * @param {object} options
    * @param {typeof defaultRetrieveFile} [options.retrieveFile]
    * @returns
-  */
+   */
   async fetch(request, env, ctx, { retrieveFile = defaultRetrieveFile } = {}) {
     try {
       return await this._fetch(request, env, ctx, { retrieveFile })
