@@ -83,8 +83,8 @@ export async function logRetrievalResult(env, params) {
  *   serviceProviderId: string
  *   serviceUrl: string
  *   dataSetId: string
- *   cdnEgressQuota: number | null
- *   cacheMissEgressQuota: number | null
+ *   cdnEgressQuota: number
+ *   cacheMissEgressQuota: number
  * }>}
  */
 export async function getStorageProviderAndValidatePayer(
@@ -112,8 +112,8 @@ export async function getStorageProviderAndValidatePayer(
    *   data_set_id: string
    *   payer_address: string | undefined
    *   with_cdn: number | undefined
-   *   cdn_egress_quota: number | null | undefined
-   *   cache_miss_egress_quota: number | null | undefined
+   *   cdn_egress_quota: number | undefined
+   *   cache_miss_egress_quota: number | undefined
    *   service_url: string | undefined
    *   is_sanctioned: number | undefined
    * }[]}
@@ -174,11 +174,7 @@ export async function getStorageProviderAndValidatePayer(
 
   // Check CDN quota first
   const withSufficientCDNQuota = withApprovedProvider.filter((row) => {
-    return (
-      row.cdn_egress_quota !== null &&
-      row.cdn_egress_quota !== undefined &&
-      row.cdn_egress_quota > 0
-    )
+    return row.cdn_egress_quota !== undefined && row.cdn_egress_quota > 0
   })
   httpAssert(
     withSufficientCDNQuota.length > 0,
@@ -189,7 +185,6 @@ export async function getStorageProviderAndValidatePayer(
   // Check cache-miss quota
   const withSufficientCacheMissQuota = withSufficientCDNQuota.filter((row) => {
     return (
-      row.cache_miss_egress_quota !== null &&
       row.cache_miss_egress_quota !== undefined &&
       row.cache_miss_egress_quota > 0
     )
@@ -220,8 +215,8 @@ export async function getStorageProviderAndValidatePayer(
     serviceProviderId,
     serviceUrl,
     dataSetId,
-    cdnEgressQuota: cdnEgressQuota ?? null,
-    cacheMissEgressQuota: cacheMissEgressQuota ?? null,
+    cdnEgressQuota: cdnEgressQuota ?? 0,
+    cacheMissEgressQuota: cacheMissEgressQuota ?? 0,
   }
 }
 
