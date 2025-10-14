@@ -211,7 +211,6 @@ export default {
       const { provider_id: providerId } = payload
       return await handleProviderRemoved(env, providerId)
     } else if (pathname === '/fwss/cdn-payment-rails-topped-up') {
-      // Validate payload - all fields must be strings
       if (
         typeof payload.data_set_id !== 'string' ||
         typeof payload.cdn_amount_added !== 'string' ||
