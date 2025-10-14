@@ -16,7 +16,8 @@ export async function withDataSet(
     payerAddress = '0xPayer',
     withCDN = true,
     terminateServiceTxHash = null,
-    lastRollupReportedAtEpoch = null,
+    usageReportedUntil = null,
+    pendingRollupTxHash = null,
   },
 ) {
   // Ensure service provider exists
@@ -27,7 +28,7 @@ export async function withDataSet(
     .run()
 
   await env.DB.prepare(
-    `INSERT INTO data_sets (id, service_provider_id, payer_address, with_cdn, terminate_service_tx_hash, last_rollup_reported_at_epoch) VALUES (?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO data_sets (id, service_provider_id, payer_address, with_cdn, terminate_service_tx_hash, usage_reported_until, pending_rollup_tx_hash) VALUES (?, ?, ?, ?, ?, ?, ?)`,
   )
     .bind(
       String(id),
@@ -35,7 +36,8 @@ export async function withDataSet(
       payerAddress,
       withCDN,
       terminateServiceTxHash,
-      lastRollupReportedAtEpoch,
+      usageReportedUntil,
+      pendingRollupTxHash,
     )
     .run()
 }
@@ -47,15 +49,15 @@ export const FILECOIN_GENESIS_UNIX_TIMESTAMP = 1598306400
 const FILECOIN_EPOCH_DURATION_SECONDS = 30
 
 /**
- * Converts a Filecoin epoch to a Unix timestamp
+ * Converts a Filecoin epoch to an ISO 8601 timestamp
  *
  * @param {number} epoch - The Filecoin epoch number
- * @returns {number} Unix timestamp in seconds
+ * @returns {string} ISO 8601 timestamp string
  */
 export function filecoinEpochToTimestamp(epoch) {
-  return (
+  const unixTimestamp =
     epoch * FILECOIN_EPOCH_DURATION_SECONDS + FILECOIN_GENESIS_UNIX_TIMESTAMP
-  )
+  return new Date(unixTimestamp * 1000).toISOString()
 }
 
 /**
@@ -76,7 +78,7 @@ export function timestampToFilecoinEpoch(timestamp) {
  *
  * @param {Object} env - Environment object with DB
  * @param {Object} params - Parameters for the retrieval log
- * @param {number} params.timestamp - Unix timestamp in seconds
+ * @param {string} params.timestamp - ISO 8601 timestamp string
  * @param {string} params.dataSetId - Data set ID
  * @param {number} params.responseStatus - HTTP response status (default: 200)
  * @param {number | null} params.egressBytes - Egress bytes (default: null)
@@ -94,7 +96,7 @@ export async function withRetrievalLog(
 ) {
   return await env.DB.prepare(
     `INSERT INTO retrieval_logs (timestamp, data_set_id, response_status, egress_bytes, cache_miss)
-     VALUES (datetime(?, 'unixepoch'), ?, ?, ?, ?)`,
+     VALUES (datetime(?), ?, ?, ?, ?)`,
   )
     .bind(timestamp, dataSetId, responseStatus, egressBytes, cacheMiss)
     .run()
