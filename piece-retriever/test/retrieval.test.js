@@ -55,7 +55,12 @@ describe('retrieveFile', () => {
     const response = { ok: true, status: 200, headers: new Headers({}) }
     cachesMock.match.mockResolvedValueOnce(response)
     const ctx = createExecutionContext()
-    const result = await retrieveFile(ctx, baseUrl, pieceCid, new Request(baseUrl))
+    const result = await retrieveFile(
+      ctx,
+      baseUrl,
+      pieceCid,
+      new Request(baseUrl),
+    )
     await waitOnExecutionContext(ctx)
     expect(result.response).toBe(response)
   })
@@ -65,7 +70,12 @@ describe('retrieveFile', () => {
     const response = { ok: false, status: 500, headers: new Headers({}) }
     fetchMock.mockResolvedValueOnce(response)
     const ctx = createExecutionContext()
-    const result = await retrieveFile(ctx, baseUrl, pieceCid, new Request(baseUrl))
+    const result = await retrieveFile(
+      ctx,
+      baseUrl,
+      pieceCid,
+      new Request(baseUrl),
+    )
     await waitOnExecutionContext(ctx)
     expect(result.response).toBe(response)
   })
@@ -79,7 +89,12 @@ describe('retrieveFile', () => {
     }
     fetchMock.mockResolvedValueOnce(response)
     const ctx = createExecutionContext()
-    const result = await retrieveFile(ctx, baseUrl, pieceCid, new Request(baseUrl))
+    const result = await retrieveFile(
+      ctx,
+      baseUrl,
+      pieceCid,
+      new Request(baseUrl),
+    )
     await waitOnExecutionContext(ctx)
     expect(result.response.status).toBe(201)
     expect(result.response.headers.get('foo')).toBe('bar')

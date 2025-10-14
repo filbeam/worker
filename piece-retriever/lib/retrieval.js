@@ -46,7 +46,8 @@ export async function retrieveFile(
               'Cache-Control': `public, max-age=${cacheTtl}`,
             },
           }),
-      ))
+        ),
+      )
       response = new Response(body2, response)
     }
   }
