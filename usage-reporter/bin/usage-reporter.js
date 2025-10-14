@@ -66,7 +66,6 @@ export default {
         `Current epoch: ${currentEpoch}, reporting up to epoch: ${targetEpoch}`,
       )
 
-      // Convert target epoch to ISO timestamp for SQL query
       const upToTimestamp = epochToTimestamp(
         targetEpoch,
         BigInt(env.GENESIS_BLOCK_TIMESTAMP),
