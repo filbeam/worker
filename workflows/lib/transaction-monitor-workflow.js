@@ -13,9 +13,9 @@ import { getChainClient } from './chain.js'
  *
  * @example // With confirmation and retry data await
  * env.TRANSACTION_MONITOR_WORKFLOW.create({ id:
- * `rollup-tx-monitor-${hash}-${Date.now()}`, params: { transactionHash: hash,
- * metadata: { onSuccess: 'transaction-confirmed', successData: { upToTimestamp
- * }, retryData: { upToTimestamp } } } })
+ * `usage-report-tx-monitor-${hash}-${Date.now()}`, params: { transactionHash:
+ * hash, metadata: { onSuccess: 'transaction-confirmed', successData: {
+ * upToTimestamp }, retryData: { upToTimestamp } } } })
  */
 export class TransactionMonitorWorkflow extends WorkflowEntrypoint {
   /**
