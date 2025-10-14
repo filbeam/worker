@@ -130,7 +130,7 @@ export default {
 
       // Start transaction monitor workflow
       await env.TRANSACTION_MONITOR_WORKFLOW.create({
-        id: `rollup-tx-monitor-${hash}-${Date.now()}`,
+        id: `usage-report-tx-monitor-${hash}-${Date.now()}`,
         params: {
           transactionHash: hash,
           metadata: {
