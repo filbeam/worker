@@ -473,8 +473,8 @@ describe('Egress Quota Management', () => {
       .bind(dataSetId)
       .first()
 
-    expect(result.cdn_egress_quota).toBe(Number(initialQuota))
     const expectedQuota = Number(initialQuota) - egressBytes
+    expect(result.cdn_egress_quota).toBe(expectedQuota)
     expect(result.cache_miss_egress_quota).toBe(expectedQuota)
   })
 
@@ -491,7 +491,7 @@ describe('Egress Quota Management', () => {
         APPROVED_SERVICE_PROVIDER_ID,
         '0xtest',
         true,
-        '1000000',
+        insufficientQuota,
         insufficientQuota,
       )
       .run()
@@ -504,18 +504,20 @@ describe('Egress Quota Management', () => {
     })
 
     const result = await env.DB.prepare(
-      'SELECT cache_miss_egress_quota FROM data_sets WHERE id = ?',
+      'SELECT cdn_egress_quota, cache_miss_egress_quota FROM data_sets WHERE id = ?',
     )
       .bind(dataSetId)
       .first()
 
-    // Quota should be negative (1000 - 2000 = -1000)
+    // Both quotas should be negative (1000 - 2000 = -1000)
+    expect(result.cdn_egress_quota).toBe(-1000)
     expect(result.cache_miss_egress_quota).toBe(-1000)
   })
 
   it('allows CDN quota to go negative when egress exceeds quota', async () => {
     const dataSetId = 'test-cdn-quota-below-zero'
     const insufficientQuota = 500
+    const sufficientQuota = 1000000
     const egressBytes = 1500
 
     await env.DB.prepare(
@@ -527,7 +529,7 @@ describe('Egress Quota Management', () => {
         '0xtest',
         true,
         insufficientQuota,
-        '1000000',
+        sufficientQuota,
       )
       .run()
 
@@ -539,13 +541,15 @@ describe('Egress Quota Management', () => {
     })
 
     const result = await env.DB.prepare(
-      'SELECT cdn_egress_quota FROM data_sets WHERE id = ?',
+      'SELECT cdn_egress_quota, cache_miss_egress_quota FROM data_sets WHERE id = ?',
     )
       .bind(dataSetId)
       .first()
 
     // CDN quota should be negative (500 - 1500 = -1000)
     expect(result.cdn_egress_quota).toBe(-1000)
+    // Cache miss quota should remain unchanged on cache hit
+    expect(result.cache_miss_egress_quota).toBe(sufficientQuota)
   })
 
   it('returns error when quota values are null', async () => {

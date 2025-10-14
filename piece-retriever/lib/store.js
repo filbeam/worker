@@ -237,16 +237,17 @@ export async function updateDataSetStats(
   env,
   { dataSetId, egressBytes, cacheMiss },
 ) {
-  const quotaColumn = cacheMiss ? 'cache_miss_egress_quota' : 'cdn_egress_quota'
+  const cacheMissEgress = cacheMiss ? egressBytes : 0
 
   await env.DB.prepare(
     `
     UPDATE data_sets
     SET total_egress_bytes_used = total_egress_bytes_used + ?,
-        ${quotaColumn} = ${quotaColumn} - ?
+        cdn_egress_quota = cdn_egress_quota - ?,
+        cache_miss_egress_quota = cache_miss_egress_quota - ?
     WHERE id = ?
     `,
   )
-    .bind(egressBytes, egressBytes, dataSetId)
+    .bind(egressBytes, egressBytes, cacheMissEgress, dataSetId)
     .run()
 }

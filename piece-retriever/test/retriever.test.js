@@ -793,13 +793,14 @@ describe('piece-retriever.fetch', () => {
     )
     assert.strictEqual(results[0].response_status, 200)
 
-    // Check that quota went negative (100 - 500 = -400)
+    // Check that both quotas went negative (100 - 500 = -400)
     const quotaResult = await env.DB.prepare(
-      'SELECT cache_miss_egress_quota FROM data_sets WHERE id = ?',
+      'SELECT cdn_egress_quota, cache_miss_egress_quota FROM data_sets WHERE id = ?',
     )
       .bind(dataSetId)
       .first()
 
+    assert.strictEqual(quotaResult.cdn_egress_quota, -400)
     assert.strictEqual(quotaResult.cache_miss_egress_quota, -400)
   })
 
@@ -868,14 +869,15 @@ describe('piece-retriever.fetch', () => {
     assert.strictEqual(results[0].egress_bytes, 100)
     assert.strictEqual(results[0].response_status, 200)
 
-    // Check that quota was decremented correctly
+    // Check that quotas were decremented correctly (cache hit)
     const quotaResult = await env.DB.prepare(
-      'SELECT cdn_egress_quota FROM data_sets WHERE id = ?',
+      'SELECT cdn_egress_quota, cache_miss_egress_quota FROM data_sets WHERE id = ?',
     )
       .bind(dataSetId)
       .first()
 
     assert.strictEqual(quotaResult.cdn_egress_quota, 900) // 1000 - 100
+    assert.strictEqual(quotaResult.cache_miss_egress_quota, 1000) // unchanged on cache hit
   })
 })
 
