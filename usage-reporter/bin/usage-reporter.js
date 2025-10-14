@@ -40,13 +40,13 @@ import {
  *   TRANSACTION_QUEUE: import('cloudflare:workers').Queue<
  *     TransactionRetryMessage | TransactionConfirmedMessage
  *   >
- * }} RollupEnv
+ * }} UsageReporterEnv
  */
 
 export default {
   /**
    * @param {any} _controller
-   * @param {RollupEnv} env
+   * @param {UsageReporterEnv} env
    * @param {ExecutionContext} _ctx
    * @param {{ getChainClient?: typeof defaultGetChainClient }} [options]
    */
@@ -56,7 +56,7 @@ export default {
     _ctx,
     { getChainClient = defaultGetChainClient } = {},
   ) {
-    console.log('Starting rollup worker scheduled run')
+    console.log('Starting usage reporter worker scheduled run')
 
     try {
       const { publicClient, walletClient, account } = getChainClient(env)
@@ -73,11 +73,7 @@ export default {
       console.log(`Aggregating usage data up to timestamp: ${upToTimestamp}`)
 
       // Aggregate usage data for all datasets that need reporting
-      const usageData = await aggregateUsageData(
-        env.DB,
-        upToTimestamp,
-        BigInt(env.GENESIS_BLOCK_TIMESTAMP),
-      )
+      const usageData = await aggregateUsageData(env.DB, upToTimestamp)
 
       if (usageData.length === 0) {
         console.log('No usage data found')
@@ -87,7 +83,10 @@ export default {
       console.log(`Found usage data for ${usageData.length} data sets`)
 
       // Prepare usage rollup data for contract call
-      const usageRollupData = prepareUsageRollupData(usageData)
+      const usageRollupData = prepareUsageRollupData(
+        usageData,
+        BigInt(env.GENESIS_BLOCK_TIMESTAMP),
+      )
 
       console.log(
         `Reporting usage for ${usageRollupData.dataSetIds.length} data sets`,
@@ -146,7 +145,7 @@ export default {
         `Started transaction monitor workflow for transaction: ${hash}`,
       )
     } catch (error) {
-      console.error('Error in rollup worker:', error)
+      console.error('Error in usage reporter worker:', error)
       throw error
     }
   },
@@ -157,7 +156,7 @@ export default {
    * @param {MessageBatch<
    *   TransactionRetryMessage | TransactionConfirmedMessage
    * >} batch
-   * @param {RollupEnv} env
+   * @param {UsageReporterEnv} env
    * @param {ExecutionContext} ctx
    */
   async queue(

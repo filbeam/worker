@@ -82,8 +82,10 @@ describe('rollup worker scheduled entrypoint', () => {
       98n,
       BigInt(FILECOIN_GENESIS_UNIX_TIMESTAMP),
     )
-    await withDataSet(env, { id: '1', usageReportedUntil: epoch99Timestamp })
-    await withDataSet(env, { id: '2', usageReportedUntil: epoch98Timestamp })
+    const epoch99TimestampISO = new Date(epoch99Timestamp * 1000).toISOString()
+    const epoch98TimestampISO = new Date(epoch98Timestamp * 1000).toISOString()
+    await withDataSet(env, { id: '1', usageReportedUntil: epoch99TimestampISO })
+    await withDataSet(env, { id: '2', usageReportedUntil: epoch98TimestampISO })
 
     const epoch100Timestamp = filecoinEpochToTimestamp(100)
 
@@ -147,7 +149,8 @@ describe('rollup worker scheduled entrypoint', () => {
       99n,
       BigInt(FILECOIN_GENESIS_UNIX_TIMESTAMP),
     )
-    await withDataSet(env, { id: '1', usageReportedUntil: epoch99Timestamp })
+    const epoch99TimestampISO = new Date(epoch99Timestamp * 1000).toISOString()
+    await withDataSet(env, { id: '1', usageReportedUntil: epoch99TimestampISO })
 
     // Execute scheduled function
     await worker.scheduled(null, env, null, {
@@ -169,9 +172,10 @@ describe('rollup worker scheduled entrypoint', () => {
       99n,
       BigInt(FILECOIN_GENESIS_UNIX_TIMESTAMP),
     )
-    await withDataSet(env, { id: '1', usageReportedUntil: epoch99Timestamp })
-    await withDataSet(env, { id: '2', usageReportedUntil: epoch99Timestamp })
-    await withDataSet(env, { id: '3', usageReportedUntil: epoch99Timestamp })
+    const epoch99TimestampISO = new Date(epoch99Timestamp * 1000).toISOString()
+    await withDataSet(env, { id: '1', usageReportedUntil: epoch99TimestampISO })
+    await withDataSet(env, { id: '2', usageReportedUntil: epoch99TimestampISO })
+    await withDataSet(env, { id: '3', usageReportedUntil: epoch99TimestampISO })
 
     const epoch100Timestamp = filecoinEpochToTimestamp(100)
 
@@ -214,23 +218,27 @@ describe('rollup worker scheduled entrypoint', () => {
       99n,
       BigInt(FILECOIN_GENESIS_UNIX_TIMESTAMP),
     )
-    const epoch100TimestampISO = epochToTimestamp(
+    const epoch100Timestamp = epochToTimestamp(
       100n,
       BigInt(FILECOIN_GENESIS_UNIX_TIMESTAMP),
     )
+    const epoch99TimestampISO = new Date(epoch99Timestamp * 1000).toISOString()
+    const epoch100TimestampISO = new Date(
+      epoch100Timestamp * 1000,
+    ).toISOString()
 
-    await withDataSet(env, { id: '1', usageReportedUntil: epoch99Timestamp }) // Should be included
+    await withDataSet(env, { id: '1', usageReportedUntil: epoch99TimestampISO }) // Should be included
     await withDataSet(env, {
       id: '2',
       usageReportedUntil: epoch100TimestampISO,
     }) // Should NOT be included (already reported)
 
-    const epoch100Timestamp = filecoinEpochToTimestamp(100)
+    const epoch100TimestampForLogs = filecoinEpochToTimestamp(100)
 
     // Add retrieval logs for both datasets
     for (const id of ['1', '2']) {
       await withRetrievalLog(env, {
-        timestamp: epoch100Timestamp,
+        timestamp: epoch100TimestampForLogs,
         dataSetId: id,
         egressBytes: 1000,
         cacheMiss: 0,
@@ -256,7 +264,8 @@ describe('rollup worker scheduled entrypoint', () => {
       99n,
       BigInt(FILECOIN_GENESIS_UNIX_TIMESTAMP),
     )
-    await withDataSet(env, { id: '1', usageReportedUntil: epoch99Timestamp })
+    const epoch99TimestampISO = new Date(epoch99Timestamp * 1000).toISOString()
+    await withDataSet(env, { id: '1', usageReportedUntil: epoch99TimestampISO })
 
     // Add logs for multiple epochs
     for (let epoch = 100; epoch <= 104; epoch++) {
@@ -286,7 +295,8 @@ describe('rollup worker scheduled entrypoint', () => {
       95n,
       BigInt(FILECOIN_GENESIS_UNIX_TIMESTAMP),
     )
-    await withDataSet(env, { id: '1', usageReportedUntil: epoch95Timestamp })
+    const epoch95TimestampISO = new Date(epoch95Timestamp * 1000).toISOString()
+    await withDataSet(env, { id: '1', usageReportedUntil: epoch95TimestampISO })
 
     // Add retrieval logs across epochs 96-100
     for (let epoch = 96; epoch <= 100; epoch++) {
