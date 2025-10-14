@@ -28,7 +28,7 @@ describe('rail settlement', () => {
       expect(dataSetIds).not.toContain(id3)
     })
 
-    it('should return terminated data sets within settle_up_to_epoch window', async () => {
+    it('should return terminated data sets within lockup_unlocks_at_epoch window', async () => {
       const id1 = randomId()
       const id2 = randomId()
       const id3 = randomId()
@@ -85,7 +85,7 @@ describe('rail settlement', () => {
         settleUpToEpoch: currentEpoch - 1n,
       })
 
-      // Inactive without CDN and no settle_up_to_epoch
+      // Inactive without CDN and no lockup_unlocks_at_epoch
       await withDataSet(env, { id: id4, withCDN: false })
 
       const dataSetIds = await getDataSetsForSettlement(env.DB, currentEpoch)
@@ -140,7 +140,7 @@ describe('rail settlement', () => {
       expect(dataSetIds).not.toContain(id3)
     })
 
-    it('should exclude data sets with terminate_service_tx_hash set even within settle_up_to_epoch window', async () => {
+    it('should exclude data sets with terminate_service_tx_hash set even within lockup_unlocks_at_epoch window', async () => {
       const id1 = randomId()
       const id2 = randomId()
       const id3 = randomId()

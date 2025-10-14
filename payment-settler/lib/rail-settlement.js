@@ -11,7 +11,7 @@ export async function getDataSetsForSettlement(db, currentEpoch) {
       `
       SELECT id
       FROM data_sets
-      WHERE (with_cdn = 1 OR settle_up_to_epoch >= ?)
+      WHERE (with_cdn = 1 OR lockup_unlocks_at_epoch >= ?)
         AND terminate_service_tx_hash IS NULL
       `,
     )

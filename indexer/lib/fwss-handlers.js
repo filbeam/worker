@@ -77,7 +77,7 @@ export async function handleFWSSServiceTerminated(env, payload, currentEpoch) {
     `
       UPDATE data_sets
       SET with_cdn = false,
-          settle_up_to_epoch = ?
+          lockup_unlocks_at_epoch = ?
       WHERE id = ?
     `,
   )

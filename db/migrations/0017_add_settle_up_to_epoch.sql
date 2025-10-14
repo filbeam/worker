@@ -1,1 +1,0 @@
-ALTER TABLE data_sets ADD COLUMN settle_up_to_epoch INTEGER;
