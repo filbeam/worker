@@ -1,6 +1,16 @@
+/** @import {MessageBatch} from 'cloudflare:workers' */
 import { getChainClient as defaultGetChainClient } from '../lib/chain.js'
 import { abi } from '../lib/filbeam.js'
 import { getDataSetsForSettlement } from '../lib/rail-settlement.js'
+import { TransactionMonitorWorkflow } from '@filbeam/workflows'
+import { handleTransactionRetryQueueMessage as defaultHandleTransactionRetryQueueMessage } from '../lib/queue-handlers.js'
+
+/**
+ * @typedef {{
+ *   type: 'transaction-retry'
+ *   transactionHash: string
+ * }} TransactionRetryMessage
+ */
 
 /**
  * @typedef {{
@@ -9,6 +19,8 @@ import { getDataSetsForSettlement } from '../lib/rail-settlement.js'
  *   FILBEAM_CONTRACT_ADDRESS: string
  *   FILBEAM_CONTROLLER_ADDRESS_PRIVATE_KEY: string
  *   DB: D1Database
+ *   TRANSACTION_MONITOR_WORKFLOW: import('cloudflare:workers').WorkflowEntrypoint
+ *   TRANSACTION_QUEUE: import('cloudflare:workers').Queue<TransactionRetryMessage>
  * }} RailSettlementEnv
  */
 
@@ -64,6 +76,22 @@ export default {
       const hash = await walletClient.writeContract(request)
 
       console.log(`Settlement transaction sent: ${hash}`)
+
+      // Start transaction monitor workflow
+      await env.TRANSACTION_MONITOR_WORKFLOW.create({
+        id: `settlement-tx-monitor-${hash}-${Date.now()}`,
+        params: {
+          transactionHash: hash,
+          metadata: {
+            // Only retry data, no success handling needed since we don't store in DB
+            retryData: {},
+          },
+        },
+      })
+
+      console.log(
+        `Started transaction monitor workflow for settlement transaction: ${hash}`,
+      )
       console.log(`Settled ${dataSetIds.length} data sets`)
     } catch (error) {
       console.error('Settlement process failed:', error)
@@ -76,4 +104,42 @@ export default {
       throw error
     }
   },
+
+  /**
+   * Queue consumer for transaction-related messages
+   *
+   * @param {MessageBatch<TransactionRetryMessage>} batch
+   * @param {RailSettlementEnv} env
+   * @param {ExecutionContext} ctx
+   */
+  async queue(
+    batch,
+    env,
+    ctx,
+    {
+      handleTransactionRetryQueueMessage = defaultHandleTransactionRetryQueueMessage,
+    } = {},
+  ) {
+    for (const message of batch.messages) {
+      console.log(
+        `Processing transaction queue message of type: ${message.body.type}`,
+      )
+      try {
+        switch (message.body.type) {
+          case 'transaction-retry':
+            await handleTransactionRetryQueueMessage(message.body, env)
+            break
+          default:
+            throw new Error(`Unknown message type: ${message.body.type}`)
+        }
+        message.ack()
+      } catch (error) {
+        console.error(`Failed to process queue message, retrying:`, error)
+        message.retry()
+      }
+    }
+  },
 }
+
+// Cloudflare worker runtime requires that you export workflows from the entrypoint file
+export { TransactionMonitorWorkflow }

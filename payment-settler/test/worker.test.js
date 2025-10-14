@@ -61,6 +61,11 @@ describe('payment settler scheduled handler', () => {
     await withDataSet(env, { id: id1, withCDN: true })
     await withDataSet(env, { id: id2, withCDN: true })
 
+    // Mock the transaction monitor workflow
+    const mockWorkflow = {
+      create: vi.fn().mockResolvedValue(undefined),
+    }
+
     // Create a test environment
     const testEnv = {
       ...env,
@@ -69,6 +74,7 @@ describe('payment settler scheduled handler', () => {
         '0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
       RPC_URL: 'https://test.rpc.url',
       ENVIRONMENT: 'dev',
+      TRANSACTION_MONITOR_WORKFLOW: mockWorkflow,
     }
 
     // Run the scheduled handler with mock
@@ -99,6 +105,19 @@ describe('payment settler scheduled handler', () => {
     expect(writeContractCalls).toHaveLength(1)
     expect(writeContractCalls[0]).toMatchObject({
       mockedRequest: true,
+    })
+
+    // Verify workflow was started
+    expect(mockWorkflow.create).toHaveBeenCalledWith({
+      id: expect.stringMatching(
+        /^settlement-tx-monitor-0xMockTransactionHash-\d+$/,
+      ),
+      params: {
+        transactionHash: '0xMockTransactionHash',
+        metadata: {
+          retryData: {},
+        },
+      },
     })
   })
 
@@ -146,6 +165,11 @@ describe('payment settler scheduled handler', () => {
       settleUpToEpoch: currentEpoch + 100n,
     })
 
+    // Mock the transaction monitor workflow
+    const mockWorkflow = {
+      create: vi.fn().mockResolvedValue(undefined),
+    }
+
     // Create a test environment
     const testEnv = {
       ...env,
@@ -154,6 +178,7 @@ describe('payment settler scheduled handler', () => {
         '0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
       RPC_URL: 'https://test.rpc.url',
       ENVIRONMENT: 'dev',
+      TRANSACTION_MONITOR_WORKFLOW: mockWorkflow,
     }
 
     // Run the scheduled handler with mock
@@ -279,6 +304,11 @@ describe('payment settler scheduled handler', () => {
       )
     })
 
+    // Mock the transaction monitor workflow
+    const mockWorkflow = {
+      create: vi.fn().mockResolvedValue(undefined),
+    }
+
     // Create a mainnet test environment
     const testEnv = {
       ...env,
@@ -287,6 +317,7 @@ describe('payment settler scheduled handler', () => {
         '0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
       RPC_URL: 'https://api.node.glif.io/',
       ENVIRONMENT: 'mainnet',
+      TRANSACTION_MONITOR_WORKFLOW: mockWorkflow,
     }
 
     // Run the scheduled handler with mock
