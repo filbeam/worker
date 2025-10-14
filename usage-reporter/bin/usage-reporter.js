@@ -119,7 +119,7 @@ export default {
       await env.DB.batch(
         usageRollupData.dataSetIds.map((dataSetId) =>
           env.DB.prepare(
-            `UPDATE data_sets SET pending_usage_reporting_tx_hash = ? WHERE id = ?`,
+            `UPDATE data_sets SET pending_usage_report_tx_hash = ? WHERE id = ?`,
           ).bind(hash, dataSetId),
         ),
       )
