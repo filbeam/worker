@@ -19,7 +19,7 @@ export function getChainClient(env) {
     transport,
   })
 
-  // Support both terminator and rollup private key field names
+  // Support both terminator and usage reporter private key field names
   const privateKey =
     env.FILCDN_CONTROLLER_ADDRESS_PRIVATE_KEY ||
     env.FILBEAM_CONTROLLER_PRIVATE_KEY
