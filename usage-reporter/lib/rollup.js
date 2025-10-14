@@ -50,7 +50,7 @@ export async function aggregateUsageData(db, upToTimestamp) {
       MAX(unixepoch(rl.timestamp)) as max_timestamp
     FROM retrieval_logs rl
     INNER JOIN data_sets ds ON rl.data_set_id = ds.id
-    WHERE rl.timestamp > datetime(COALESCE(ds.usage_reported_until, '1970-01-01T00:00:00.000Z'))
+    WHERE rl.timestamp > datetime(ds.usage_reported_until)
       AND rl.timestamp <= datetime(?)
       AND rl.egress_bytes IS NOT NULL
       AND ds.pending_rollup_tx_hash IS NULL

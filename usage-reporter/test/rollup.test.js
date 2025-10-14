@@ -209,7 +209,7 @@ describe('rollup', () => {
           epoch100Timestamp * 1000,
         ).toISOString()
 
-        await withDataSet(env, { id: '1', usageReportedUntil: null }) // Should be included
+        await withDataSet(env, { id: '1' }) // Should be included (uses default 1970 epoch)
         await withDataSet(env, {
           id: '2',
           usageReportedUntil: epoch98TimestampISO,

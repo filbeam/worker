@@ -329,8 +329,8 @@ describe('rollup worker scheduled entrypoint', () => {
   })
 
   it('should handle datasets with null last_reported_epoch', async () => {
-    // Setup: Create dataset with null last_reported_epoch (never reported)
-    await withDataSet(env, { id: '1', usageReportedUntil: null })
+    // Setup: Create dataset with default 1970 epoch (never reported)
+    await withDataSet(env, { id: '1' })
 
     const epoch100Timestamp = filecoinEpochToTimestamp(100)
     await withRetrievalLog(env, {
