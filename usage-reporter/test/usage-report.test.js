@@ -12,7 +12,7 @@ import {
   epochToTimestamp,
 } from '../lib/usage-report.js'
 
-describe('rollup', () => {
+describe('usage report', () => {
   describe('database operations', () => {
     let env
 
@@ -332,7 +332,7 @@ describe('rollup', () => {
         )
       })
 
-      it('should exclude datasets with pending rollup transactions', async () => {
+      it('should exclude datasets with pending usage report transactions', async () => {
         // Set usage_reported_until to epoch 99 timestamp
         const epoch99Timestamp = epochToTimestamp(
           99n,
@@ -397,7 +397,7 @@ describe('rollup', () => {
     })
   })
 
-  describe('prepareUsageRollupData', () => {
+  describe('prepareUsageReportData', () => {
     it('should prepare batch data for contract call', () => {
       // Epoch 100 timestamp = GENESIS + (100 * 30)
       const epoch100Timestamp = FILECOIN_GENESIS_UNIX_TIMESTAMP + 100 * 30

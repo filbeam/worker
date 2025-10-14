@@ -9,7 +9,7 @@ import {
 import { epochToTimestamp } from '../lib/usage-report.js'
 import worker from '../bin/usage-reporter.js'
 
-describe('rollup worker scheduled entrypoint', () => {
+describe('usage reporter worker scheduled entrypoint', () => {
   let env
   let mockGetChainClient
   let mockPublicClient
