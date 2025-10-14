@@ -59,7 +59,6 @@ export default {
     console.log('Starting rollup worker scheduled run')
 
     try {
-      // Get chain client and current epoch from chain
       const { publicClient, walletClient, account } = getChainClient(env)
       const currentEpoch = await publicClient.getBlockNumber()
       const targetEpoch = currentEpoch - 1n // Report up to previous epoch
