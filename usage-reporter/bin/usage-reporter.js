@@ -127,7 +127,7 @@ export default {
       )
 
       console.log(
-        `Stored pending transaction hash for ${usageRollupData.dataSetIds.length} datasets`,
+        `Stored pending transaction hash for ${usageRollupData.dataSetIds.length} data sets`,
       )
 
       // Start transaction monitor workflow
