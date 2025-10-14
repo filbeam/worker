@@ -30,7 +30,6 @@ import { CID } from 'multiformats/cid'
  *   SECRET_HEADER_VALUE: string
  *   CHAINALYSIS_API_KEY: string
  *   GOLDSKY_SUBGRAPH_URL: string
- *   RPC_URL: string
  *   DEFAULT_LOCKUP_PERIOD_DAYS: number
  *   GENESIS_BLOCK_TIMESTAMP: number
  * }} IndexerEnv
@@ -171,7 +170,7 @@ export default {
           typeof payload.data_set_id === 'number' ||
           typeof payload.data_set_id === 'string'
         ) ||
-        !payload.block_number
+        typeof payload.block_number !== 'string'
       ) {
         console.error(
           'FilecoinWarmStorageService.(ServiceTerminated | CDNServiceTerminated): Invalid payload',
