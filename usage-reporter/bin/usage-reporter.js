@@ -3,9 +3,9 @@ import { getChainClient as defaultGetChainClient } from '../lib/chain.js'
 import { abi as filbeamAbi } from '../lib/filbeam.js'
 import {
   aggregateUsageData,
-  prepareUsageRollupData,
   epochToTimestamp,
-} from '../lib/rollup.js'
+  prepareUsageReportData,
+} from '../lib/usage-report.js'
 import { TransactionMonitorWorkflow } from '@filbeam/workflows'
 import {
   handleTransactionRetryQueueMessage as defaultHandleTransactionRetryQueueMessage,
@@ -82,14 +82,14 @@ export default {
 
       console.log(`Found usage data for ${usageData.length} data sets`)
 
-      // Prepare usage rollup data for contract call
-      const usageRollupData = prepareUsageRollupData(
+      // Prepare usage report data for contract call
+      const usageReportData = prepareUsageReportData(
         usageData,
         BigInt(env.GENESIS_BLOCK_TIMESTAMP),
       )
 
       console.log(
-        `Reporting usage for ${usageRollupData.dataSetIds.length} data sets`,
+        `Reporting usage for ${usageReportData.dataSetIds.length} data sets`,
       )
 
       // Create contract call
@@ -99,15 +99,15 @@ export default {
         abi: filbeamAbi,
         functionName: 'recordUsageRollups',
         args: [
-          usageRollupData.dataSetIds,
-          usageRollupData.maxEpochs,
-          usageRollupData.cdnBytesUsed,
-          usageRollupData.cacheMissBytesUsed,
+          usageReportData.dataSetIds,
+          usageReportData.maxEpochs,
+          usageReportData.cdnBytesUsed,
+          usageReportData.cacheMissBytesUsed,
         ],
       })
 
       console.log(
-        `Sending recordUsageRollups transaction for ${usageRollupData.dataSetIds.length} datasets`,
+        `Sending recordUsageRollups transaction for ${usageReportData.dataSetIds.length} data sets`,
       )
 
       // Send transaction
@@ -117,7 +117,7 @@ export default {
 
       // Store transaction hash to prevent double-counting
       await env.DB.batch(
-        usageRollupData.dataSetIds.map((dataSetId) =>
+        usageReportData.dataSetIds.map((dataSetId) =>
           env.DB.prepare(
             `UPDATE data_sets SET pending_usage_report_tx_hash = ? WHERE id = ?`,
           ).bind(hash, dataSetId),
@@ -125,7 +125,7 @@ export default {
       )
 
       console.log(
-        `Stored pending transaction hash for ${usageRollupData.dataSetIds.length} data sets`,
+        `Stored pending transaction hash for ${usageReportData.dataSetIds.length} data sets`,
       )
 
       // Start transaction monitor workflow

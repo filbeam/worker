@@ -64,7 +64,7 @@ export async function aggregateUsageData(db, upToTimestamp) {
 }
 
 /**
- * Prepare usage rollup data for FilBeam contract call
+ * Prepare usage report data for FilBeam contract call
  *
  * @param {{
  *   data_set_id: string
@@ -80,7 +80,7 @@ export async function aggregateUsageData(db, upToTimestamp) {
  *   maxEpochs: number[]
  * }}
  */
-export function prepareUsageRollupData(usageData, genesisBlockTimestamp) {
+export function prepareUsageReportData(usageData, genesisBlockTimestamp) {
   const dataSetIds = []
   const cdnBytesUsed = []
   const cacheMissBytesUsed = []

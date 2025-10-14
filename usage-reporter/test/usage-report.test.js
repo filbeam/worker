@@ -8,9 +8,9 @@ import {
 } from './test-helpers.js'
 import {
   aggregateUsageData,
-  prepareUsageRollupData,
+  prepareUsageReportData,
   epochToTimestamp,
-} from '../lib/rollup.js'
+} from '../lib/usage-report.js'
 
 describe('rollup', () => {
   describe('database operations', () => {
@@ -422,7 +422,7 @@ describe('rollup', () => {
         },
       ]
 
-      const batchData = prepareUsageRollupData(
+      const batchData = prepareUsageReportData(
         usageData,
         BigInt(FILECOIN_GENESIS_UNIX_TIMESTAMP),
       )
@@ -461,7 +461,7 @@ describe('rollup', () => {
         },
       ]
 
-      const batchData = prepareUsageRollupData(
+      const batchData = prepareUsageReportData(
         usageData,
         BigInt(FILECOIN_GENESIS_UNIX_TIMESTAMP),
       )
@@ -474,7 +474,7 @@ describe('rollup', () => {
 
     it('should handle empty usage data', () => {
       const usageData = []
-      const batchData = prepareUsageRollupData(
+      const batchData = prepareUsageReportData(
         usageData,
         BigInt(FILECOIN_GENESIS_UNIX_TIMESTAMP),
       )
