@@ -16,7 +16,8 @@ export async function withDataSet(
     payerAddress = '0xPayer',
     withCDN = true,
     terminateServiceTxHash = null,
-    settleUpToEpoch = null,
+    lockupUnlocksAt = null,
+    usageReportedUntil = null,
   },
 ) {
   // Ensure service provider exists
@@ -26,8 +27,13 @@ export async function withDataSet(
     .bind(String(serviceProviderId), 'https://example.com')
     .run()
 
+  // Use provided values directly (they should be ISO date strings now)
+  const usageReportedUntilValue =
+    usageReportedUntil || '1970-01-01T00:00:00.000Z'
+  const lockupUnlocksAtValue = lockupUnlocksAt
+
   await env.DB.prepare(
-    `INSERT INTO data_sets (id, service_provider_id, payer_address, with_cdn, terminate_service_tx_hash, lockup_unlocks_at_epoch) VALUES (?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO data_sets (id, service_provider_id, payer_address, with_cdn, terminate_service_tx_hash, lockup_unlocks_at, usage_reported_until) VALUES (?, ?, ?, ?, ?, ?, ?)`,
   )
     .bind(
       String(id),
@@ -35,12 +41,26 @@ export async function withDataSet(
       payerAddress,
       withCDN,
       terminateServiceTxHash,
-      settleUpToEpoch ? String(settleUpToEpoch) : null,
+      lockupUnlocksAtValue,
+      usageReportedUntilValue,
     )
     .run()
 }
 
 export const randomId = () => String(Math.ceil(Math.random() * 1e10))
+
+/**
+ * Get a date that is N days ago (or in the future if negative)
+ *
+ * @param {number} daysAgo - Number of days ago (positive for past, negative for
+ *   future)
+ * @returns {string} ISO format date string
+ */
+export function getDaysAgo(daysAgo) {
+  const date = new Date()
+  date.setDate(date.getDate() - daysAgo)
+  return date.toISOString()
+}
 
 // Filecoin epoch constants
 const FILECOIN_GENESIS_UNIX_TIMESTAMP = 1598306400

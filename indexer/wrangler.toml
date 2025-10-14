@@ -19,7 +19,8 @@ WALLET_SCREENING_BATCH_SIZE = 1
 WALLET_SCREENING_STALE_THRESHOLD_MS = 86400000 # one day
 GOLDSKY_SUBGRAPH_URL="https://api.goldsky.com/api/public/project_cmb91qc80slyu01wca6e2eupl/subgraphs/filbeam-alpha-calibnet/1.0.0/gn"
 RPC_URL = "https://api.calibration.node.glif.io/"
-DEFAULT_LOCKUP_PERIOD = 86400 # 30 days in epochs (1 epoch = 30 seconds)
+DEFAULT_LOCKUP_PERIOD_DAYS = 30
+GENESIS_BLOCK_TIMESTAMP = 1667326380 # Calibration network genesis timestamp
 
 [[env.dev.d1_databases]]
 binding = "DB"
@@ -31,7 +32,8 @@ ENVIRONMENT = "calibration"
 WALLET_SCREENING_BATCH_SIZE = 1
 WALLET_SCREENING_STALE_THRESHOLD_MS = 86400000 # one day
 RPC_URL = "https://api.calibration.node.glif.io/"
-DEFAULT_LOCKUP_PERIOD = 86400 # 30 days in epochs (1 epoch = 30 seconds)
+DEFAULT_LOCKUP_PERIOD_DAYS = 30
+GENESIS_BLOCK_TIMESTAMP = 1667326380 # Calibration network genesis timestamp
 GOLDSKY_SUBGRAPH_URL="https://api.goldsky.com/api/public/project_cmb91qc80slyu01wca6e2eupl/subgraphs/filbeam-alpha-calibnet/1.0.0/gn"
 
 [[env.calibration.d1_databases]]
@@ -57,7 +59,8 @@ WALLET_SCREENING_BATCH_SIZE = 10
 WALLET_SCREENING_STALE_THRESHOLD_MS = 21600000 # 6 hours
 GOLDSKY_SUBGRAPH_URL="https://api.goldsky.com/api/public/project_cmb91qc80slyu01wca6e2eupl/subgraphs/filbeam-alpha-mainnet/1.0.0/gn"
 RPC_URL = "https://api.node.glif.io/"
-DEFAULT_LOCKUP_PERIOD = 86400 # 30 days in epochs (1 epoch = 30 seconds)
+DEFAULT_LOCKUP_PERIOD_DAYS = 30
+GENESIS_BLOCK_TIMESTAMP = 1598306400 # Mainnet genesis timestamp
 
 [[env.mainnet.d1_databases]]
 binding = "DB"

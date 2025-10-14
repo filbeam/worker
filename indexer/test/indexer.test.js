@@ -12,6 +12,8 @@ const randomId = () => String(Math.ceil(Math.random() * 1e10))
 env.SECRET_HEADER_KEY = 'secret-header-key'
 env.SECRET_HEADER_VALUE = 'secret-header-value'
 env.CHAINALYSIS_API_KEY = 'mock-chainalysis-api-key'
+env.DEFAULT_LOCKUP_PERIOD_DAYS = 30
+env.GENESIS_BLOCK_TIMESTAMP = 1667326380 // Calibration network genesis timestamp for tests
 
 describe('piece-retriever.indexer', () => {
   beforeEach(async () => {
@@ -982,6 +984,7 @@ describe('POST /fwss/cdn-service-terminated', () => {
       },
       body: JSON.stringify({
         data_set_id: dataSetId,
+        block_number: '1000000', // Add block_number for epoch-based timestamp calculation
       }),
     })
     const res = await workerImpl.fetch(req, env)
@@ -1028,6 +1031,7 @@ describe('POST /fwss/service-terminated', () => {
       },
       body: JSON.stringify({
         data_set_id: dataSetId,
+        block_number: '1000000', // Add block_number for epoch-based timestamp calculation
       }),
     })
     const res = await workerImpl.fetch(req, env)

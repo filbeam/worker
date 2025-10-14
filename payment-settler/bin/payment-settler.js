@@ -40,15 +40,9 @@ export default {
     console.log('Starting rail settlement worker')
 
     try {
-      // Get chain client for contract interactions
       const { publicClient, walletClient, account } = getChainClient(env)
 
-      // Get current epoch from chain
-      const currentEpoch = await publicClient.getBlockNumber()
-      console.log(`Current epoch: ${currentEpoch}`)
-
-      // Fetch data sets that need settlement
-      const dataSetIds = await getDataSetsForSettlement(env.DB, currentEpoch)
+      const dataSetIds = await getDataSetsForSettlement(env.DB)
 
       if (dataSetIds.length === 0) {
         console.log('No active data sets found for settlement')
@@ -60,19 +54,14 @@ export default {
         dataSetIds,
       )
 
-      // Convert data set IDs to BigInt array for the contract call
-      const dataSetIdsBigInt = dataSetIds.map((id) => BigInt(id))
-
-      // Simulate the transaction first to check for errors
       const { request } = await publicClient.simulateContract({
         account,
         abi,
         address: env.FILBEAM_CONTRACT_ADDRESS,
         functionName: 'settleCDNPaymentRailBatch',
-        args: [dataSetIdsBigInt],
+        args: dataSetIds.map((id) => BigInt(id)),
       })
 
-      // Send the actual transaction without waiting for receipt
       const hash = await walletClient.writeContract(request)
 
       console.log(`Settlement transaction sent: ${hash}`)

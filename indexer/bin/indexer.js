@@ -9,7 +9,6 @@ import {
   handleFWSSDataSetCreated,
   handleFWSSServiceTerminated,
 } from '../lib/fwss-handlers.js'
-import { getChainClient } from '../lib/chain.js'
 import {
   removeDataSetPieces,
   insertDataSetPiece,
@@ -32,7 +31,8 @@ import { CID } from 'multiformats/cid'
  *   CHAINALYSIS_API_KEY: string
  *   GOLDSKY_SUBGRAPH_URL: string
  *   RPC_URL: string
- *   DEFAULT_LOCKUP_PERIOD: number
+ *   DEFAULT_LOCKUP_PERIOD_DAYS: number
+ *   GENESIS_BLOCK_TIMESTAMP: number
  * }} IndexerEnv
  */
 
@@ -170,7 +170,8 @@ export default {
         !(
           typeof payload.data_set_id === 'number' ||
           typeof payload.data_set_id === 'string'
-        )
+        ) ||
+        !payload.block_number
       ) {
         console.error(
           'FilecoinWarmStorageService.(ServiceTerminated | CDNServiceTerminated): Invalid payload',
@@ -183,11 +184,7 @@ export default {
         `Terminating service for data set (data_set_id=${payload.data_set_id})`,
       )
 
-      // Get current epoch from chain
-      const publicClient = getChainClient(env)
-      const currentEpoch = await publicClient.getBlockNumber()
-
-      await handleFWSSServiceTerminated(env, payload, currentEpoch)
+      await handleFWSSServiceTerminated(env, payload)
       return new Response('OK', { status: 200 })
     } else if (pathname === '/service-provider-registry/product-added') {
       const {

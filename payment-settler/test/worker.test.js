@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { env } from 'cloudflare:test'
-import { withDataSet, randomId } from './test-helpers.js'
+import { withDataSet, randomId, getDaysAgo } from './test-helpers.js'
 import worker from '../bin/payment-settler.js'
 
 describe('payment settler scheduled handler', () => {
@@ -24,7 +24,6 @@ describe('payment settler scheduled handler', () => {
 
     // Setup mock public client
     mockPublicClient = {
-      getBlockNumber: vi.fn().mockResolvedValue(1000000n),
       simulateContract: vi.fn().mockImplementation((params) => {
         simulateContractCalls.push(params)
         return Promise.resolve({
@@ -57,9 +56,17 @@ describe('payment settler scheduled handler', () => {
     const id1 = randomId()
     const id2 = randomId()
 
-    // Seed active data sets
-    await withDataSet(env, { id: id1, withCDN: true })
-    await withDataSet(env, { id: id2, withCDN: true })
+    // Seed active data sets with recent usage
+    await withDataSet(env, {
+      id: id1,
+      withCDN: true,
+      usageReportedUntil: getDaysAgo(5),
+    })
+    await withDataSet(env, {
+      id: id2,
+      withCDN: true,
+      usageReportedUntil: getDaysAgo(10),
+    })
 
     // Mock the transaction monitor workflow
     const mockWorkflow = {
@@ -88,9 +95,6 @@ describe('payment settler scheduled handler', () => {
     // Verify chain client was called
     expect(mockGetChainClient).toHaveBeenCalledWith(testEnv)
 
-    // Verify block number was fetched
-    expect(mockPublicClient.getBlockNumber).toHaveBeenCalled()
-
     // Verify contract simulation was called
     expect(simulateContractCalls).toHaveLength(1)
     expect(simulateContractCalls[0]).toMatchObject({
@@ -98,7 +102,7 @@ describe('payment settler scheduled handler', () => {
       abi: expect.any(Array),
       address: '0xTestContractAddress',
       functionName: 'settleCDNPaymentRailBatch',
-      args: [expect.arrayContaining([expect.any(BigInt), expect.any(BigInt)])],
+      args: [expect.any(BigInt), expect.any(BigInt)],
     })
 
     // Verify transaction was sent
@@ -124,7 +128,11 @@ describe('payment settler scheduled handler', () => {
   it('should handle no active data sets gracefully', async () => {
     // Seed only inactive data set
     const id1 = randomId()
-    await withDataSet(env, { id: id1, withCDN: false })
+    await withDataSet(env, {
+      id: id1,
+      withCDN: false,
+      usageReportedUntil: getDaysAgo(5),
+    })
 
     // Create a test environment
     const testEnv = {
@@ -144,9 +152,6 @@ describe('payment settler scheduled handler', () => {
       { getChainClient: mockGetChainClient },
     )
 
-    // Verify block number was fetched
-    expect(mockPublicClient.getBlockNumber).toHaveBeenCalled()
-
     // Verify no contract simulation was called
     expect(simulateContractCalls).toHaveLength(0)
     expect(writeContractCalls).toHaveLength(0)
@@ -155,14 +160,18 @@ describe('payment settler scheduled handler', () => {
   it('should handle terminated data sets within settlement window', async () => {
     const id1 = randomId()
     const id2 = randomId()
-    const currentEpoch = 1000000n
 
     // Seed data sets
-    await withDataSet(env, { id: id1, withCDN: true })
+    await withDataSet(env, {
+      id: id1,
+      withCDN: true,
+      usageReportedUntil: getDaysAgo(7),
+    })
     await withDataSet(env, {
       id: id2,
       withCDN: false,
-      settleUpToEpoch: currentEpoch + 100n,
+      lockupUnlocksAt: getDaysAgo(-10),
+      usageReportedUntil: getDaysAgo(3),
     })
 
     // Mock the transaction monitor workflow
@@ -196,7 +205,11 @@ describe('payment settler scheduled handler', () => {
 
   it('should handle contract simulation errors', async () => {
     const id1 = randomId()
-    await withDataSet(env, { id: id1, withCDN: true })
+    await withDataSet(env, {
+      id: id1,
+      withCDN: true,
+      usageReportedUntil: getDaysAgo(5),
+    })
 
     // Mock console.error to capture output
     const consoleErrorSpy = vi.spyOn(console, 'error')
@@ -240,7 +253,11 @@ describe('payment settler scheduled handler', () => {
 
   it('should handle write contract errors', async () => {
     const id1 = randomId()
-    await withDataSet(env, { id: id1, withCDN: true })
+    await withDataSet(env, {
+      id: id1,
+      withCDN: true,
+      usageReportedUntil: getDaysAgo(5),
+    })
 
     // Mock console.error to capture output
     const consoleErrorSpy = vi.spyOn(console, 'error')
@@ -285,10 +302,11 @@ describe('payment settler scheduled handler', () => {
 
   it('should handle mainnet environment correctly', async () => {
     const id1 = randomId()
-    await withDataSet(env, { id: id1, withCDN: true })
-
-    // Override block number for mainnet
-    mockPublicClient.getBlockNumber.mockResolvedValue(2000000n)
+    await withDataSet(env, {
+      id: id1,
+      withCDN: true,
+      usageReportedUntil: getDaysAgo(5),
+    })
 
     // Reset mocks to default behavior
     mockPublicClient.simulateContract.mockImplementation((params) => {
@@ -331,9 +349,6 @@ describe('payment settler scheduled handler', () => {
 
   it('should handle empty database correctly', async () => {
     // No data sets seeded - database is empty
-
-    // Override block number for calibration
-    mockPublicClient.getBlockNumber.mockResolvedValue(1500000n)
 
     // Create a test environment
     const testEnv = {
