@@ -53,7 +53,7 @@ export async function aggregateUsageData(db, upToTimestamp) {
     WHERE rl.timestamp > datetime(ds.usage_reported_until)
       AND rl.timestamp <= datetime(?)
       AND rl.egress_bytes IS NOT NULL
-      AND ds.pending_rollup_tx_hash IS NULL
+      AND ds.pending_usage_reporting_tx_hash IS NULL
     GROUP BY rl.data_set_id
     HAVING (cdn_bytes > 0 OR cache_miss_bytes > 0)
   `

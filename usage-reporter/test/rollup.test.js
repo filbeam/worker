@@ -346,14 +346,14 @@ describe('rollup', () => {
         await withDataSet(env, {
           id: '1',
           usageReportedUntil: epoch99TimestampISO,
-          pendingRollupTxHash: null,
+          pendingUsageReportingTxHash: null,
         })
 
         // Dataset 2: Has pending transaction - should be excluded
         await withDataSet(env, {
           id: '2',
           usageReportedUntil: epoch99TimestampISO,
-          pendingRollupTxHash: '0x123abc',
+          pendingUsageReportingTxHash: '0x123abc',
         })
 
         const epoch100UnixTimestamp = filecoinEpochToTimestamp(100)

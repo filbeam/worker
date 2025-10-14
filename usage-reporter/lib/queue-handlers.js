@@ -52,8 +52,8 @@ export async function handleTransactionConfirmedQueueMessage(message, env) {
       `
       UPDATE data_sets
       SET usage_reported_until = datetime(?),
-          pending_rollup_tx_hash = NULL
-      WHERE pending_rollup_tx_hash = ?
+          pending_usage_reporting_tx_hash = NULL
+      WHERE pending_usage_reporting_tx_hash = ?
       `,
     )
       .bind(upToTimestamp, transactionHash)
@@ -161,7 +161,7 @@ export async function handleTransactionRetryQueueMessage(
 
     // Update database with new transaction hash
     await env.DB.prepare(
-      `UPDATE data_sets SET pending_rollup_tx_hash = ? WHERE pending_rollup_tx_hash = ?`,
+      `UPDATE data_sets SET pending_usage_reporting_tx_hash = ? WHERE pending_usage_reporting_tx_hash = ?`,
     )
       .bind(retryHash, transactionHash)
       .run()
