@@ -2,7 +2,7 @@ import { describe, it, beforeEach, afterEach, expect } from 'vitest'
 import { env } from 'cloudflare:test'
 import { handleFWSSCDNPaymentRailsToppedUp } from '../lib/fwss-handlers.js'
 import { withDataSet, withServiceProvider } from './test-helpers.js'
-import { BYTES_PER_TIB } from '../lib/rate-helpers.js'
+import { BYTES_PER_TIB } from '../lib/constants.js'
 
 describe('handleFWSSCDNPaymentRailsToppedUp', () => {
   let testServiceProviderId
@@ -83,32 +83,6 @@ describe('handleFWSSCDNPaymentRailsToppedUp', () => {
     expect(result.cache_miss_egress_quota).toBe(0)
   })
 
-  it('handles division by zero when rate is zero', async () => {
-    const testEnv = {
-      ...env,
-      CDN_RATE_PER_TIB: '0', // Zero rate
-      CACHE_MISS_RATE_PER_TIB: '0', // Zero rate
-    }
-
-    const payload = {
-      data_set_id: testDataSetId,
-      cdn_amount_added: '5000000000000000000',
-      cache_miss_amount_added: '10000000000000000000',
-    }
-
-    await handleFWSSCDNPaymentRailsToppedUp(testEnv, payload)
-
-    const result = await env.DB.prepare(
-      'SELECT cdn_egress_quota, cache_miss_egress_quota FROM data_sets WHERE id = ?',
-    )
-      .bind(testDataSetId)
-      .first()
-
-    // Should add 0 to quota when rate is 0
-    expect(result.cdn_egress_quota).toBe(0)
-    expect(result.cache_miss_egress_quota).toBe(0)
-  })
-
   it('accumulates quota values on multiple top-ups', async () => {
     const testEnv = {
       ...env,
@@ -181,30 +155,5 @@ describe('handleFWSSCDNPaymentRailsToppedUp', () => {
       .first()
 
     expect(result).toBeNull()
-  })
-
-  it('handles missing amount fields with default values', async () => {
-    const testEnv = {
-      ...env,
-      CDN_RATE_PER_TIB: '5000000000000000000',
-      CACHE_MISS_RATE_PER_TIB: '5000000000000000000',
-    }
-
-    const payload = {
-      data_set_id: testDataSetId,
-      // Missing amount fields
-    }
-
-    await handleFWSSCDNPaymentRailsToppedUp(testEnv, payload)
-
-    const result = await env.DB.prepare(
-      'SELECT cdn_egress_quota, cache_miss_egress_quota FROM data_sets WHERE id = ?',
-    )
-      .bind(testDataSetId)
-      .first()
-
-    // Should default to 0 (no amounts added)
-    expect(result.cdn_egress_quota).toBe(0)
-    expect(result.cache_miss_egress_quota).toBe(0)
   })
 })

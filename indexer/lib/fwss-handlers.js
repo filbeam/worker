@@ -1,5 +1,5 @@
 import { checkIfAddressIsSanctioned as defaultCheckIfAddressIsSanctioned } from './chainalysis.js'
-import { calculateEgressQuota } from './rate-helpers.js'
+import { BYTES_PER_TIB } from './constants.js'
 
 /**
  * Handle proof set rail creation
@@ -99,20 +99,15 @@ export async function handleFWSSServiceTerminated(env, payload) {
 export async function handleFWSSCDNPaymentRailsToppedUp(env, payload) {
   const { CDN_RATE_PER_TIB, CACHE_MISS_RATE_PER_TIB } = env
 
-  const dataSetId = String(payload.data_set_id)
-  const cdnAmountAdded = payload.cdn_amount_added || '0'
-  const cacheMissAmountAdded = payload.cache_miss_amount_added || '0'
-
   // Calculate quotas in bytes using the helper function
   // Rates are already in USDFC units (1e18), no conversion needed
-  const cdnEgressQuotaAdded = calculateEgressQuota(
-    cdnAmountAdded,
-    CDN_RATE_PER_TIB,
-  )
-  const cacheMissEgressQuotaAdded = calculateEgressQuota(
-    cacheMissAmountAdded,
-    CACHE_MISS_RATE_PER_TIB,
-  )
+  const cdnEgressQuotaAdded =
+    (BigInt(payload.cdn_amount_added) * BYTES_PER_TIB) /
+    BigInt(CDN_RATE_PER_TIB)
+
+  const cacheMissEgressQuotaAdded =
+    (BigInt(payload.cache_miss_amount_added) * BYTES_PER_TIB) /
+    BigInt(CACHE_MISS_RATE_PER_TIB)
 
   // Store as integers - quotas are in bytes and fit within INTEGER range for exabyte scale
   await env.DB.prepare(
@@ -126,7 +121,7 @@ export async function handleFWSSCDNPaymentRailsToppedUp(env, payload) {
     .bind(
       Number(cdnEgressQuotaAdded),
       Number(cacheMissEgressQuotaAdded),
-      dataSetId,
+      payload.data_set_id,
     )
     .run()
 }
