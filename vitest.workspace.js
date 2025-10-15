@@ -7,4 +7,5 @@ export default defineWorkspace([
   'terminator',
   'payment-settler',
   'usage-reporter',
+  'workflows',
 ])
