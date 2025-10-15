@@ -103,19 +103,18 @@ describe('usage report', () => {
         )
         const usageData = await aggregateUsageData(env.DB, upToTimestamp)
 
-        const usage1 = usageData.find((u) => u.data_set_id === '1')
-        expect(usage1).toStrictEqual({
-          data_set_id: '1',
-          cdn_bytes: 2500,
-          cache_miss_bytes: 500,
-        })
-
-        const usage2 = usageData.find((u) => u.data_set_id === '2')
-        expect(usage2).toStrictEqual({
-          data_set_id: '2',
-          cdn_bytes: 3000,
-          cache_miss_bytes: 3000,
-        })
+        expect(usageData).toStrictEqual([
+          {
+            data_set_id: '1',
+            cdn_bytes: 2500,
+            cache_miss_bytes: 500,
+          },
+          {
+            data_set_id: '2',
+            cdn_bytes: 3000,
+            cache_miss_bytes: 3000,
+          },
+        ])
       })
 
       it('should include non-200 responses but filter out null egress_bytes', async () => {
@@ -174,12 +173,13 @@ describe('usage report', () => {
         )
         const usageData = await aggregateUsageData(env.DB, upToTimestamp)
 
-        const usage = usageData.find((u) => u.data_set_id === '1')
-        expect(usage).toStrictEqual({
-          data_set_id: '1',
-          cdn_bytes: 1800,
-          cache_miss_bytes: 300,
-        })
+        expect(usageData).toStrictEqual([
+          {
+            data_set_id: '1',
+            cdn_bytes: 1800,
+            cache_miss_bytes: 300,
+          },
+        ])
       })
 
       it('should only aggregate data for datasets with usage_reported_until < upToTimestamp', async () => {
@@ -240,18 +240,23 @@ describe('usage report', () => {
         const usageData = await aggregateUsageData(env.DB, upToTimestamp)
 
         // Should have data for 1, 2, 3 but NOT 4
-        expect(usageData.find((u) => u.data_set_id === '1')).toBeTruthy()
-        expect(usageData.find((u) => u.data_set_id === '2')).toBeTruthy()
-        expect(usageData.find((u) => u.data_set_id === '3')).toBeTruthy()
-        expect(usageData.find((u) => u.data_set_id === '4')).toBeFalsy()
-
-        // Verify the data for included datasets
-        const usage1 = usageData.find((u) => u.data_set_id === '1')
-        expect(usage1).toStrictEqual({
-          data_set_id: '1',
-          cdn_bytes: 1000,
-          cache_miss_bytes: 0,
-        })
+        expect(usageData).toStrictEqual([
+          {
+            data_set_id: '1',
+            cdn_bytes: 1000,
+            cache_miss_bytes: 0,
+          },
+          {
+            data_set_id: '2',
+            cdn_bytes: 1000,
+            cache_miss_bytes: 0,
+          },
+          {
+            data_set_id: '3',
+            cdn_bytes: 1000,
+            cache_miss_bytes: 0,
+          },
+        ])
       })
 
       it('should filter out datasets with zero cdn and cache-miss bytes', async () => {
@@ -309,21 +314,18 @@ describe('usage report', () => {
         const usageData = await aggregateUsageData(env.DB, upToTimestamp)
 
         // Should only have datasets 1 and 3 (dataset 2 has null egress_bytes and is filtered out)
-        expect(usageData.length).toBe(2)
-
-        const usage1 = usageData.find((u) => u.data_set_id === '1')
-        expect(usage1).toStrictEqual({
-          data_set_id: '1',
-          cdn_bytes: 1000,
-          cache_miss_bytes: 0,
-        })
-
-        const usage3 = usageData.find((u) => u.data_set_id === '3')
-        expect(usage3).toStrictEqual({
-          data_set_id: '3',
-          cdn_bytes: 500,
-          cache_miss_bytes: 500,
-        })
+        expect(usageData).toStrictEqual([
+          {
+            data_set_id: '1',
+            cdn_bytes: 1000,
+            cache_miss_bytes: 0,
+          },
+          {
+            data_set_id: '3',
+            cdn_bytes: 500,
+            cache_miss_bytes: 500,
+          },
+        ])
       })
 
       it('should exclude datasets with pending usage report transactions', async () => {
@@ -374,18 +376,13 @@ describe('usage report', () => {
         const usageData = await aggregateUsageData(env.DB, upToTimestamp)
 
         // Should only have dataset 1 (dataset 2 has pending transaction)
-        expect(usageData.length).toBe(1)
-
-        const usage1 = usageData.find((u) => u.data_set_id === '1')
-        expect(usage1).toStrictEqual({
-          data_set_id: '1',
-          cdn_bytes: 1000,
-          cache_miss_bytes: 0,
-        })
-
-        // Dataset 2 should not be present
-        const usage2 = usageData.find((u) => u.data_set_id === '2')
-        expect(usage2).toBeUndefined()
+        expect(usageData).toStrictEqual([
+          {
+            data_set_id: '1',
+            cdn_bytes: 1000,
+            cache_miss_bytes: 0,
+          },
+        ])
       })
     })
   })

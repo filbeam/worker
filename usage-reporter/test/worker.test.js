@@ -8,6 +8,7 @@ import {
 } from './test-helpers.js'
 import { epochToTimestamp } from '../lib/usage-report.js'
 import worker from '../bin/usage-reporter.js'
+import filbeamAbi from '../lib/filbeam.abi.js'
 
 describe('usage reporter worker scheduled entrypoint', () => {
   let env
@@ -129,14 +130,20 @@ describe('usage reporter worker scheduled entrypoint', () => {
     expect(mockPublicClient.getBlockNumber).toHaveBeenCalled()
 
     // Verify contract simulation was called with correct parameters
-    expect(simulateContractCalls).toHaveLength(1)
-    const simulateCall = simulateContractCalls[0]
-    expect(simulateCall.address).toBe(env.FILBEAM_CONTRACT_ADDRESS)
-    expect(simulateCall.functionName).toBe('recordUsageRollups')
-    expect(simulateCall.args[0]).toEqual(100n) // upToEpoch
-    expect(simulateCall.args[1]).toEqual(['1', '2']) // dataSetIds
-    expect(simulateCall.args[2]).toEqual([2500n, 4000n]) // cdnBytesUsed (all egress)
-    expect(simulateCall.args[3]).toEqual([500n, 1000n]) // cacheMissBytesUsed
+    expect(simulateContractCalls).toStrictEqual([
+      {
+        account: mockAccount,
+        address: env.FILBEAM_CONTRACT_ADDRESS,
+        abi: filbeamAbi,
+        functionName: 'recordUsageRollups',
+        args: [
+          100n, // upToEpoch
+          ['1', '2'], // dataSetIds
+          [2500n, 4000n], // cdnBytesUsed (all egress)
+          [500n, 1000n], // cacheMissBytesUsed
+        ],
+      },
+    ])
 
     // Verify transaction was written and workflow started
     expect(writeContractCalls).toHaveLength(1)
@@ -203,12 +210,20 @@ describe('usage reporter worker scheduled entrypoint', () => {
     })
 
     // Verify only datasets with non-zero usage are reported
-    expect(simulateContractCalls).toHaveLength(1)
-    const simulateCall = simulateContractCalls[0]
-    expect(simulateCall.args[0]).toEqual(100n) // upToEpoch
-    expect(simulateCall.args[1]).toEqual(['1', '3']) // Only datasets 1 and 3
-    expect(simulateCall.args[2]).toEqual([1000n, 2000n]) // cdnBytesUsed (all egress)
-    expect(simulateCall.args[3]).toEqual([0n, 2000n]) // cacheMissBytesUsed
+    expect(simulateContractCalls).toStrictEqual([
+      {
+        account: mockAccount,
+        address: env.FILBEAM_CONTRACT_ADDRESS,
+        abi: filbeamAbi,
+        functionName: 'recordUsageRollups',
+        args: [
+          100n, // upToEpoch
+          ['1', '3'], // Only datasets 1 and 3
+          [1000n, 2000n], // cdnBytesUsed (all egress)
+          [0n, 2000n], // cacheMissBytesUsed
+        ],
+      },
+    ])
   })
 
   it('should not report datasets that are already up to date', async () => {
@@ -251,10 +266,20 @@ describe('usage reporter worker scheduled entrypoint', () => {
     })
 
     // Verify only dataset 1 is reported (dataset 2 is already up to date)
-    expect(simulateContractCalls).toHaveLength(1)
-    const simulateCall = simulateContractCalls[0]
-    expect(simulateCall.args[0]).toEqual(100n) // upToEpoch
-    expect(simulateCall.args[1]).toEqual(['1']) // Only dataset 1
+    expect(simulateContractCalls).toStrictEqual([
+      {
+        account: mockAccount,
+        address: env.FILBEAM_CONTRACT_ADDRESS,
+        abi: filbeamAbi,
+        functionName: 'recordUsageRollups',
+        args: [
+          100n, // upToEpoch
+          ['1'], // Only dataset 1
+          [1000n], // cdnBytesUsed
+          [0n], // cacheMissBytesUsed
+        ],
+      },
+    ])
   })
 
   it('should calculate correct target epoch', async () => {
@@ -284,10 +309,20 @@ describe('usage reporter worker scheduled entrypoint', () => {
     })
 
     // Verify it reports up to epoch 104 (currentEpoch - 1)
-    expect(simulateContractCalls).toHaveLength(1)
-    const simulateCall = simulateContractCalls[0]
-    expect(simulateCall.args[0]).toEqual(104n) // upToEpoch should be 104
-    expect(simulateCall.args[2]).toEqual([5000n]) // 5 epochs × 1000 bytes
+    expect(simulateContractCalls).toStrictEqual([
+      {
+        account: mockAccount,
+        address: env.FILBEAM_CONTRACT_ADDRESS,
+        abi: filbeamAbi,
+        functionName: 'recordUsageRollups',
+        args: [
+          104n, // upToEpoch should be 104
+          ['1'], // dataSetIds
+          [5000n], // 5 epochs × 1000 bytes
+          [0n], // cacheMissBytesUsed
+        ],
+      },
+    ])
   })
 
   it('should aggregate usage correctly across epochs', async () => {
@@ -321,12 +356,20 @@ describe('usage reporter worker scheduled entrypoint', () => {
     })
 
     // Verify aggregated data
-    expect(simulateContractCalls).toHaveLength(1)
-    const simulateCall = simulateContractCalls[0]
-    expect(simulateCall.args[0]).toEqual(100n) // upToEpoch
-    expect(simulateCall.args[1]).toEqual(['1']) // dataSetIds
-    expect(simulateCall.args[2]).toEqual([7500n]) // 5 epochs × (1000 + 500) bytes all egress
-    expect(simulateCall.args[3]).toEqual([2500n]) // 5 epochs × 500 bytes cache miss
+    expect(simulateContractCalls).toStrictEqual([
+      {
+        account: mockAccount,
+        address: env.FILBEAM_CONTRACT_ADDRESS,
+        abi: filbeamAbi,
+        functionName: 'recordUsageRollups',
+        args: [
+          100n, // upToEpoch
+          ['1'], // dataSetIds
+          [7500n], // 5 epochs × (1000 + 500) bytes all egress
+          [2500n], // 5 epochs × 500 bytes cache miss
+        ],
+      },
+    ])
   })
 
   it('should handle datasets with null last_reported_epoch', async () => {
@@ -347,10 +390,19 @@ describe('usage reporter worker scheduled entrypoint', () => {
     })
 
     // Verify the dataset is included in reporting
-    expect(simulateContractCalls).toHaveLength(1)
-    const simulateCall = simulateContractCalls[0]
-    expect(simulateCall.args[0]).toEqual(100n) // upToEpoch
-    expect(simulateCall.args[1]).toEqual(['1']) // dataSetIds
-    expect(simulateCall.args[2]).toEqual([1000n]) // cdnBytesUsed
+    expect(simulateContractCalls).toStrictEqual([
+      {
+        account: mockAccount,
+        address: env.FILBEAM_CONTRACT_ADDRESS,
+        abi: filbeamAbi,
+        functionName: 'recordUsageRollups',
+        args: [
+          100n, // upToEpoch
+          ['1'], // dataSetIds
+          [1000n], // cdnBytesUsed
+          [0n], // cacheMissBytesUsed
+        ],
+      },
+    ])
   })
 })
