@@ -6,4 +6,5 @@ export default defineWorkspace([
   'bad-bits',
   'terminator',
   'usage-reporter',
+  'workflows',
 ])
