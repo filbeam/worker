@@ -5,9 +5,6 @@
   "description": "Shared workflows for FilBeam workers",
   "author": "Space Meridian <filbeam@meridian.space>",
   "type": "module",
-  "exports": {
-    ".": "./lib/transaction-monitor-workflow.js"
-  },
   "main": "lib/transaction-monitor-workflow.js",
   "scripts": {
     "test": "vitest run"
