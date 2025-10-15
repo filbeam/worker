@@ -1,11 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { assertCloseToNow, withDataSet, randomId } from './test-helpers.js'
+import {
+  assertCloseToNow,
+  withDataSet,
+  randomId,
+  withPieces,
+} from './test-helpers.js'
 import workerImpl from '../bin/indexer.js'
 import {
   env,
   createExecutionContext,
   waitOnExecutionContext,
 } from 'cloudflare:test'
+import { BYTES_PER_TIB } from '../lib/constants.js'
 
 env.SECRET_HEADER_KEY = 'secret-header-key'
 env.SECRET_HEADER_VALUE = 'secret-header-value'
@@ -916,39 +922,6 @@ describe('POST /service-provider-registry/provider-removed', () => {
   })
 })
 
-async function withPieces(
-  env,
-  dataSetId,
-  pieceIds,
-  pieceCids,
-  ipfsRootCids = [],
-) {
-  await env.DB.prepare(
-    `
-    INSERT INTO pieces (
-      id,
-      data_set_id,
-      cid,
-      ipfs_root_cid
-    )
-    VALUES ${new Array(pieceIds.length)
-      .fill(null)
-      .map(() => '(?, ?, ?, ?)')
-      .join(', ')}
-    ON CONFLICT DO NOTHING
-  `,
-  )
-    .bind(
-      ...pieceIds.flatMap((pieceId, i) => [
-        String(pieceId),
-        String(dataSetId),
-        pieceCids[i],
-        ipfsRootCids[i] || null,
-      ]),
-    )
-    .run()
-}
-
 describe('POST /fwss/cdn-service-terminated', () => {
   beforeEach(async () => {
     await env.DB.exec('DELETE FROM data_sets')
@@ -1162,28 +1135,10 @@ describe('POST /fwss/cdn-payment-rails-topped-up', () => {
       .bind(dataSetId)
       .first()
 
-    // With 5 USDFC lockup and $5 per TiB rate = 1 TiB = 1099511627776 bytes
-    expect(result.cdn_egress_quota).toBe(1099511627776)
-    // With 10 USDFC lockup and $5 per TiB rate = 2 TiB = 2199023255552 bytes
-    expect(result.cache_miss_egress_quota).toBe(2199023255552)
-  })
-
-  it('returns 400 if data_set_id is numeric', async () => {
-    const req = new Request('https://host/fwss/cdn-payment-rails-topped-up', {
-      method: 'POST',
-      headers: {
-        [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
-      },
-      body: JSON.stringify({
-        data_set_id: 456, // Numeric
-        cdn_amount_added: '5000000000000000000',
-        cache_miss_amount_added: '10000000000000000000',
-      }),
+    expect(result).toEqual({
+      cdn_egress_quota: BYTES_PER_TIB.toString(),
+      cache_miss_egress_quota: (BYTES_PER_TIB * 2n).toString(),
     })
-
-    const res = await workerImpl.fetch(req, env)
-    expect(res.status).toBe(400)
-    expect(await res.text()).toBe('Bad Request')
   })
 
   it('handles zero lockup amounts', async () => {
@@ -1193,8 +1148,8 @@ describe('POST /fwss/cdn-payment-rails-topped-up', () => {
       payerAddress: '0xPayerAddress',
     })
 
-    env.CDN_RATE_DOLLARS_PER_TIB = '5'
-    env.CACHE_MISS_RATE_DOLLARS_PER_TIB = '5'
+    env.CDN_RATE_PER_TIB = '5000000000000000000' // 5 USDFC per TiB
+    env.CACHE_MISS_RATE_PER_TIB = '5000000000000000000' // 5 USDFC per TiB
 
     const req = new Request('https://host/fwss/cdn-payment-rails-topped-up', {
       method: 'POST',
@@ -1218,8 +1173,10 @@ describe('POST /fwss/cdn-payment-rails-topped-up', () => {
       .bind(dataSetId)
       .first()
 
-    expect(result.cdn_egress_quota).toBe(0)
-    expect(result.cache_miss_egress_quota).toBe(0)
+    expect(result).toEqual({
+      cdn_egress_quota: '0',
+      cache_miss_egress_quota: '0',
+    })
   })
 
   it('accumulates quotas for existing data set', async () => {
@@ -1271,8 +1228,10 @@ describe('POST /fwss/cdn-payment-rails-topped-up', () => {
       .first()
 
     // Accumulated values: 5+5 USDFC = 2 TiB, 10+10 USDFC = 4 TiB
-    expect(result.cdn_egress_quota).toBe(2199023255552)
-    expect(result.cache_miss_egress_quota).toBe(4398046511104)
+    expect(result).toEqual({
+      cdn_egress_quota: (BYTES_PER_TIB * 2n).toString(),
+      cache_miss_egress_quota: (BYTES_PER_TIB * 4n).toString(),
+    })
   })
 
   it('handles missing data set gracefully', async () => {

@@ -54,8 +54,10 @@ describe('handleFWSSCDNPaymentRailsToppedUp', () => {
       .bind(testDataSetId)
       .first()
 
-    expect(result.cdn_egress_quota).toBe(Number(BYTES_PER_TIB)) // 1 TiB in bytes
-    expect(result.cache_miss_egress_quota).toBe(Number(BYTES_PER_TIB * 2n)) // 2 TiB in bytes
+    expect(result).toEqual({
+      cdn_egress_quota: BYTES_PER_TIB.toString(), // 1 TiB in bytes
+      cache_miss_egress_quota: (BYTES_PER_TIB * 2n).toString(), // 2 TiB in bytes
+    })
   })
 
   it('handles zero amounts added', async () => {
@@ -79,8 +81,10 @@ describe('handleFWSSCDNPaymentRailsToppedUp', () => {
       .bind(testDataSetId)
       .first()
 
-    expect(result.cdn_egress_quota).toBe(0)
-    expect(result.cache_miss_egress_quota).toBe(0)
+    expect(result).toEqual({
+      cdn_egress_quota: '0',
+      cache_miss_egress_quota: '0',
+    })
   })
 
   it('accumulates quota values on multiple top-ups', async () => {
@@ -105,10 +109,12 @@ describe('handleFWSSCDNPaymentRailsToppedUp', () => {
       .bind(testDataSetId)
       .first()
 
-    const expectedQuota1 = Number(BYTES_PER_TIB / 5n) // 0.2 TiB
-    const expectedQuota2 = Number((BYTES_PER_TIB * 2n) / 5n) // 0.4 TiB
-    expect(result.cdn_egress_quota).toBe(expectedQuota1)
-    expect(result.cache_miss_egress_quota).toBe(expectedQuota2)
+    const expectedQuota1 = (BYTES_PER_TIB / 5n).toString() // 0.2 TiB
+    const expectedQuota2 = ((BYTES_PER_TIB * 2n) / 5n).toString() // 0.4 TiB
+    expect(result).toEqual({
+      cdn_egress_quota: expectedQuota1,
+      cache_miss_egress_quota: expectedQuota2,
+    })
 
     // Second top-up with different values (should add, not replace)
     const payload2 = {
@@ -126,11 +132,18 @@ describe('handleFWSSCDNPaymentRailsToppedUp', () => {
       .first()
 
     // Should be accumulated: 0.2 + 1 = 1.2 TiB for CDN, 0.4 + 2 = 2.4 TiB for cache miss
-    const expectedAccumulatedCdn = expectedQuota1 + Number(BYTES_PER_TIB)
-    const expectedAccumulatedCacheMiss =
-      expectedQuota2 + Number(BYTES_PER_TIB * 2n)
-    expect(result.cdn_egress_quota).toBe(expectedAccumulatedCdn)
-    expect(result.cache_miss_egress_quota).toBe(expectedAccumulatedCacheMiss)
+    const expectedAccumulatedCdn = (
+      BYTES_PER_TIB / 5n +
+      BYTES_PER_TIB
+    ).toString()
+    const expectedAccumulatedCacheMiss = (
+      (BYTES_PER_TIB * 2n) / 5n +
+      BYTES_PER_TIB * 2n
+    ).toString()
+    expect(result).toEqual({
+      cdn_egress_quota: expectedAccumulatedCdn,
+      cache_miss_egress_quota: expectedAccumulatedCacheMiss,
+    })
   })
 
   it('handles missing data set gracefully', async () => {
