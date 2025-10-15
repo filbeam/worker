@@ -99,8 +99,26 @@ export async function handleFWSSServiceTerminated(env, payload) {
 export async function handleFWSSCDNPaymentRailsToppedUp(env, payload) {
   const { CDN_RATE_PER_TIB, CACHE_MISS_RATE_PER_TIB } = env
 
-  // Calculate quotas in bytes using the helper function
-  // Rates are already in USDFC units (1e18), no conversion needed
+  /**
+   * @type {{
+   *   cdn_egress_quota: string
+   *   cache_miss_egress_quota: string
+   * } | null}
+   */
+  const currentDataSet = await env.DB.prepare(
+    `SELECT cdn_egress_quota, cache_miss_egress_quota FROM data_sets WHERE id = ?`,
+  )
+    .bind(payload.data_set_id)
+    .first()
+
+  if (!currentDataSet) {
+    return new Response(`Data set ${payload.data_set_id} not found`, {
+      status: 404,
+    })
+  }
+
+  const currentCdnQuota = BigInt(currentDataSet.cdn_egress_quota)
+  const currentCacheMissQuota = BigInt(currentDataSet.cache_miss_egress_quota)
   const cdnEgressQuotaAdded =
     (BigInt(payload.cdn_amount_added) * BYTES_PER_TIB) /
     BigInt(CDN_RATE_PER_TIB)
@@ -109,18 +127,20 @@ export async function handleFWSSCDNPaymentRailsToppedUp(env, payload) {
     (BigInt(payload.cache_miss_amount_added) * BYTES_PER_TIB) /
     BigInt(CACHE_MISS_RATE_PER_TIB)
 
-  // Store as integers - quotas are in bytes and fit within INTEGER range for exabyte scale
+  const newCdnQuota = currentCdnQuota + cdnEgressQuotaAdded
+  const newCacheMissQuota = currentCacheMissQuota + cacheMissEgressQuotaAdded
+
   await env.DB.prepare(
     `
     UPDATE data_sets
-    SET cdn_egress_quota = cdn_egress_quota + ?,
-        cache_miss_egress_quota = cache_miss_egress_quota + ?
+    SET cdn_egress_quota = ?,
+        cache_miss_egress_quota = ?
     WHERE id = ?
     `,
   )
     .bind(
-      Number(cdnEgressQuotaAdded),
-      Number(cacheMissEgressQuotaAdded),
+      newCdnQuota.toString(),
+      newCacheMissQuota.toString(),
       payload.data_set_id,
     )
     .run()
