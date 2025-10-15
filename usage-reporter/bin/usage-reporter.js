@@ -61,13 +61,13 @@ export default {
     try {
       const { publicClient, walletClient, account } = getChainClient(env)
       const currentEpoch = await publicClient.getBlockNumber()
-      const targetEpoch = currentEpoch - 1n // Report up to previous epoch
+      const upToEpoch = currentEpoch - 1n // Report up to previous epoch
       console.log(
-        `Current epoch: ${currentEpoch}, reporting up to epoch: ${targetEpoch}`,
+        `Current epoch: ${currentEpoch}, reporting up to epoch: ${upToEpoch}`,
       )
 
       const upToTimestamp = epochToTimestamp(
-        targetEpoch,
+        upToEpoch,
         BigInt(env.GENESIS_BLOCK_TIMESTAMP),
       )
       console.log(`Aggregating usage data up to timestamp: ${upToTimestamp}`)
@@ -101,8 +101,8 @@ export default {
         abi: filbeamAbi,
         functionName: 'recordUsageRollups',
         args: [
+          upToEpoch,
           usageReportData.dataSetIds,
-          usageReportData.maxEpochs,
           usageReportData.cdnBytesUsed,
           usageReportData.cacheMissBytesUsed,
         ],

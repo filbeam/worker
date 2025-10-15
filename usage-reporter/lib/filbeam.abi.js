@@ -2,13 +2,13 @@ export default [
   {
     inputs: [
       {
-        internalType: 'uint256[]',
-        name: 'dataSetIds',
-        type: 'uint256[]',
+        internalType: 'uint256',
+        name: 'toEpoch',
+        type: 'uint256',
       },
       {
         internalType: 'uint256[]',
-        name: 'epochs',
+        name: 'dataSetIds',
         type: 'uint256[]',
       },
       {

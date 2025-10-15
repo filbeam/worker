@@ -31,7 +31,6 @@ export function timestampToEpoch(timestamp, genesisBlockTimestamp) {
  *     data_set_id: string
  *     cdn_bytes: number
  *     cache_miss_bytes: number
- *     max_timestamp: number
  *   }[]
  * >}
  */
@@ -46,8 +45,7 @@ export async function aggregateUsageData(db, upToTimestamp) {
       -- Note: cdn_bytes tracks all egress (cache hits + cache misses)
       -- cache_miss_bytes tracks only cache misses (subset of cdn_bytes)
       SUM(rl.egress_bytes) as cdn_bytes,
-      SUM(CASE WHEN rl.cache_miss = 1 THEN rl.egress_bytes ELSE 0 END) as cache_miss_bytes,
-      MAX(unixepoch(rl.timestamp)) as max_timestamp
+      SUM(CASE WHEN rl.cache_miss = 1 THEN rl.egress_bytes ELSE 0 END) as cache_miss_bytes
     FROM retrieval_logs rl
     INNER JOIN data_sets ds ON rl.data_set_id = ds.id
     WHERE rl.timestamp > datetime(ds.usage_reported_until)
@@ -77,26 +75,22 @@ export async function aggregateUsageData(db, upToTimestamp) {
  *   dataSetIds: string[]
  *   cdnBytesUsed: bigint[]
  *   cacheMissBytesUsed: bigint[]
- *   maxEpochs: number[]
  * }}
  */
 export function prepareUsageReportData(usageData, genesisBlockTimestamp) {
   const dataSetIds = []
   const cdnBytesUsed = []
   const cacheMissBytesUsed = []
-  const maxEpochs = []
 
   for (const usage of usageData) {
     dataSetIds.push(usage.data_set_id)
     cdnBytesUsed.push(BigInt(usage.cdn_bytes))
     cacheMissBytesUsed.push(BigInt(usage.cache_miss_bytes))
-    maxEpochs.push(timestampToEpoch(usage.max_timestamp, genesisBlockTimestamp))
   }
 
   return {
     dataSetIds,
     cdnBytesUsed,
     cacheMissBytesUsed,
-    maxEpochs,
   }
 }

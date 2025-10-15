@@ -104,20 +104,18 @@ describe('usage report', () => {
         const usageData = await aggregateUsageData(env.DB, upToTimestamp)
 
         const usage1 = usageData.find((u) => u.data_set_id === '1')
-        expect(usage1.data_set_id).toBe('1')
-        expect(usage1.cdn_bytes).toBe(2500) // 2000 from cache hits + 500 from cache misses
-        expect(usage1.cache_miss_bytes).toBe(500) // 500 from cache miss
-        expect(usage1.max_timestamp).toBe(
-          FILECOIN_GENESIS_UNIX_TIMESTAMP + 100 * 30,
-        )
+        expect(usage1).toStrictEqual({
+          data_set_id: '1',
+          cdn_bytes: 2500,
+          cache_miss_bytes: 500,
+        })
 
         const usage2 = usageData.find((u) => u.data_set_id === '2')
-        expect(usage2.data_set_id).toBe('2')
-        expect(usage2.cdn_bytes).toBe(3000) // All cache misses
-        expect(usage2.cache_miss_bytes).toBe(3000)
-        expect(usage2.max_timestamp).toBe(
-          FILECOIN_GENESIS_UNIX_TIMESTAMP + 100 * 30,
-        )
+        expect(usage2).toStrictEqual({
+          data_set_id: '2',
+          cdn_bytes: 3000,
+          cache_miss_bytes: 3000,
+        })
       })
 
       it('should include non-200 responses but filter out null egress_bytes', async () => {
@@ -177,12 +175,11 @@ describe('usage report', () => {
         const usageData = await aggregateUsageData(env.DB, upToTimestamp)
 
         const usage = usageData.find((u) => u.data_set_id === '1')
-        expect(usage.data_set_id).toBe('1')
-        expect(usage.cdn_bytes).toBe(1800) // All egress: 404 (1000) + 200 (500) + 500 (300)
-        expect(usage.cache_miss_bytes).toBe(300) // 500 response with cache_miss=1
-        expect(usage.max_timestamp).toBe(
-          FILECOIN_GENESIS_UNIX_TIMESTAMP + 100 * 30,
-        )
+        expect(usage).toStrictEqual({
+          data_set_id: '1',
+          cdn_bytes: 1800,
+          cache_miss_bytes: 300,
+        })
       })
 
       it('should only aggregate data for datasets with usage_reported_until < upToTimestamp', async () => {
@@ -250,12 +247,11 @@ describe('usage report', () => {
 
         // Verify the data for included datasets
         const usage1 = usageData.find((u) => u.data_set_id === '1')
-        expect(usage1.data_set_id).toBe('1')
-        expect(usage1.cdn_bytes).toBe(1000)
-        expect(usage1.cache_miss_bytes).toBe(0)
-        expect(usage1.max_timestamp).toBe(
-          FILECOIN_GENESIS_UNIX_TIMESTAMP + 100 * 30,
-        )
+        expect(usage1).toStrictEqual({
+          data_set_id: '1',
+          cdn_bytes: 1000,
+          cache_miss_bytes: 0,
+        })
       })
 
       it('should filter out datasets with zero cdn and cache-miss bytes', async () => {
@@ -316,20 +312,18 @@ describe('usage report', () => {
         expect(usageData.length).toBe(2)
 
         const usage1 = usageData.find((u) => u.data_set_id === '1')
-        expect(usage1.data_set_id).toBe('1')
-        expect(usage1.cdn_bytes).toBe(1000)
-        expect(usage1.cache_miss_bytes).toBe(0)
-        expect(usage1.max_timestamp).toBe(
-          FILECOIN_GENESIS_UNIX_TIMESTAMP + 100 * 30,
-        )
+        expect(usage1).toStrictEqual({
+          data_set_id: '1',
+          cdn_bytes: 1000,
+          cache_miss_bytes: 0,
+        })
 
         const usage3 = usageData.find((u) => u.data_set_id === '3')
-        expect(usage3.data_set_id).toBe('3')
-        expect(usage3.cdn_bytes).toBe(500)
-        expect(usage3.cache_miss_bytes).toBe(500)
-        expect(usage3.max_timestamp).toBe(
-          FILECOIN_GENESIS_UNIX_TIMESTAMP + 100 * 30,
-        )
+        expect(usage3).toStrictEqual({
+          data_set_id: '3',
+          cdn_bytes: 500,
+          cache_miss_bytes: 500,
+        })
       })
 
       it('should exclude datasets with pending usage report transactions', async () => {
@@ -383,12 +377,11 @@ describe('usage report', () => {
         expect(usageData.length).toBe(1)
 
         const usage1 = usageData.find((u) => u.data_set_id === '1')
-        expect(usage1.data_set_id).toBe('1')
-        expect(usage1.cdn_bytes).toBe(1000)
-        expect(usage1.cache_miss_bytes).toBe(0)
-        expect(usage1.max_timestamp).toBe(
-          FILECOIN_GENESIS_UNIX_TIMESTAMP + 100 * 30,
-        )
+        expect(usage1).toStrictEqual({
+          data_set_id: '1',
+          cdn_bytes: 1000,
+          cache_miss_bytes: 0,
+        })
 
         // Dataset 2 should not be present
         const usage2 = usageData.find((u) => u.data_set_id === '2')
@@ -431,7 +424,6 @@ describe('usage report', () => {
         dataSetIds: ['1', '2', '3'],
         cdnBytesUsed: [1000n, 2000n, 0n],
         cacheMissBytesUsed: [500n, 0n, 3000n],
-        maxEpochs: [100, 100, 100],
       })
     })
 
@@ -466,10 +458,11 @@ describe('usage report', () => {
         BigInt(FILECOIN_GENESIS_UNIX_TIMESTAMP),
       )
 
-      expect(batchData.dataSetIds).toEqual(['1', '2', '3'])
-      expect(batchData.cdnBytesUsed).toEqual([1000n, 2000n, 0n])
-      expect(batchData.cacheMissBytesUsed).toEqual([500n, 0n, 3000n])
-      expect(batchData.maxEpochs).toEqual([98, 99, 100])
+      expect(batchData).toEqual({
+        dataSetIds: ['1', '2', '3'],
+        cdnBytesUsed: [1000n, 2000n, 0n],
+        cacheMissBytesUsed: [500n, 0n, 3000n],
+      })
     })
 
     it('should handle empty usage data', () => {
@@ -483,7 +476,6 @@ describe('usage report', () => {
         dataSetIds: [],
         cdnBytesUsed: [],
         cacheMissBytesUsed: [],
-        maxEpochs: [],
       })
     })
   })
