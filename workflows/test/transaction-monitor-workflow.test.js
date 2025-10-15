@@ -28,7 +28,7 @@ describe('TransactionMonitorWorkflow', () => {
       do: vi.fn(),
     }
 
-    workflow = Object.create(TransactionMonitorWorkflow.prototype)
+    workflow = new TransactionMonitorWorkflow()
     workflow.env = mockEnv
   })
 
