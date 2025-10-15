@@ -3,8 +3,8 @@ main = "lib/transaction-monitor-workflow.js"
 compatibility_date = "2024-01-01"
 compatibility_flags = ["nodejs_compat"]
 
-[env.dev]
-vars = { RPC_URL = "https://api.calibration.node.glif.io/rpc/v0" }
+[env.dev.vars]
+RPC_URL = "https://api.calibration.node.glif.io/rpc/v0"
 
 [[env.dev.queues.producers]]
 queue = "transaction-queue"
