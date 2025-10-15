@@ -67,8 +67,8 @@ describe('usage reporter worker scheduled entrypoint', () => {
   })
 
   afterEach(async () => {
-    await env.DB.exec('DELETE FROM retrieval_logs;')
-    await env.DB.exec('DELETE FROM data_sets;')
+    await env.DB.exec('DELETE FROM retrieval_logs')
+    await env.DB.exec('DELETE FROM data_sets')
     vi.clearAllMocks()
   })
 

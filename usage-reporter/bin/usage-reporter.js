@@ -93,6 +93,8 @@ export default {
       )
 
       // Create contract call
+      // We assume all args fit into max calldata size
+      // See https://github.com/filbeam/worker/issues/340
       const { request } = await publicClient.simulateContract({
         account,
         address: env.FILBEAM_CONTRACT_ADDRESS,
