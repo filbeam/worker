@@ -86,7 +86,7 @@ export default {
       const indexCacheKey = `${payerWalletAddress}/${pieceCid}`
       const [indexCacheValue, isBadBit] = await Promise.all([
         env.KV.get(indexCacheKey, { type: 'json' }),
-        env.KV.get(`bad:${pieceCid}`, { type: 'json' })
+        env.KV.get(`bad-bits:${pieceCid}`, { type: 'json' }),
       ])
       httpAssert(
         Array.isArray(indexCacheValue) || indexCacheValue === null,
@@ -102,12 +102,13 @@ export default {
 
       if (!serviceUrl) {
         let serviceProviderId
-        ;({ serviceProviderId, serviceUrl, dataSetId } = await getStorageProviderAndValidatePayer(
-          env,
-          payerWalletAddress,
-          pieceCid,
-        ))
-        
+        ;({ serviceProviderId, serviceUrl, dataSetId } =
+          await getStorageProviderAndValidatePayer(
+            env,
+            payerWalletAddress,
+            pieceCid,
+          ))
+
         httpAssert(
           serviceProviderId,
           404,

@@ -6,7 +6,12 @@ import { getAllBadBitHashes } from './util.js'
 describe('updateBadBitsDatabase', () => {
   beforeAll(async () => {
     // Clear the database before running tests
-    await env.DB.prepare('DELETE FROM bad_bits').run()
+    const { keys } = await env.KV.list()
+    for (const key of keys) {
+      if (key.startsWith('bad-bits:')) {
+        await env.KV.delete(key)
+      }
+    }
   })
 
   it('adds new hashes to the database', async () => {
@@ -22,14 +27,8 @@ describe('updateBadBitsDatabase', () => {
   it('removes hashes not in the current set', async () => {
     // Insert some initial hashes into the database
     const initialHashes = ['hash1', 'hash2', 'hash3']
-    const now = '2020-01-01T00:00:00.000Z'
-    await env.DB.batch(
-      initialHashes.map((hash) =>
-        env.DB.prepare(
-          'INSERT INTO bad_bits (hash, last_modified_at) VALUES (?, ?)',
-        ).bind(hash, now),
-      ),
-    )
+    await initialHashes.map(hash => env.KV.put(`bad-bits:${hash}`, 'true'))
+    await env.KV.put(`bad-bits:_latest-hashes:0`, initialHashes.join(','))
 
     const currentHashes = new Set(['hash2', 'hash4'])
 
@@ -45,20 +44,14 @@ describe('updateBadBitsDatabase', () => {
   })
 
   it('does not modify the database if hashes are unchanged', async () => {
-    const currentHashes = new Set(['hash1', 'hash2', 'hash3'])
-    const now = '2020-01-01T00:00:00.000Z'
-
+    const currentHashes = ['hash1', 'hash2', 'hash3']
+  
     // Insert the same hashes into the database
-    await env.DB.batch(
-      [...currentHashes].map((hash) =>
-        env.DB.prepare(
-          'INSERT INTO bad_bits (hash, last_modified_at) VALUES (?, ?)',
-        ).bind(hash, now),
-      ),
-    )
+    await Promise.all(currentHashes.map(hash => env.KV.put(`bad-bits:${hash}`, 'true')))
+    await env.KV.put(`bad-bits:_latest-hashes:0`, currentHashes.join(','))
 
-    await updateBadBitsDatabase(env, currentHashes)
-    const storedHashes = new Set(await getAllBadBitHashes(env))
+    await updateBadBitsDatabase(env, new Set(currentHashes))
+    const storedHashes = await getAllBadBitHashes(env)
 
     // Verify the database remains unchanged
     expect(storedHashes).toEqual(currentHashes)

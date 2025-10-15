@@ -1,67 +1,108 @@
+import { getAllBadBitHashes } from '../test/util.js'
+
+const KV_VALUE_MAX_SIZE = 26214400
+const BAD_BITS_CID_LENGTH = 64
+const KV_SEGMENT_MAX_HASH_COUNT = Math.floor(
+  KV_VALUE_MAX_SIZE / (BAD_BITS_CID_LENGTH + 1 /* , */)
+)
+const MAX_TOTAL_CHANGES = 10_000
+const MAX_KV_BATCH_SIZE = 1_000
+
 /**
  * Updates the bad bits database with new hashes
  *
- * @param {{ DB: D1Database, KV: KVNamespace }} env - Environment containing database connection
+ * @param {{ KV: KVNamespace }} env - Environment containing database connection
  * @param {Set<string>} currentHashes - Set of current valid hashes from
  *   denylist
  * @param {string | null} etag - ETag for the current denylist
  */
 export async function updateBadBitsDatabase(env, currentHashes, etag) {
   const startedAt = Date.now()
-  const timestamp = new Date().toISOString()
-  const insertBadBitStmt = env.DB.prepare(
-    `
-    INSERT INTO bad_bits (hash, last_modified_at) VALUES (?, ?)
-    ON CONFLICT(hash) DO UPDATE SET last_modified_at = excluded.last_modified_at
-    `,
-  )
 
-  let updated = 0
-  const remainingHashes = Array.from(currentHashes)
-  while (remainingHashes.length > 0) {
-    // pop first N hashes from remainingHashes
-    const batchHashes = remainingHashes.splice(0, 10_000)
+  console.log('getting latest hashes')
+  const oldHashes = new Set(await getAllBadBitHashes(env))
 
-    await env.DB.batch(
-      batchHashes.map((hash) => insertBadBitStmt.bind(hash, timestamp)),
-    )
+  const addedHashes = []
+  const removedHashes = []
 
-    updated += batchHashes.length
-    console.log(
-      `Inserted/updated ${updated} bad bits in ${Date.now() - startedAt}ms`,
-    )
-  }
-
-  const statements = [
-    env.DB.prepare('DELETE FROM bad_bits WHERE last_modified_at < ? RETURNING *').bind(
-      timestamp,
-    ),
-  ]
-
-  if (etag) {
-    statements.push(
-      env.DB.prepare(
-        'INSERT INTO bad_bits_history (timestamp, etag) VALUES (?, ?)',
-      ).bind(timestamp, etag),
-    )
-  }
-
-  const batchRes = await env.DB.batch(statements)
-
+  console.log('iterating current hashes')
   for (const hash of currentHashes) {
-    await env.KV.put(`bad:${hash}`, 'true')
-  }
-  for (const stmt of batchRes) {
-    for (const result of stmt.results) {
-      await env.KV.delete(`bad:${result.hash}`)
+    if (!oldHashes.has(hash)) {
+      addedHashes.push(hash)
+    }
+    if (addedHashes.length >= MAX_TOTAL_CHANGES) {
+      break
     }
   }
+  for (const hash of oldHashes) {
+    if (!currentHashes.has(hash)) {
+      removedHashes.push(hash)
+    }
+    if (addedHashes.length + removedHashes.length >= MAX_TOTAL_CHANGES) {
+      break
+    }
+  }
+
+  console.log('writing added hashes')
+  for (
+    let i = 0;
+    i < Math.ceil(addedHashes.length / MAX_KV_BATCH_SIZE);
+    i++
+  ) {
+    const batch = addedHashes.slice(
+      i * MAX_KV_BATCH_SIZE,
+      (i + 1) * MAX_KV_BATCH_SIZE - 1
+    )
+    await Promise.all(batch.map(hash => env.KV.put(`bad-bits:${hash}`, 'true')))
+  }
+
+  console.log('deleting removed hashes')
+  for (
+    let i = 0;
+    i < Math.ceil(removedHashes.length / MAX_KV_BATCH_SIZE);
+    i++
+  ) {
+    const batch = removedHashes.slice(
+      i * MAX_KV_BATCH_SIZE,
+      ((i + 1) * MAX_KV_BATCH_SIZE) - 1
+    )
+    await Promise.all(batch.map(hash => env.KV.delete(`bad-bits:${hash}`)))
+  }
+
+  console.log('storing latest hashes')
+  const latestHashes = new Set(oldHashes)
+  for (const hash of addedHashes) {
+    latestHashes.add(hash)
+  }
+  for (const hash of removedHashes) {
+    latestHashes.delete(hash)
+  }
+  
+  for (
+    let i = 0;
+    i < Math.ceil(latestHashes.size / KV_SEGMENT_MAX_HASH_COUNT);
+    i++
+  ) {
+    await env.KV.put(
+      `bad-bits:_latest-hashes:${i}`,
+      [...latestHashes]
+        .slice(
+          i * KV_SEGMENT_MAX_HASH_COUNT,
+          ((i + 1) * KV_SEGMENT_MAX_HASH_COUNT) - 1
+        )
+        .join(','),
+    )
+  }
+  if (etag) {
+    await env.KV.put('bad-bits:_latest-etag', etag)
+  }
+
+  console.log(
+    `+${addedHashes.length} -${removedHashes.length} hashes in ${Date.now() - startedAt}ms`,
+  )
 }
 
-/** @param {Env} env */
+/** @param {{ KV: KVNamespace }} env */
 export async function getLastEtag(env) {
-  const result = await env.DB.prepare(
-    'SELECT etag FROM bad_bits_history ORDER BY timestamp DESC LIMIT 1',
-  ).first()
-  return result ? /** @type {string} */ (result.etag) : null
+  return await env.KV.get('bad-bits:_latest-etag')
 }
