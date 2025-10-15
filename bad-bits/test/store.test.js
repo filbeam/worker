@@ -27,7 +27,7 @@ describe('updateBadBitsDatabase', () => {
   it('removes hashes not in the current set', async () => {
     // Insert some initial hashes into the database
     const initialHashes = ['hash1', 'hash2', 'hash3']
-    await initialHashes.map(hash => env.KV.put(`bad-bits:${hash}`, 'true'))
+    await initialHashes.map((hash) => env.KV.put(`bad-bits:${hash}`, 'true'))
     await env.KV.put(`bad-bits:_latest-hashes:0`, initialHashes.join(','))
 
     const currentHashes = new Set(['hash2', 'hash4'])
@@ -45,9 +45,11 @@ describe('updateBadBitsDatabase', () => {
 
   it('does not modify the database if hashes are unchanged', async () => {
     const currentHashes = ['hash1', 'hash2', 'hash3']
-  
+
     // Insert the same hashes into the database
-    await Promise.all(currentHashes.map(hash => env.KV.put(`bad-bits:${hash}`, 'true')))
+    await Promise.all(
+      currentHashes.map((hash) => env.KV.put(`bad-bits:${hash}`, 'true')),
+    )
     await env.KV.put(`bad-bits:_latest-hashes:0`, currentHashes.join(','))
 
     await updateBadBitsDatabase(env, new Set(currentHashes))

@@ -6,7 +6,7 @@
  */
 export async function getAllBadBitHashes(env) {
   const hashes = []
-  const { keys } = await env.KV.list({ prefix: 'bad-bits:_latest-hashes'})
+  const { keys } = await env.KV.list({ prefix: 'bad-bits:_latest-hashes' })
   for (const key of keys) {
     const segment = await env.KV.get(key.name)
     if (segment) {

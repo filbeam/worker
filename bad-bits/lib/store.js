@@ -3,7 +3,7 @@ import { getAllBadBitHashes } from '../test/util.js'
 const KV_VALUE_MAX_SIZE = 26214400
 const BAD_BITS_CID_LENGTH = 64
 const KV_SEGMENT_MAX_HASH_COUNT = Math.floor(
-  KV_VALUE_MAX_SIZE / (BAD_BITS_CID_LENGTH + 1 /* , */)
+  KV_VALUE_MAX_SIZE / (BAD_BITS_CID_LENGTH + 1) /* , */,
 )
 const MAX_TOTAL_CHANGES = 10_000
 const MAX_KV_BATCH_SIZE = 1_000
@@ -44,16 +44,14 @@ export async function updateBadBitsDatabase(env, currentHashes, etag) {
   }
 
   console.log('writing added hashes')
-  for (
-    let i = 0;
-    i < Math.ceil(addedHashes.length / MAX_KV_BATCH_SIZE);
-    i++
-  ) {
+  for (let i = 0; i < Math.ceil(addedHashes.length / MAX_KV_BATCH_SIZE); i++) {
     const batch = addedHashes.slice(
       i * MAX_KV_BATCH_SIZE,
-      (i + 1) * MAX_KV_BATCH_SIZE - 1
+      (i + 1) * MAX_KV_BATCH_SIZE - 1,
     )
-    await Promise.all(batch.map(hash => env.KV.put(`bad-bits:${hash}`, 'true')))
+    await Promise.all(
+      batch.map((hash) => env.KV.put(`bad-bits:${hash}`, 'true')),
+    )
   }
 
   console.log('deleting removed hashes')
@@ -64,9 +62,9 @@ export async function updateBadBitsDatabase(env, currentHashes, etag) {
   ) {
     const batch = removedHashes.slice(
       i * MAX_KV_BATCH_SIZE,
-      ((i + 1) * MAX_KV_BATCH_SIZE) - 1
+      (i + 1) * MAX_KV_BATCH_SIZE - 1,
     )
-    await Promise.all(batch.map(hash => env.KV.delete(`bad-bits:${hash}`)))
+    await Promise.all(batch.map((hash) => env.KV.delete(`bad-bits:${hash}`)))
   }
 
   console.log('storing latest hashes')
@@ -77,7 +75,7 @@ export async function updateBadBitsDatabase(env, currentHashes, etag) {
   for (const hash of removedHashes) {
     latestHashes.delete(hash)
   }
-  
+
   for (
     let i = 0;
     i < Math.ceil(latestHashes.size / KV_SEGMENT_MAX_HASH_COUNT);
@@ -88,7 +86,7 @@ export async function updateBadBitsDatabase(env, currentHashes, etag) {
       [...latestHashes]
         .slice(
           i * KV_SEGMENT_MAX_HASH_COUNT,
-          ((i + 1) * KV_SEGMENT_MAX_HASH_COUNT) - 1
+          (i + 1) * KV_SEGMENT_MAX_HASH_COUNT - 1,
         )
         .join(','),
     )
