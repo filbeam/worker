@@ -14,18 +14,18 @@ database_name = "test-db"
 database_id = "8cc92155-16f6-426a-b782-2965e0daf100"
 
 [vars]
-# Default rate: 5 USDFC per TiB (in 1e18 units)
-CDN_RATE_PER_TIB = "5000000000000000000"
-CACHE_MISS_RATE_PER_TIB = "5000000000000000000"
+# Default rate: 7 USDFC per TiB (in 1e18 units)
+CDN_RATE_PER_TIB = "7000000000000000000"
+CACHE_MISS_RATE_PER_TIB = "7000000000000000000"
 
 [env.dev.vars]
 ENVIRONMENT = "dev"
 WALLET_SCREENING_BATCH_SIZE = 1
 WALLET_SCREENING_STALE_THRESHOLD_MS = 86400000 # one day
 GOLDSKY_SUBGRAPH_URL="https://api.goldsky.com/api/public/project_cmb91qc80slyu01wca6e2eupl/subgraphs/filbeam-alpha-calibnet/1.0.0/gn"
-# 5 USDFC per TiB (in 1e18 units)
-CDN_RATE_PER_TIB = "5000000000000000000"
-CACHE_MISS_RATE_PER_TIB = "5000000000000000000"
+# 7 USDFC per TiB (in 1e18 units)
+CDN_RATE_PER_TIB = "7000000000000000000"
+CACHE_MISS_RATE_PER_TIB = "7000000000000000000"
 
 [[env.dev.d1_databases]]
 binding = "DB"
@@ -37,9 +37,9 @@ ENVIRONMENT = "calibration"
 WALLET_SCREENING_BATCH_SIZE = 1
 WALLET_SCREENING_STALE_THRESHOLD_MS = 86400000 # one day
 GOLDSKY_SUBGRAPH_URL="https://api.goldsky.com/api/public/project_cmb91qc80slyu01wca6e2eupl/subgraphs/filbeam-alpha-calibnet/1.0.0/gn"
-# 5 USDFC per TiB (in 1e18 units)
-CDN_RATE_PER_TIB = "5000000000000000000"
-CACHE_MISS_RATE_PER_TIB = "5000000000000000000"
+# 7 USDFC per TiB (in 1e18 units)
+CDN_RATE_PER_TIB = "7000000000000000000"
+CACHE_MISS_RATE_PER_TIB = "7000000000000000000"
 
 [[env.calibration.d1_databases]]
 binding = "DB"
@@ -63,9 +63,9 @@ ENVIRONMENT = "mainnet"
 WALLET_SCREENING_BATCH_SIZE = 10
 WALLET_SCREENING_STALE_THRESHOLD_MS = 21600000 # 6 hours
 GOLDSKY_SUBGRAPH_URL="https://api.goldsky.com/api/public/project_cmb91qc80slyu01wca6e2eupl/subgraphs/filbeam-alpha-mainnet/1.0.0/gn"
-# 5 USDFC per TiB (in 1e18 units)
-CDN_RATE_PER_TIB = "5000000000000000000"
-CACHE_MISS_RATE_PER_TIB = "5000000000000000000"
+# 7 USDFC per TiB (in 1e18 units)
+CDN_RATE_PER_TIB = "7000000000000000000"
+CACHE_MISS_RATE_PER_TIB = "7000000000000000000"
 
 [[env.mainnet.d1_databases]]
 binding = "DB"

@@ -3,9 +3,9 @@ import { getChainClient as defaultGetChainClient } from '../lib/chain.js'
 import { abi as filbeamAbi } from '../lib/filbeam.js'
 import {
   aggregateUsageData,
-  prepareUsageRollupData,
   epochToTimestamp,
-} from '../lib/rollup.js'
+  prepareUsageReportData,
+} from '../lib/usage-report.js'
 import { TransactionMonitorWorkflow } from '@filbeam/workflows'
 import {
   handleTransactionRetryQueueMessage as defaultHandleTransactionRetryQueueMessage,
@@ -40,13 +40,13 @@ import {
  *   TRANSACTION_QUEUE: import('cloudflare:workers').Queue<
  *     TransactionRetryMessage | TransactionConfirmedMessage
  *   >
- * }} RollupEnv
+ * }} UsageReporterEnv
  */
 
 export default {
   /**
    * @param {any} _controller
-   * @param {RollupEnv} env
+   * @param {UsageReporterEnv} env
    * @param {ExecutionContext} _ctx
    * @param {{ getChainClient?: typeof defaultGetChainClient }} [options]
    */
@@ -56,10 +56,9 @@ export default {
     _ctx,
     { getChainClient = defaultGetChainClient } = {},
   ) {
-    console.log('Starting rollup worker scheduled run')
+    console.log('Starting usage reporter worker scheduled run')
 
     try {
-      // Get chain client and current epoch from chain
       const { publicClient, walletClient, account } = getChainClient(env)
       const currentEpoch = await publicClient.getBlockNumber()
       const targetEpoch = currentEpoch - 1n // Report up to previous epoch
@@ -67,7 +66,6 @@ export default {
         `Current epoch: ${currentEpoch}, reporting up to epoch: ${targetEpoch}`,
       )
 
-      // Convert target epoch to ISO timestamp for SQL query
       const upToTimestamp = epochToTimestamp(
         targetEpoch,
         BigInt(env.GENESIS_BLOCK_TIMESTAMP),
@@ -75,11 +73,7 @@ export default {
       console.log(`Aggregating usage data up to timestamp: ${upToTimestamp}`)
 
       // Aggregate usage data for all datasets that need reporting
-      const usageData = await aggregateUsageData(
-        env.DB,
-        upToTimestamp,
-        BigInt(env.GENESIS_BLOCK_TIMESTAMP),
-      )
+      const usageData = await aggregateUsageData(env.DB, upToTimestamp)
 
       if (usageData.length === 0) {
         console.log('No usage data found')
@@ -88,11 +82,14 @@ export default {
 
       console.log(`Found usage data for ${usageData.length} data sets`)
 
-      // Prepare usage rollup data for contract call
-      const usageRollupData = prepareUsageRollupData(usageData)
+      // Prepare usage report data for contract call
+      const usageReportData = prepareUsageReportData(
+        usageData,
+        BigInt(env.GENESIS_BLOCK_TIMESTAMP),
+      )
 
       console.log(
-        `Reporting usage for ${usageRollupData.dataSetIds.length} data sets`,
+        `Reporting usage for ${usageReportData.dataSetIds.length} data sets`,
       )
 
       // Create contract call
@@ -102,15 +99,15 @@ export default {
         abi: filbeamAbi,
         functionName: 'recordUsageRollups',
         args: [
-          usageRollupData.dataSetIds,
-          usageRollupData.maxEpochs,
-          usageRollupData.cdnBytesUsed,
-          usageRollupData.cacheMissBytesUsed,
+          usageReportData.dataSetIds,
+          usageReportData.maxEpochs,
+          usageReportData.cdnBytesUsed,
+          usageReportData.cacheMissBytesUsed,
         ],
       })
 
       console.log(
-        `Sending recordUsageRollups transaction for ${usageRollupData.dataSetIds.length} datasets`,
+        `Sending recordUsageRollups transaction for ${usageReportData.dataSetIds.length} data sets`,
       )
 
       // Send transaction
@@ -120,20 +117,20 @@ export default {
 
       // Store transaction hash to prevent double-counting
       await env.DB.batch(
-        usageRollupData.dataSetIds.map((dataSetId) =>
+        usageReportData.dataSetIds.map((dataSetId) =>
           env.DB.prepare(
-            `UPDATE data_sets SET pending_rollup_tx_hash = ? WHERE id = ?`,
+            `UPDATE data_sets SET pending_usage_report_tx_hash = ? WHERE id = ?`,
           ).bind(hash, dataSetId),
         ),
       )
 
       console.log(
-        `Stored pending transaction hash for ${usageRollupData.dataSetIds.length} datasets`,
+        `Stored pending transaction hash for ${usageReportData.dataSetIds.length} data sets`,
       )
 
       // Start transaction monitor workflow
       await env.TRANSACTION_MONITOR_WORKFLOW.create({
-        id: `rollup-tx-monitor-${hash}-${Date.now()}`,
+        id: `usage-report-tx-monitor-${hash}-${Date.now()}`,
         params: {
           transactionHash: hash,
           metadata: {
@@ -148,7 +145,7 @@ export default {
         `Started transaction monitor workflow for transaction: ${hash}`,
       )
     } catch (error) {
-      console.error('Error in rollup worker:', error)
+      console.error('Error in usage reporter worker:', error)
       throw error
     }
   },
@@ -159,7 +156,7 @@ export default {
    * @param {MessageBatch<
    *   TransactionRetryMessage | TransactionConfirmedMessage
    * >} batch
-   * @param {RollupEnv} env
+   * @param {UsageReporterEnv} env
    * @param {ExecutionContext} ctx
    */
   async queue(
