@@ -1,5 +1,5 @@
 /**
- * @param {Env} env
+ * @param {{ DB: D1Database }} env
  * @param {string} dataSetId
  * @param {string} pieceId
  * @param {string} pieceCid
