@@ -102,6 +102,7 @@ export default {
       )
 
       const { response: originResponse, cacheMiss } = await retrieveFile(
+        ctx,
         serviceUrl,
         pieceCid,
         request,
