@@ -1,6 +1,27 @@
 import { getBadBitsEntry } from '../lib/bad-bits-util'
+import { BYTES_IN_TIB } from '../lib/constants'
+import { DNS_ROOT } from './retriever.test'
 
 /**
+ * @param {string} payerWalletAddress
+ * @param {string} pieceCid
+ * @param {string} method
+ * @param {Object} headers
+ * @returns {Request}
+ */
+export function withRequest(
+  payerWalletAddress,
+  pieceCid,
+  method = 'GET',
+  headers = {},
+) {
+  let url = 'http://'
+  if (payerWalletAddress) url += `${payerWalletAddress}.`
+  url += DNS_ROOT.slice(1) // remove the leading '.'
+  if (pieceCid) url += `/${pieceCid}`
+
+  return new Request(url, { method, headers })
+} /**
  * @param {Env} env
  * @param {Object} options
  * @param {number} options.serviceProviderId
@@ -9,9 +30,10 @@ import { getBadBitsEntry } from '../lib/bad-bits-util'
  * @param {boolean} options.withCDN
  * @param {string} options.payerAddress
  * @param {string} options.pieceId
- * @param {number} options.cdnEgressQuota
- * @param {number} options.cacheMissEgressQuota
+ * @param {string} options.cdnEgressQuota
+ * @param {string} options.cacheMissEgressQuota
  */
+
 export async function withDataSetPieces(
   env,
   {
@@ -21,8 +43,8 @@ export async function withDataSetPieces(
     dataSetId = 0,
     withCDN = true,
     pieceId = 0,
-    cdnEgressQuota = 1099511627776, // 1 TiB in bytes
-    cacheMissEgressQuota = 1099511627776, // 1 TiB in bytes
+    cdnEgressQuota = String(BYTES_IN_TIB),
+    cacheMissEgressQuota = String(BYTES_IN_TIB),
   } = {},
 ) {
   await env.DB.batch([
@@ -48,13 +70,13 @@ export async function withDataSetPieces(
     ).bind(String(pieceId), String(dataSetId), pieceCid),
   ])
 }
-
 /**
  * @param {Env} env
  * @param {Object} options
  * @param {number} id
  * @param {string} [options.serviceUrl]
  */
+
 export async function withApprovedProvider(
   env,
   { id, serviceUrl = 'https://pdp.xyz/' } = {},
@@ -68,11 +90,11 @@ export async function withApprovedProvider(
     .bind(String(id), serviceUrl)
     .run()
 }
-
 /**
  * @param {Env} env
  * @param {...string} cids
  */
+
 export async function withBadBits(env, ...cids) {
   const stmt = await env.DB.prepare(
     'INSERT INTO bad_bits (hash, last_modified_at) VALUES (?, CURRENT_TIME)',
@@ -80,7 +102,6 @@ export async function withBadBits(env, ...cids) {
   const entries = await Promise.all(cids.map(getBadBitsEntry))
   await env.DB.batch(entries.map((it) => stmt.bind(it)))
 }
-
 /**
  * Inserts an address into the database with an optional sanctioned flag.
  *
@@ -89,6 +110,7 @@ export async function withBadBits(env, ...cids) {
  * @param {boolean} [isSanctioned=false] Default is `false`
  * @returns {Promise<void>}
  */
+
 export async function withWalletDetails(env, address, isSanctioned = false) {
   await env.DB.prepare(
     `

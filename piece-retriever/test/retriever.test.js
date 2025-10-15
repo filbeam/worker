@@ -7,20 +7,21 @@ import {
   createExecutionContext,
   waitOnExecutionContext,
 } from 'cloudflare:test'
-import assert from 'node:assert/strict'
 import {
   withDataSetPieces,
   withApprovedProvider,
   withBadBits,
   withWalletDetails,
-} from './test-data-builders.js'
+  withRequest,
+} from './test-helpers.js'
 import { CONTENT_STORED_ON_CALIBRATION } from './test-data.js'
+import { BYTES_IN_TIB } from '../lib/constants.js'
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-const DNS_ROOT = '.filbeam.io'
+export const DNS_ROOT = '.filbeam.io'
 env.DNS_ROOT = DNS_ROOT
 
 describe('piece-retriever.fetch', () => {
@@ -231,7 +232,7 @@ describe('piece-retriever.fetch', () => {
       retrieveFile: mockRetrieveFile,
     })
     await waitOnExecutionContext(ctx)
-    assert.strictEqual(res.status, 200)
+    expect(res.status).toBe(200)
     const readOutput = await env.DB.prepare(
       `SELECT id, response_status, egress_bytes, cache_miss
        FROM retrieval_logs
@@ -239,8 +240,7 @@ describe('piece-retriever.fetch', () => {
     )
       .bind(String(realDataSetId))
       .all()
-    const result = readOutput.results
-    assert.deepStrictEqual(result, [
+    expect(readOutput.results).toStrictEqual([
       {
         id: 1, // Assuming this is the first log entry
         response_status: 200,
@@ -268,7 +268,7 @@ describe('piece-retriever.fetch', () => {
       retrieveFile: mockRetrieveFile,
     })
     await waitOnExecutionContext(ctx)
-    assert.strictEqual(res.status, 200)
+    expect(res.status).toBe(200)
     const readOutput = await env.DB.prepare(
       `SELECT id, response_status, egress_bytes, cache_miss
        FROM retrieval_logs
@@ -276,8 +276,7 @@ describe('piece-retriever.fetch', () => {
     )
       .bind(String(realDataSetId))
       .all()
-    const result = readOutput.results
-    assert.deepStrictEqual(result, [
+    expect(readOutput.results).toStrictEqual([
       {
         id: 1, // Assuming this is the first log entry
         response_status: 200,
@@ -307,7 +306,7 @@ describe('piece-retriever.fetch', () => {
       retrieveFile: mockRetrieveFile,
     })
     await waitOnExecutionContext(ctx)
-    assert.strictEqual(res.status, 200)
+    expect(res.status).toBe(200)
     const readOutput = await env.DB.prepare(
       `SELECT
         response_status,
@@ -319,13 +318,13 @@ describe('piece-retriever.fetch', () => {
     )
       .bind(String(realDataSetId))
       .all()
-    assert.strictEqual(readOutput.results.length, 1)
+    expect(readOutput.results.length).toBe(1)
     const result = readOutput.results[0]
 
-    assert.strictEqual(result.response_status, 200)
-    assert.strictEqual(typeof result.fetch_ttfb, 'number')
-    assert.strictEqual(typeof result.fetch_ttlb, 'number')
-    assert.strictEqual(typeof result.worker_ttfb, 'number')
+    expect(result.response_status).toBe(200)
+    expect(typeof result.fetch_ttfb).toBe('number')
+    expect(typeof result.fetch_ttlb).toBe('number')
+    expect(typeof result.worker_ttfb).toBe('number')
   })
   it('stores request country code in D1', async () => {
     const body = 'file content'
@@ -345,7 +344,7 @@ describe('piece-retriever.fetch', () => {
       retrieveFile: mockRetrieveFile,
     })
     await waitOnExecutionContext(ctx)
-    assert.strictEqual(res.status, 200)
+    expect(res.status).toBe(200)
     const { results } = await env.DB.prepare(
       `SELECT request_country_code
        FROM retrieval_logs
@@ -353,7 +352,7 @@ describe('piece-retriever.fetch', () => {
     )
       .bind(String(realDataSetId))
       .all()
-    assert.deepStrictEqual(results, [
+    expect(results).toStrictEqual([
       {
         request_country_code: 'US',
       },
@@ -376,14 +375,17 @@ describe('piece-retriever.fetch', () => {
       retrieveFile: mockRetrieveFile,
     })
     await waitOnExecutionContext(ctx)
-    assert.strictEqual(res.status, 200)
+    expect(res.status).toBe(200)
     const readOutput = await env.DB.prepare(
       'SELECT egress_bytes FROM retrieval_logs WHERE data_set_id = ?',
     )
       .bind(String(realDataSetId))
       .all()
-    assert.strictEqual(readOutput.results.length, 1)
-    assert.strictEqual(readOutput.results[0].egress_bytes, 0)
+    expect(readOutput.results).toStrictEqual([
+      expect.objectContaining({
+        egress_bytes: 0,
+      }),
+    ])
   })
   it(
     'measures egress correctly from real service provider',
@@ -398,7 +400,7 @@ describe('piece-retriever.fetch', () => {
               const res = await worker.fetch(req, env, ctx, { retrieveFile })
               await waitOnExecutionContext(ctx)
 
-              assert.strictEqual(res.status, 200)
+              expect(res.status).toBe(200)
 
               const content = await res.arrayBuffer()
               const actualBytes = content.byteLength
@@ -409,8 +411,11 @@ describe('piece-retriever.fetch', () => {
                 .bind(String(dataSetId))
                 .all()
 
-              assert.strictEqual(results.length, 1)
-              assert.strictEqual(results[0].egress_bytes, actualBytes)
+              expect(results).toStrictEqual([
+                expect.objectContaining({
+                  egress_bytes: actualBytes,
+                }),
+              ])
 
               return { serviceProviderId, success: true }
             } catch (err) {
@@ -459,7 +464,7 @@ describe('piece-retriever.fetch', () => {
     const res = await worker.fetch(req, env, ctx)
     await waitOnExecutionContext(ctx)
 
-    assert.strictEqual(res.status, 402)
+    expect(res.status).toBe(402)
   })
   it('reads the provider URL from the database', async () => {
     const serviceProviderId = 'service-provider-id'
@@ -552,7 +557,7 @@ describe('piece-retriever.fetch', () => {
     await waitOnExecutionContext(ctx)
     expect(await res.text()).toBe('hello')
 
-    assert.strictEqual(res.status, 200)
+    expect(res.status).toBe(200)
     const { results } = await env.DB.prepare(
       `SELECT id, response_status, cache_miss
        FROM retrieval_logs
@@ -560,7 +565,7 @@ describe('piece-retriever.fetch', () => {
     )
       .bind(String(dataSetId))
       .all()
-    assert.deepStrictEqual(results, [
+    expect(results).toStrictEqual([
       {
         id: 1, // Assuming this is the first log entry
         response_status: 200,
@@ -649,7 +654,7 @@ describe('piece-retriever.fetch', () => {
     const res = await worker.fetch(req, env, ctx)
     await waitOnExecutionContext(ctx)
 
-    assert.strictEqual(res.status, 403)
+    expect(res.status).toBe(403)
   })
   it('does not log to retrieval_logs on method not allowed (405)', async () => {
     const ctx = createExecutionContext()
@@ -680,8 +685,8 @@ describe('piece-retriever.fetch', () => {
         unsupportedServiceProviderId,
         defaultPayerAddress,
         true,
-        1099511627776,
-        1099511627776,
+        String(BYTES_IN_TIB),
+        String(BYTES_IN_TIB),
       ),
       env.DB.prepare(
         'INSERT INTO pieces (id, data_set_id, cid) VALUES (?, ?, ?)',
@@ -741,7 +746,7 @@ describe('piece-retriever.fetch', () => {
     await env.DB.prepare(
       'INSERT INTO data_sets (id, service_provider_id, payer_address, with_cdn, cdn_egress_quota, cache_miss_egress_quota) VALUES (?, ?, ?, ?, ?, ?)',
     )
-      .bind(dataSetId, serviceProviderId, payerAddress, true, 100, 100)
+      .bind(dataSetId, serviceProviderId, payerAddress, true, '100', '100')
       .run()
 
     // Set up piece
@@ -772,11 +777,7 @@ describe('piece-retriever.fetch', () => {
     // Should get full content even when quota is exceeded
     // Response should be successful with all 500 bytes
     const body = await res.arrayBuffer()
-    assert.strictEqual(
-      body.byteLength,
-      500,
-      `Expected full 500 bytes, got ${body.byteLength}`,
-    )
+    expect(body.byteLength).toBe(500)
 
     // Check logs after execution context completes
     const { results } = await env.DB.prepare(
@@ -785,13 +786,12 @@ describe('piece-retriever.fetch', () => {
       .bind(dataSetId)
       .all()
 
-    assert.strictEqual(results.length, 1)
-    assert.strictEqual(
-      results[0].egress_bytes,
-      500,
-      `Expected full 500 bytes logged, got ${results[0].egress_bytes}`,
-    )
-    assert.strictEqual(results[0].response_status, 200)
+    expect(results).toStrictEqual([
+      {
+        egress_bytes: 500,
+        response_status: 200,
+      },
+    ])
 
     // Check that both quotas went negative (100 - 500 = -400)
     const quotaResult = await env.DB.prepare(
@@ -800,8 +800,10 @@ describe('piece-retriever.fetch', () => {
       .bind(dataSetId)
       .first()
 
-    assert.strictEqual(quotaResult.cdn_egress_quota, -400)
-    assert.strictEqual(quotaResult.cache_miss_egress_quota, -400)
+    expect(quotaResult).toStrictEqual({
+      cdn_egress_quota: '-400',
+      cache_miss_egress_quota: '-400',
+    })
   })
 
   it('allows full transfer when within quota', async () => {
@@ -822,7 +824,7 @@ describe('piece-retriever.fetch', () => {
     await env.DB.prepare(
       'INSERT INTO data_sets (id, service_provider_id, payer_address, with_cdn, cdn_egress_quota, cache_miss_egress_quota) VALUES (?, ?, ?, ?, ?, ?)',
     )
-      .bind(dataSetId, serviceProviderId, payerAddress, true, 1000, 1000)
+      .bind(dataSetId, serviceProviderId, payerAddress, true, '1000', '1000')
       .run()
 
     // Set up piece
@@ -854,9 +856,9 @@ describe('piece-retriever.fetch', () => {
     await waitOnExecutionContext(ctx)
 
     // Should succeed
-    assert.strictEqual(res.status, 200)
+    expect(res.status).toBe(200)
     const body = await res.arrayBuffer()
-    assert.strictEqual(body.byteLength, 100)
+    expect(body.byteLength).toBe(100)
 
     // Check that full content was logged
     const { results } = await env.DB.prepare(
@@ -865,9 +867,12 @@ describe('piece-retriever.fetch', () => {
       .bind(dataSetId)
       .all()
 
-    assert.strictEqual(results.length, 1)
-    assert.strictEqual(results[0].egress_bytes, 100)
-    assert.strictEqual(results[0].response_status, 200)
+    expect(results).toStrictEqual([
+      {
+        egress_bytes: 100,
+        response_status: 200,
+      },
+    ])
 
     // Check that quotas were decremented correctly (cache hit)
     const quotaResult = await env.DB.prepare(
@@ -876,28 +881,9 @@ describe('piece-retriever.fetch', () => {
       .bind(dataSetId)
       .first()
 
-    assert.strictEqual(quotaResult.cdn_egress_quota, 900) // 1000 - 100
-    assert.strictEqual(quotaResult.cache_miss_egress_quota, 1000) // unchanged on cache hit
+    expect(quotaResult).toStrictEqual({
+      cdn_egress_quota: '900',
+      cache_miss_egress_quota: '1000',
+    })
   })
 })
-
-/**
- * @param {string} payerWalletAddress
- * @param {string} pieceCid
- * @param {string} method
- * @param {Object} headers
- * @returns {Request}
- */
-function withRequest(
-  payerWalletAddress,
-  pieceCid,
-  method = 'GET',
-  headers = {},
-) {
-  let url = 'http://'
-  if (payerWalletAddress) url += `${payerWalletAddress}.`
-  url += DNS_ROOT.slice(1) // remove the leading '.'
-  if (pieceCid) url += `/${pieceCid}`
-
-  return new Request(url, { method, headers })
-}

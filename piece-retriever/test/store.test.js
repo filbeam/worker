@@ -5,10 +5,8 @@ import {
   updateDataSetStats,
 } from '../lib/store.js'
 import { env } from 'cloudflare:test'
-import {
-  withDataSetPieces,
-  withApprovedProvider,
-} from './test-data-builders.js'
+import { withDataSetPieces, withApprovedProvider } from './test-helpers.js'
+import { BYTES_IN_TIB } from '../lib/constants.js'
 
 describe('logRetrievalResult', () => {
   it('inserts a log into local D1 via logRetrievalResult and verifies it', async () => {
@@ -68,8 +66,8 @@ describe('getStorageProviderAndValidatePayer', () => {
         APPROVED_SERVICE_PROVIDER_ID,
         payerAddress,
         true,
-        1099511627776,
-        1099511627776,
+        String(BYTES_IN_TIB),
+        String(BYTES_IN_TIB),
       )
       .run()
     await env.DB.prepare(
@@ -126,8 +124,8 @@ describe('getStorageProviderAndValidatePayer', () => {
         serviceProviderId,
         payerAddress.replace('a', 'b'),
         true,
-        1099511627776,
-        1099511627776,
+        String(BYTES_IN_TIB),
+        String(BYTES_IN_TIB),
       ),
       env.DB.prepare(
         'INSERT INTO pieces (id, data_set_id, cid) VALUES (?, ?, ?)',
@@ -155,8 +153,8 @@ describe('getStorageProviderAndValidatePayer', () => {
         serviceProviderId,
         payerAddress,
         false,
-        1099511627776,
-        1099511627776,
+        String(BYTES_IN_TIB),
+        String(BYTES_IN_TIB),
       ),
       env.DB.prepare(
         'INSERT INTO pieces (id, data_set_id, cid) VALUES (?, ?, ?)',
@@ -181,8 +179,8 @@ describe('getStorageProviderAndValidatePayer', () => {
         APPROVED_SERVICE_PROVIDER_ID,
         payerAddress,
         true,
-        1099511627776,
-        1099511627776,
+        String(BYTES_IN_TIB),
+        String(BYTES_IN_TIB),
       ),
       env.DB.prepare(
         'INSERT INTO pieces (id, data_set_id, cid) VALUES (?, ?, ?)',
@@ -221,8 +219,8 @@ describe('getStorageProviderAndValidatePayer', () => {
         serviceProviderId1,
         payerAddress,
         true,
-        1099511627776,
-        1099511627776,
+        String(BYTES_IN_TIB),
+        String(BYTES_IN_TIB),
       )
       .run()
 
@@ -234,8 +232,8 @@ describe('getStorageProviderAndValidatePayer', () => {
         serviceProviderId2,
         payerAddress,
         true,
-        1099511627776,
-        1099511627776,
+        String(BYTES_IN_TIB),
+        String(BYTES_IN_TIB),
       )
       .run()
 
@@ -303,8 +301,8 @@ describe('getStorageProviderAndValidatePayer', () => {
       dataSetId: dataSetId1,
       serviceProviderId: serviceProviderId1.toLowerCase(),
       serviceUrl: 'https://pdp-provider-1.xyz',
-      cdnEgressQuota: 1099511627776,
-      cacheMissEgressQuota: 1099511627776,
+      cdnEgressQuota: BYTES_IN_TIB,
+      cacheMissEgressQuota: BYTES_IN_TIB,
     })
   })
 })
@@ -332,8 +330,8 @@ describe('Egress Quota Management', () => {
         APPROVED_SERVICE_PROVIDER_ID,
         payerAddress,
         true,
-        0,
-        1000000,
+        '0',
+        '1000000',
       )
       .run()
     await env.DB.prepare(
@@ -360,8 +358,8 @@ describe('Egress Quota Management', () => {
         APPROVED_SERVICE_PROVIDER_ID,
         payerAddress,
         true,
-        1000000,
-        0,
+        '1000000',
+        '0',
       )
       .run()
     await env.DB.prepare(
@@ -388,8 +386,8 @@ describe('Egress Quota Management', () => {
         APPROVED_SERVICE_PROVIDER_ID,
         payerAddress,
         true,
-        1000000,
-        1000000,
+        '1000000',
+        '1000000',
       )
       .run()
     await env.DB.prepare(
@@ -403,14 +401,18 @@ describe('Egress Quota Management', () => {
       payerAddress,
       pieceCid,
     )
-    expect(result.dataSetId).toBe(dataSetId)
-    expect(result.cdnEgressQuota).toBe(1000000)
-    expect(result.cacheMissEgressQuota).toBe(1000000)
+    expect(result).toStrictEqual({
+      dataSetId,
+      serviceProviderId: APPROVED_SERVICE_PROVIDER_ID,
+      serviceUrl: 'https://quota-test-provider.xyz',
+      cdnEgressQuota: 1000000n,
+      cacheMissEgressQuota: 1000000n,
+    })
   })
 
   it('correctly decrements CDN quota on cache hit', async () => {
     const dataSetId = 'test-quota-decrement-cdn'
-    const initialQuota = 1000000
+    const initialQuota = '1000000'
     const egressBytes = 100000
 
     await env.DB.prepare(
@@ -438,14 +440,15 @@ describe('Egress Quota Management', () => {
       .bind(dataSetId)
       .first()
 
-    const expectedQuota = Number(initialQuota) - egressBytes
-    expect(result.cdn_egress_quota).toBe(expectedQuota)
-    expect(result.cache_miss_egress_quota).toBe(Number(initialQuota))
+    expect(result).toStrictEqual({
+      cdn_egress_quota: '900000',
+      cache_miss_egress_quota: initialQuota,
+    })
   })
 
   it('correctly decrements cache miss quota on cache miss', async () => {
     const dataSetId = 'test-quota-decrement-miss'
-    const initialQuota = 1000000
+    const initialQuota = '1000000'
     const egressBytes = 100000
 
     await env.DB.prepare(
@@ -473,14 +476,15 @@ describe('Egress Quota Management', () => {
       .bind(dataSetId)
       .first()
 
-    const expectedQuota = Number(initialQuota) - egressBytes
-    expect(result.cdn_egress_quota).toBe(expectedQuota)
-    expect(result.cache_miss_egress_quota).toBe(expectedQuota)
+    expect(result).toStrictEqual({
+      cdn_egress_quota: '900000',
+      cache_miss_egress_quota: '900000',
+    })
   })
 
   it('allows quota to go negative when egress exceeds quota', async () => {
     const dataSetId = 'test-quota-below-zero'
-    const insufficientQuota = 1000
+    const insufficientQuota = '1000'
     const egressBytes = 2000
 
     await env.DB.prepare(
@@ -510,14 +514,16 @@ describe('Egress Quota Management', () => {
       .first()
 
     // Both quotas should be negative (1000 - 2000 = -1000)
-    expect(result.cdn_egress_quota).toBe(-1000)
-    expect(result.cache_miss_egress_quota).toBe(-1000)
+    expect(result).toStrictEqual({
+      cdn_egress_quota: '-1000',
+      cache_miss_egress_quota: '-1000',
+    })
   })
 
   it('allows CDN quota to go negative when egress exceeds quota', async () => {
     const dataSetId = 'test-cdn-quota-below-zero'
-    const insufficientQuota = 500
-    const sufficientQuota = 1000000
+    const insufficientQuota = '500'
+    const sufficientQuota = '1000000'
     const egressBytes = 1500
 
     await env.DB.prepare(
@@ -547,9 +553,11 @@ describe('Egress Quota Management', () => {
       .first()
 
     // CDN quota should be negative (500 - 1500 = -1000)
-    expect(result.cdn_egress_quota).toBe(-1000)
     // Cache miss quota should remain unchanged on cache hit
-    expect(result.cache_miss_egress_quota).toBe(sufficientQuota)
+    expect(result).toStrictEqual({
+      cdn_egress_quota: '-1000',
+      cache_miss_egress_quota: sufficientQuota,
+    })
   })
 
   it('returns error when quota values are null', async () => {
@@ -611,7 +619,13 @@ describe('Egress Quota Management', () => {
       payerAddress,
       pieceCid,
     )
-    expect(result.dataSetId).toBe(dataSetId)
+    expect(result).toStrictEqual({
+      dataSetId,
+      serviceProviderId: APPROVED_SERVICE_PROVIDER_ID,
+      serviceUrl: 'https://quota-test-provider.xyz',
+      cdnEgressQuota: 1000n,
+      cacheMissEgressQuota: 1000n,
+    })
 
     // Decrement by exact amount should result in 0
     await updateDataSetStats(env, {
@@ -625,7 +639,9 @@ describe('Egress Quota Management', () => {
     )
       .bind(dataSetId)
       .first()
-    expect(afterDecrement.cdn_egress_quota).toBe(0)
+    expect(afterDecrement).toStrictEqual({
+      cdn_egress_quota: '0',
+    })
   })
 })
 
