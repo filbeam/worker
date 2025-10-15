@@ -1,6 +1,6 @@
 /** @import {MessageBatch} from 'cloudflare:workers' */
 import { getChainClient as defaultGetChainClient } from '../lib/chain.js'
-import { abi as filbeamAbi } from '../lib/filbeam.js'
+import filbeamAbi from '../lib/filbeam.abi.js'
 import {
   aggregateUsageData,
   epochToTimestamp,
