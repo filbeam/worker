@@ -1,6 +1,6 @@
 /** @import {MessageBatch} from 'cloudflare:workers' */
 import { getChainClient as defaultGetChainClient } from '../lib/chain.js'
-import { abi } from '../lib/filbeam.js'
+import filbeamAbi from '../lib/FilBeamOperator.abi.json'
 import { getDataSetsForSettlement } from '../lib/rail-settlement.js'
 import { TransactionMonitorWorkflow } from '@filbeam/workflows'
 import { handleTransactionRetryQueueMessage as defaultHandleTransactionRetryQueueMessage } from '../lib/queue-handlers.js'
@@ -56,7 +56,7 @@ export default {
 
       const { request } = await publicClient.simulateContract({
         account,
-        abi,
+        abi: filbeamAbi,
         address: env.FILBEAM_CONTRACT_ADDRESS,
         functionName: 'settleCDNPaymentRailBatch',
         args: dataSetIds.map((id) => BigInt(id)),
