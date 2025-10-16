@@ -1,5 +1,6 @@
 /** @import {WorkflowStep} from 'cloudflare:workers' */
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { env } from 'cloudflare:test'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import { TransactionMonitorWorkflow } from '../lib/transaction-monitor-workflow.js'
 
 vi.mock('../lib/chain.js', () => ({
@@ -7,8 +8,10 @@ vi.mock('../lib/chain.js', () => ({
 }))
 
 describe('TransactionMonitorWorkflow', () => {
-  /** @type {TransactionMonitorWorkflow} */
-  let workflow
+  /** @type {WorkflowStep} */
+  const mockStep = { do: vi.fn() }
+  /** @type {{ send: (message: any) => Promise<void> }} */
+  const mockQueue = { send: vi.fn().mockResolvedValue() }
   /**
    * @type {{
    *   TRANSACTION_QUEUE: { send: (message: any) => Promise<void> }
@@ -17,31 +20,11 @@ describe('TransactionMonitorWorkflow', () => {
    *   FILCDN_CONTROLLER_ADDRESS_PRIVATE_KEY: string
    * }}
    */
-  let mockEnv
-  /** @type {WorkflowStep} */
-  let mockStep
-  /** @type {{ send: (message: any) => Promise<void> }} */
-  let mockQueue
-
-  beforeEach(async () => {
-    mockQueue = {
-      send: vi.fn().mockResolvedValue(),
-    }
-
-    mockEnv = {
-      TRANSACTION_QUEUE: mockQueue,
-      ENVIRONMENT: 'calibration',
-      RPC_URL: 'https://api.calibration.node.glif.io/rpc/v0',
-      FILCDN_CONTROLLER_ADDRESS_PRIVATE_KEY: '0x1234',
-    }
-
-    mockStep = {
-      do: vi.fn(),
-    }
-
-    workflow = Object.create(TransactionMonitorWorkflow.prototype)
-    workflow.env = mockEnv
-  })
+  const mockEnv = {
+    ...env,
+    TRANSACTION_QUEUE: mockQueue,
+    FILCDN_CONTROLLER_ADDRESS_PRIVATE_KEY: '0x1234',
+  }
 
   afterEach(() => {
     vi.clearAllMocks()
@@ -49,6 +32,9 @@ describe('TransactionMonitorWorkflow', () => {
 
   describe('run', () => {
     it('should wait for transaction receipt', async () => {
+      const workflow = Object.create(TransactionMonitorWorkflow.prototype)
+      workflow.env = mockEnv
+
       const transactionHash = '0xabc123'
       const mockReceipt = { status: 'success', blockNumber: 12345n }
 
@@ -82,6 +68,9 @@ describe('TransactionMonitorWorkflow', () => {
     })
 
     it('should send success message when onSuccess is provided', async () => {
+      const workflow = Object.create(TransactionMonitorWorkflow.prototype)
+      workflow.env = mockEnv
+
       const transactionHash = '0xdef456'
       const mockReceipt = { status: 'success', blockNumber: 12345n }
       const successData = { upToTimestamp: Date.now() }
@@ -127,6 +116,9 @@ describe('TransactionMonitorWorkflow', () => {
     })
 
     it('should send retry message on transaction failure', async () => {
+      const workflow = Object.create(TransactionMonitorWorkflow.prototype)
+      workflow.env = mockEnv
+
       const transactionHash = '0xghi789'
       const retryData = { upToTimestamp: Date.now() }
       const error = new Error('Transaction failed')
@@ -172,6 +164,9 @@ describe('TransactionMonitorWorkflow', () => {
     })
 
     it('should handle timeout and send retry', async () => {
+      const workflow = Object.create(TransactionMonitorWorkflow.prototype)
+      workflow.env = mockEnv
+
       const transactionHash = '0xjkl012'
       const timeoutError = new Error('Timeout waiting for transaction')
 
@@ -210,6 +205,9 @@ describe('TransactionMonitorWorkflow', () => {
     })
 
     it('should handle minimal payload without metadata', async () => {
+      const workflow = Object.create(TransactionMonitorWorkflow.prototype)
+      workflow.env = mockEnv
+
       const transactionHash = '0xmno345'
       const mockReceipt = { status: 'success', blockNumber: 12345n }
 
@@ -238,6 +236,9 @@ describe('TransactionMonitorWorkflow', () => {
     })
 
     it('should respect retry configuration', async () => {
+      const workflow = Object.create(TransactionMonitorWorkflow.prototype)
+      workflow.env = mockEnv
+
       const transactionHash = '0xpqr678'
 
       mockStep.do.mockImplementation(async (name, options, callback) => {
@@ -265,6 +266,9 @@ describe('TransactionMonitorWorkflow', () => {
     })
 
     it('should handle both success and retry data', async () => {
+      const workflow = Object.create(TransactionMonitorWorkflow.prototype)
+      workflow.env = mockEnv
+
       const transactionHash = '0xstu901'
       const successData = { confirmationData: 'success' }
       const retryData = { retryInfo: 'retry' }
@@ -308,6 +312,9 @@ describe('TransactionMonitorWorkflow', () => {
     })
 
     it('should include retry data in failure scenario', async () => {
+      const workflow = Object.create(TransactionMonitorWorkflow.prototype)
+      workflow.env = mockEnv
+
       const transactionHash = '0xvwx234'
       const retryData = { attemptCount: 1, originalTimestamp: Date.now() }
       const error = new Error('Network error')
@@ -342,6 +349,9 @@ describe('TransactionMonitorWorkflow', () => {
 
   describe('WorkflowEntrypoint inheritance', () => {
     it('should extend WorkflowEntrypoint', () => {
+      const workflow = Object.create(TransactionMonitorWorkflow.prototype)
+      workflow.env = mockEnv
+
       expect(workflow.run).toBeDefined()
       expect(workflow.env).toBe(mockEnv)
       expect(Object.getPrototypeOf(workflow)).toBe(
