@@ -1,42 +1,41 @@
 import { epochToUnixTimestamp } from '../lib/usage-report.js'
 
-const FILECOIN_CALIBRATION_GENESIS_BLOCK_TIMESTAMP = 1667326380
+const CALIBRATION_GENESIS_BLOCK_TIMESTAMP = 1667326380n
 
 export const EPOCH_95_TIMESTAMP = epochToUnixTimestamp(
   95n,
-  BigInt(FILECOIN_CALIBRATION_GENESIS_BLOCK_TIMESTAMP),
+  CALIBRATION_GENESIS_BLOCK_TIMESTAMP,
 )
 export const EPOCH_98_TIMESTAMP = epochToUnixTimestamp(
   98n,
-  BigInt(FILECOIN_CALIBRATION_GENESIS_BLOCK_TIMESTAMP),
+  CALIBRATION_GENESIS_BLOCK_TIMESTAMP,
 )
 export const EPOCH_99_TIMESTAMP = epochToUnixTimestamp(
   99n,
-  BigInt(FILECOIN_CALIBRATION_GENESIS_BLOCK_TIMESTAMP),
+  CALIBRATION_GENESIS_BLOCK_TIMESTAMP,
 )
 export const EPOCH_100_TIMESTAMP = epochToUnixTimestamp(
   100n,
-  BigInt(FILECOIN_CALIBRATION_GENESIS_BLOCK_TIMESTAMP),
+  CALIBRATION_GENESIS_BLOCK_TIMESTAMP,
 )
 export const EPOCH_101_TIMESTAMP = epochToUnixTimestamp(
   101n,
-  BigInt(FILECOIN_CALIBRATION_GENESIS_BLOCK_TIMESTAMP),
+  CALIBRATION_GENESIS_BLOCK_TIMESTAMP,
 )
-export const EPOCH_95_TIMESTAMP_ISO = new Date(
-  EPOCH_95_TIMESTAMP * 1000,
-).toISOString()
-export const EPOCH_98_TIMESTAMP_ISO = new Date(
-  EPOCH_98_TIMESTAMP * 1000,
-).toISOString()
-export const EPOCH_99_TIMESTAMP_ISO = new Date(
-  EPOCH_99_TIMESTAMP * 1000,
-).toISOString()
-export const EPOCH_100_TIMESTAMP_ISO = new Date(
-  EPOCH_100_TIMESTAMP * 1000,
-).toISOString()
-export const EPOCH_101_TIMESTAMP_ISO = new Date(
-  EPOCH_101_TIMESTAMP * 1000,
-).toISOString()
+
+const createEpochTimestampISO = (timestamp) =>
+  new Date(timestamp * 1000).toISOString()
+
+export const EPOCH_95_TIMESTAMP_ISO =
+  createEpochTimestampISO(EPOCH_95_TIMESTAMP)
+export const EPOCH_98_TIMESTAMP_ISO =
+  createEpochTimestampISO(EPOCH_98_TIMESTAMP)
+export const EPOCH_99_TIMESTAMP_ISO =
+  createEpochTimestampISO(EPOCH_99_TIMESTAMP)
+export const EPOCH_100_TIMESTAMP_ISO =
+  createEpochTimestampISO(EPOCH_100_TIMESTAMP)
+export const EPOCH_101_TIMESTAMP_ISO =
+  createEpochTimestampISO(EPOCH_101_TIMESTAMP)
 
 // Helper to seed a wallet
 export async function withWallet(env, address, isSanctioned = false) {
