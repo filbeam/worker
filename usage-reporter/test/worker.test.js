@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { applyD1Migrations, env } from 'cloudflare:test'
+import { env } from 'cloudflare:test'
 import { epochToTimestampMs } from '../lib/epoch.js'
 import worker from '../bin/usage-reporter.js'
 import filbeamAbi from '../lib/filbeam.abi.js'
@@ -55,8 +55,6 @@ describe('usage reporter worker scheduled entrypoint', () => {
   beforeEach(async () => {
     simulateContractCalls = []
     writeContractCalls = []
-
-    await applyD1Migrations(mockEnv.DB, mockEnv.TEST_MIGRATIONS)
   })
 
   afterEach(async () => {

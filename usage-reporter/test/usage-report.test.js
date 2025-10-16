@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { applyD1Migrations, env } from 'cloudflare:test'
+import { describe, it, expect, afterEach } from 'vitest'
+import { env } from 'cloudflare:test'
 import {
   aggregateUsageData,
   prepareUsageReportData,
@@ -16,10 +16,6 @@ import {
 
 describe('usage report', () => {
   describe('database operations', () => {
-    beforeEach(async () => {
-      await applyD1Migrations(env.DB, env.TEST_MIGRATIONS)
-    })
-
     afterEach(async () => {
       await env.DB.exec('DELETE FROM retrieval_logs')
       await env.DB.exec('DELETE FROM data_sets')
