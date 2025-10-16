@@ -28,7 +28,6 @@ describe('usage report', () => {
 
     describe('aggregateUsageData', () => {
       it('should aggregate usage data by cache miss status', async () => {
-        // Set usage_reported_until to timestamp for epoch 99 so data for epoch 100 will be included
         const epoch99Timestamp = epochToTimestamp(
           99n,
           BigInt(FILECOIN_GENESIS_UNIX_TIMESTAMP),
@@ -45,12 +44,10 @@ describe('usage report', () => {
           usageReportedUntil: epoch99TimestampISO,
         })
 
-        // Create timestamps for specific epochs
         const epoch99UnixTimestamp = filecoinEpochToTimestamp(99)
         const epoch100Timestamp = filecoinEpochToTimestamp(100)
         const epoch101Timestamp = filecoinEpochToTimestamp(101)
 
-        // Outside the range (should not be included)
         await withRetrievalLog(env, {
           timestamp: epoch99UnixTimestamp,
           dataSetId: '1',
@@ -58,7 +55,6 @@ describe('usage report', () => {
           cacheMiss: 0,
         })
 
-        // Add retrieval logs for dataset 1
         await withRetrievalLog(env, {
           timestamp: epoch100Timestamp,
           dataSetId: '1',
@@ -73,7 +69,6 @@ describe('usage report', () => {
           cacheMiss: 1,
         })
 
-        // Add retrieval logs for dataset 2
         await withRetrievalLog(env, {
           timestamp: epoch100Timestamp,
           dataSetId: '2',
@@ -81,7 +76,6 @@ describe('usage report', () => {
           cacheMiss: 1,
         })
 
-        // Add logs outside the range (should not be included)
         await withRetrievalLog(env, {
           timestamp: epoch101Timestamp,
           dataSetId: '1',
@@ -96,7 +90,6 @@ describe('usage report', () => {
           cacheMiss: 0,
         })
 
-        // Call with targetEpoch = 100 to get data up to epoch 100
         const upToTimestamp = epochToTimestamp(
           100n,
           BigInt(FILECOIN_GENESIS_UNIX_TIMESTAMP),
@@ -118,7 +111,6 @@ describe('usage report', () => {
       })
 
       it('should include non-200 responses but filter out null egress_bytes', async () => {
-        // Set usage_reported_until to timestamp for epoch 99 so data for epoch 100 will be included
         const epoch99Timestamp = epochToTimestamp(
           99n,
           BigInt(FILECOIN_GENESIS_UNIX_TIMESTAMP),
@@ -133,7 +125,6 @@ describe('usage report', () => {
 
         const epochTimestamp = filecoinEpochToTimestamp(100)
 
-        // Add various types of logs WITHIN epoch 100 (not at the boundary)
         await withRetrievalLog(env, {
           timestamp: epochTimestamp,
           dataSetId: '1',
@@ -166,7 +157,6 @@ describe('usage report', () => {
           cacheMiss: 1,
         })
 
-        // Call with targetEpoch = 100 to get data up to epoch 100
         const upToTimestamp = epochToTimestamp(
           100n,
           BigInt(FILECOIN_GENESIS_UNIX_TIMESTAMP),
@@ -183,7 +173,6 @@ describe('usage report', () => {
       })
 
       it('should only aggregate data for datasets with usage_reported_until < upToTimestamp', async () => {
-        // Set different usage_reported_until values
         const epoch98Timestamp = epochToTimestamp(
           98n,
           BigInt(FILECOIN_GENESIS_UNIX_TIMESTAMP),
@@ -206,23 +195,22 @@ describe('usage report', () => {
           epoch100Timestamp * 1000,
         ).toISOString()
 
-        await withDataSet(env, { id: '1' }) // Should be included (uses default 1970 epoch)
+        await withDataSet(env, { id: '1' })
         await withDataSet(env, {
           id: '2',
           usageReportedUntil: epoch98TimestampISO,
-        }) // Should be included
+        })
         await withDataSet(env, {
           id: '3',
           usageReportedUntil: epoch99TimestampISO,
-        }) // Should be included
+        })
         await withDataSet(env, {
           id: '4',
           usageReportedUntil: epoch100TimestampISO,
-        }) // Should NOT be included
+        })
 
         const epoch100UnixTimestamp = filecoinEpochToTimestamp(100)
 
-        // Add logs for all datasets in epoch 100
         for (const id of ['1', '2', '3', '4']) {
           await withRetrievalLog(env, {
             timestamp: epoch100UnixTimestamp,
@@ -232,14 +220,12 @@ describe('usage report', () => {
           })
         }
 
-        // Call with upToTimestamp for epoch 100
         const upToTimestamp = epochToTimestamp(
           100n,
           BigInt(FILECOIN_GENESIS_UNIX_TIMESTAMP),
         )
         const usageData = await aggregateUsageData(env.DB, upToTimestamp)
 
-        // Should have data for 1, 2, 3 but NOT 4
         expect(usageData).toStrictEqual([
           {
             data_set_id: '1',
@@ -260,7 +246,6 @@ describe('usage report', () => {
       })
 
       it('should filter out datasets with zero cdn and cache-miss bytes', async () => {
-        // Set usage_reported_until to epoch 99 timestamp
         const epoch99Timestamp = epochToTimestamp(
           99n,
           BigInt(FILECOIN_GENESIS_UNIX_TIMESTAMP),
@@ -283,7 +268,6 @@ describe('usage report', () => {
 
         const epoch100UnixTimestamp = filecoinEpochToTimestamp(100)
 
-        // Dataset 1: Has usage
         await withRetrievalLog(env, {
           timestamp: epoch100UnixTimestamp,
           dataSetId: '1',
@@ -291,7 +275,6 @@ describe('usage report', () => {
           cacheMiss: 0,
         })
 
-        // Dataset 2: Zero usage (egress_bytes = null)
         await withRetrievalLog(env, {
           timestamp: epoch100UnixTimestamp,
           dataSetId: '2',
@@ -299,7 +282,6 @@ describe('usage report', () => {
           cacheMiss: 0,
         })
 
-        // Dataset 3: Has usage
         await withRetrievalLog(env, {
           timestamp: epoch100UnixTimestamp,
           dataSetId: '3',
@@ -313,7 +295,6 @@ describe('usage report', () => {
         )
         const usageData = await aggregateUsageData(env.DB, upToTimestamp)
 
-        // Should only have datasets 1 and 3 (dataset 2 has null egress_bytes and is filtered out)
         expect(usageData).toStrictEqual([
           {
             data_set_id: '1',
@@ -329,7 +310,6 @@ describe('usage report', () => {
       })
 
       it('should exclude datasets with pending usage report transactions', async () => {
-        // Set usage_reported_until to epoch 99 timestamp
         const epoch99Timestamp = epochToTimestamp(
           99n,
           BigInt(FILECOIN_GENESIS_UNIX_TIMESTAMP),
@@ -338,14 +318,12 @@ describe('usage report', () => {
           epoch99Timestamp * 1000,
         ).toISOString()
 
-        // Dataset 1: No pending transaction - should be included
         await withDataSet(env, {
           id: '1',
           usageReportedUntil: epoch99TimestampISO,
           pendingUsageReportTxHash: null,
         })
 
-        // Dataset 2: Has pending transaction - should be excluded
         await withDataSet(env, {
           id: '2',
           usageReportedUntil: epoch99TimestampISO,
@@ -354,7 +332,6 @@ describe('usage report', () => {
 
         const epoch100UnixTimestamp = filecoinEpochToTimestamp(100)
 
-        // Add logs for both datasets
         await withRetrievalLog(env, {
           timestamp: epoch100UnixTimestamp,
           dataSetId: '1',
@@ -375,7 +352,6 @@ describe('usage report', () => {
         )
         const usageData = await aggregateUsageData(env.DB, upToTimestamp)
 
-        // Should only have dataset 1 (dataset 2 has pending transaction)
         expect(usageData).toStrictEqual([
           {
             data_set_id: '1',
@@ -389,7 +365,6 @@ describe('usage report', () => {
 
   describe('prepareUsageReportData', () => {
     it('should prepare batch data for contract call', () => {
-      // Epoch 100 timestamp = GENESIS + (100 * 30)
       const epoch100Timestamp = FILECOIN_GENESIS_UNIX_TIMESTAMP + 100 * 30
       const usageData = [
         {
