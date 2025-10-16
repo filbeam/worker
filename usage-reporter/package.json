@@ -1,5 +1,5 @@
 {
-  "name": "@filbeam/rollup",
+  "name": "@filbeam/usage-reporter",
   "version": "1.0.0",
   "private": true,
   "description": "FilBeam Rollup Worker",

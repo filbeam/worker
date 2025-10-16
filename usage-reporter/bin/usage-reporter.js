@@ -1,11 +1,11 @@
 /** @import {MessageBatch} from 'cloudflare:workers' */
 import { getChainClient as defaultGetChainClient } from '../lib/chain.js'
-import { abi as filbeamAbi } from '../lib/filbeam.js'
+import filbeamAbi from '../lib/FilBeamOperator.abi.json'
 import {
   aggregateUsageData,
-  epochToTimestamp,
   prepareUsageReportData,
 } from '../lib/usage-report.js'
+import { epochToTimestampMs } from '../lib/epoch.js'
 import { TransactionMonitorWorkflow } from '@filbeam/workflows'
 import {
   handleTransactionRetryQueueMessage as defaultHandleTransactionRetryQueueMessage,
@@ -34,7 +34,7 @@ import {
  *   RPC_URL: string
  *   FILBEAM_CONTRACT_ADDRESS: string
  *   FILBEAM_CONTROLLER_PRIVATE_KEY: string
- *   GENESIS_BLOCK_TIMESTAMP: string
+ *   FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS: string
  *   DB: D1Database
  *   TRANSACTION_MONITOR_WORKFLOW: import('cloudflare:workers').WorkflowEntrypoint
  *   TRANSACTION_QUEUE: import('cloudflare:workers').Queue<
@@ -61,19 +61,19 @@ export default {
     try {
       const { publicClient, walletClient, account } = getChainClient(env)
       const currentEpoch = await publicClient.getBlockNumber()
-      const targetEpoch = currentEpoch - 1n // Report up to previous epoch
+      const upToEpoch = currentEpoch - 1n // Report up to previous epoch
       console.log(
-        `Current epoch: ${currentEpoch}, reporting up to epoch: ${targetEpoch}`,
+        `Current epoch: ${currentEpoch}, reporting up to epoch: ${upToEpoch}`,
       )
 
-      const upToTimestamp = epochToTimestamp(
-        targetEpoch,
-        BigInt(env.GENESIS_BLOCK_TIMESTAMP),
+      const upToTimestampMs = epochToTimestampMs(
+        upToEpoch,
+        BigInt(env.FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS),
       )
-      console.log(`Aggregating usage data up to timestamp: ${upToTimestamp}`)
+      console.log(`Aggregating usage data up to timestamp: ${upToTimestampMs}`)
 
       // Aggregate usage data for all datasets that need reporting
-      const usageData = await aggregateUsageData(env.DB, upToTimestamp)
+      const usageData = await aggregateUsageData(env.DB, upToTimestampMs)
 
       if (usageData.length === 0) {
         console.log('No usage data found')
@@ -83,24 +83,23 @@ export default {
       console.log(`Found usage data for ${usageData.length} data sets`)
 
       // Prepare usage report data for contract call
-      const usageReportData = prepareUsageReportData(
-        usageData,
-        BigInt(env.GENESIS_BLOCK_TIMESTAMP),
-      )
+      const usageReportData = prepareUsageReportData(usageData)
 
       console.log(
         `Reporting usage for ${usageReportData.dataSetIds.length} data sets`,
       )
 
       // Create contract call
+      // We assume all args fit into max calldata size
+      // See https://github.com/filbeam/worker/issues/340
       const { request } = await publicClient.simulateContract({
         account,
         address: env.FILBEAM_CONTRACT_ADDRESS,
         abi: filbeamAbi,
         functionName: 'recordUsageRollups',
         args: [
+          upToEpoch,
           usageReportData.dataSetIds,
-          usageReportData.maxEpochs,
           usageReportData.cdnBytesUsed,
           usageReportData.cacheMissBytesUsed,
         ],
@@ -135,8 +134,8 @@ export default {
           transactionHash: hash,
           metadata: {
             onSuccess: 'transaction-confirmed',
-            successData: { upToTimestamp },
-            retryData: { upToTimestamp },
+            successData: { upToTimestamp: upToTimestampMs },
+            retryData: { upToTimestamp: upToTimestampMs },
           },
         },
       })
