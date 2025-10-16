@@ -5,7 +5,7 @@
   "description": "FilBeam Rollup Worker",
   "author": "Space Meridian <filbeam@meridian.space>",
   "type": "module",
-  "main": "bin/rollup.js",
+  "main": "bin/usage-reporter.js",
   "scripts": {
     "build:types": "wrangler types",
     "deploy:calibration": "wrangler deploy --env calibration",
