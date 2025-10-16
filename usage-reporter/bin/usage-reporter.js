@@ -3,9 +3,9 @@ import { getChainClient as defaultGetChainClient } from '../lib/chain.js'
 import filbeamAbi from '../lib/filbeam.abi.js'
 import {
   aggregateUsageData,
-  epochToUnixTimestamp,
   prepareUsageReportData,
 } from '../lib/usage-report.js'
+import { epochToTimestampMs } from '../lib/epoch.js'
 import { TransactionMonitorWorkflow } from '@filbeam/workflows'
 import {
   handleTransactionRetryQueueMessage as defaultHandleTransactionRetryQueueMessage,
@@ -66,14 +66,14 @@ export default {
         `Current epoch: ${currentEpoch}, reporting up to epoch: ${upToEpoch}`,
       )
 
-      const upToTimestamp = epochToUnixTimestamp(
+      const upToTimestampMs = epochToTimestampMs(
         upToEpoch,
         BigInt(env.GENESIS_BLOCK_TIMESTAMP),
       )
-      console.log(`Aggregating usage data up to timestamp: ${upToTimestamp}`)
+      console.log(`Aggregating usage data up to timestamp: ${upToTimestampMs}`)
 
       // Aggregate usage data for all datasets that need reporting
-      const usageData = await aggregateUsageData(env.DB, upToTimestamp)
+      const usageData = await aggregateUsageData(env.DB, upToTimestampMs)
 
       if (usageData.length === 0) {
         console.log('No usage data found')
@@ -134,8 +134,8 @@ export default {
           transactionHash: hash,
           metadata: {
             onSuccess: 'transaction-confirmed',
-            successData: { upToTimestamp },
-            retryData: { upToTimestamp },
+            successData: { upToTimestamp: upToTimestampMs },
+            retryData: { upToTimestamp: upToTimestampMs },
           },
         },
       })

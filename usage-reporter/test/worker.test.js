@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { applyD1Migrations, env } from 'cloudflare:test'
-import { epochToUnixTimestamp } from '../lib/usage-report.js'
+import { epochToTimestampMs } from '../lib/usage-report.js'
 import worker from '../bin/usage-reporter.js'
 import filbeamAbi from '../lib/filbeam.abi.js'
 import {
@@ -11,29 +11,6 @@ import {
   EPOCH_99_TIMESTAMP_ISO,
   EPOCH_100_TIMESTAMP_ISO,
 } from './test-helpers.js'
-
-// const EPOCH_95_TIMESTAMP = epochToUnixTimestamp(
-//   95n,
-//   BigInt(env.GENESIS_BLOCK_TIMESTAMP),
-// )
-// const EPOCH_98_TIMESTAMP = epochToUnixTimestamp(
-//   98n,
-//   BigInt(env.GENESIS_BLOCK_TIMESTAMP),
-// )
-// const EPOCH_99_TIMESTAMP = epochToUnixTimestamp(
-//   99n,
-//   BigInt(env.GENESIS_BLOCK_TIMESTAMP),
-// )
-// const EPOCH_100_TIMESTAMP = epochToUnixTimestamp(
-//   100n,
-//   BigInt(env.GENESIS_BLOCK_TIMESTAMP),
-// )
-// const EPOCH_95_TIMESTAMP_ISO = new Date(EPOCH_95_TIMESTAMP * 1000).toISOString()
-// const EPOCH_98_TIMESTAMP_ISO = new Date(EPOCH_98_TIMESTAMP * 1000).toISOString()
-// const EPOCH_99_TIMESTAMP_ISO = new Date(EPOCH_99_TIMESTAMP * 1000).toISOString()
-// const EPOCH_100_TIMESTAMP_ISO = new Date(
-//   EPOCH_100_TIMESTAMP * 1000,
-// ).toISOString()
 
 describe('usage reporter worker scheduled entrypoint', () => {
   let simulateContractCalls
@@ -246,9 +223,11 @@ describe('usage reporter worker scheduled entrypoint', () => {
     })
 
     for (let epoch = 100; epoch <= 104; epoch++) {
-      const timestampIso = new Date(
-        epochToUnixTimestamp(epoch, mockEnv.GENESIS_BLOCK_TIMESTAMP) * 1000,
-      ).toISOString()
+      const timestampMs = epochToTimestampMs(
+        epoch,
+        mockEnv.GENESIS_BLOCK_TIMESTAMP,
+      )
+      const timestampIso = new Date(timestampMs).toISOString()
       await withRetrievalLog(mockEnv, {
         timestamp: timestampIso,
         dataSetId: '1',
@@ -279,9 +258,11 @@ describe('usage reporter worker scheduled entrypoint', () => {
     })
 
     for (let epoch = 96; epoch <= 100; epoch++) {
-      const timestampIso = new Date(
-        epochToUnixTimestamp(epoch, mockEnv.GENESIS_BLOCK_TIMESTAMP) * 1000,
-      ).toISOString()
+      const timestampMs = epochToTimestampMs(
+        epoch,
+        mockEnv.GENESIS_BLOCK_TIMESTAMP,
+      )
+      const timestampIso = new Date(timestampMs).toISOString()
       await withRetrievalLog(mockEnv, {
         timestamp: timestampIso,
         dataSetId: '1',

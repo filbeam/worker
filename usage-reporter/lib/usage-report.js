@@ -1,31 +1,9 @@
 /**
- * Convert Filecoin epoch to Unix timestamp
- *
- * @param {bigint} epoch - Filecoin epoch number
- * @param {bigint} genesisBlockTimestamp - Genesis block timestamp in seconds
- * @returns {number} Unix timestamp in seconds
- */
-export function epochToUnixTimestamp(epoch, genesisBlockTimestamp) {
-  return Number(epoch) * 30 + Number(genesisBlockTimestamp)
-}
-
-/**
- * Convert Unix timestamp to Filecoin epoch
- *
- * @param {number} timestamp - Unix timestamp in seconds
- * @param {bigint} genesisBlockTimestamp - Genesis block timestamp in seconds
- * @returns {number} Filecoin epoch number
- */
-export function unixTimestampToEpoch(timestamp, genesisBlockTimestamp) {
-  return Math.floor((timestamp - Number(genesisBlockTimestamp)) / 30)
-}
-
-/**
  * Aggregate usage data, for all data sets, between last reported timestamp and
  * a target timestamp
  *
  * @param {D1Database} db
- * @param {number} upToTimestamp - Target Unix timestamp in seconds
+ * @param {number} upToTimestampMs - Target timestamp in milliseconds
  * @returns {Promise<
  *   {
  *     data_set_id: string
@@ -34,11 +12,11 @@ export function unixTimestampToEpoch(timestamp, genesisBlockTimestamp) {
  *   }[]
  * >}
  */
-export async function aggregateUsageData(db, upToTimestamp) {
-  // Query aggregates total usage data between usage_reported_until and upToTimestamp
+export async function aggregateUsageData(db, upToTimestampMs) {
+  // Query aggregates total usage data between usage_reported_until and upToTimestampMs
   // Returns sum of CDN bytes, cache-miss bytes, and max timestamp for each dataset
   // Excludes datasets with pending transactions to prevent double-counting
-  const upToTimestampIso = new Date(upToTimestamp * 1000).toISOString()
+  const upToTimestampIso = new Date(upToTimestampMs).toISOString()
   const query = `
     SELECT
       rl.data_set_id,

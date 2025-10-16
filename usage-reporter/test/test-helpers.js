@@ -1,41 +1,46 @@
-import { epochToUnixTimestamp } from '../lib/usage-report.js'
+import { epochToTimestampMs } from '../lib/epoch.js'
 
-const CALIBRATION_GENESIS_BLOCK_TIMESTAMP = 1667326380n
+const CALIBRATION_GENESIS_BLOCK_TIMESTAMP_SECONDS = 1667326380n
 
-export const EPOCH_95_TIMESTAMP = epochToUnixTimestamp(
+export const EPOCH_95_TIMESTAMP_MS = epochToTimestampMs(
   95n,
-  CALIBRATION_GENESIS_BLOCK_TIMESTAMP,
+  CALIBRATION_GENESIS_BLOCK_TIMESTAMP_SECONDS,
 )
-export const EPOCH_98_TIMESTAMP = epochToUnixTimestamp(
+export const EPOCH_98_TIMESTAMP_MS = epochToTimestampMs(
   98n,
-  CALIBRATION_GENESIS_BLOCK_TIMESTAMP,
+  CALIBRATION_GENESIS_BLOCK_TIMESTAMP_SECONDS,
 )
-export const EPOCH_99_TIMESTAMP = epochToUnixTimestamp(
+export const EPOCH_99_TIMESTAMP_MS = epochToTimestampMs(
   99n,
-  CALIBRATION_GENESIS_BLOCK_TIMESTAMP,
+  CALIBRATION_GENESIS_BLOCK_TIMESTAMP_SECONDS,
 )
-export const EPOCH_100_TIMESTAMP = epochToUnixTimestamp(
+export const EPOCH_100_TIMESTAMP_MS = epochToTimestampMs(
   100n,
-  CALIBRATION_GENESIS_BLOCK_TIMESTAMP,
+  CALIBRATION_GENESIS_BLOCK_TIMESTAMP_SECONDS,
 )
-export const EPOCH_101_TIMESTAMP = epochToUnixTimestamp(
+export const EPOCH_101_TIMESTAMP_MS = epochToTimestampMs(
   101n,
-  CALIBRATION_GENESIS_BLOCK_TIMESTAMP,
+  CALIBRATION_GENESIS_BLOCK_TIMESTAMP_SECONDS,
 )
 
-const createEpochTimestampISO = (timestamp) =>
-  new Date(timestamp * 1000).toISOString()
+const createEpochTimestampISO = (timestampMs) =>
+  new Date(timestampMs).toISOString()
 
-export const EPOCH_95_TIMESTAMP_ISO =
-  createEpochTimestampISO(EPOCH_95_TIMESTAMP)
-export const EPOCH_98_TIMESTAMP_ISO =
-  createEpochTimestampISO(EPOCH_98_TIMESTAMP)
-export const EPOCH_99_TIMESTAMP_ISO =
-  createEpochTimestampISO(EPOCH_99_TIMESTAMP)
-export const EPOCH_100_TIMESTAMP_ISO =
-  createEpochTimestampISO(EPOCH_100_TIMESTAMP)
-export const EPOCH_101_TIMESTAMP_ISO =
-  createEpochTimestampISO(EPOCH_101_TIMESTAMP)
+export const EPOCH_95_TIMESTAMP_ISO = createEpochTimestampISO(
+  EPOCH_95_TIMESTAMP_MS,
+)
+export const EPOCH_98_TIMESTAMP_ISO = createEpochTimestampISO(
+  EPOCH_98_TIMESTAMP_MS,
+)
+export const EPOCH_99_TIMESTAMP_ISO = createEpochTimestampISO(
+  EPOCH_99_TIMESTAMP_MS,
+)
+export const EPOCH_100_TIMESTAMP_ISO = createEpochTimestampISO(
+  EPOCH_100_TIMESTAMP_MS,
+)
+export const EPOCH_101_TIMESTAMP_ISO = createEpochTimestampISO(
+  EPOCH_101_TIMESTAMP_MS,
+)
 
 // Helper to seed a wallet
 export async function withWallet(env, address, isSanctioned = false) {

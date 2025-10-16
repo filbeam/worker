@@ -7,7 +7,7 @@ import {
 import {
   withDataSet,
   withRetrievalLog,
-  EPOCH_100_TIMESTAMP,
+  EPOCH_100_TIMESTAMP_MS,
   EPOCH_98_TIMESTAMP_ISO,
   EPOCH_99_TIMESTAMP_ISO,
   EPOCH_100_TIMESTAMP_ISO,
@@ -21,8 +21,8 @@ describe('usage report', () => {
     })
 
     afterEach(async () => {
-      await env.DB.exec('DELETE FROM retrieval_logs;')
-      await env.DB.exec('DELETE FROM data_sets;')
+      await env.DB.exec('DELETE FROM retrieval_logs')
+      await env.DB.exec('DELETE FROM data_sets')
     })
 
     describe('aggregateUsageData', () => {
@@ -78,7 +78,10 @@ describe('usage report', () => {
           cacheMiss: 0,
         })
 
-        const usageData = await aggregateUsageData(env.DB, EPOCH_100_TIMESTAMP)
+        const usageData = await aggregateUsageData(
+          env.DB,
+          EPOCH_100_TIMESTAMP_MS,
+        )
 
         expect(usageData).toStrictEqual([
           {
@@ -132,7 +135,10 @@ describe('usage report', () => {
           cacheMiss: 1,
         })
 
-        const usageData = await aggregateUsageData(env.DB, EPOCH_100_TIMESTAMP)
+        const usageData = await aggregateUsageData(
+          env.DB,
+          EPOCH_100_TIMESTAMP_MS,
+        )
 
         expect(usageData).toStrictEqual([
           {
@@ -167,7 +173,10 @@ describe('usage report', () => {
           })
         }
 
-        const usageData = await aggregateUsageData(env.DB, EPOCH_100_TIMESTAMP)
+        const usageData = await aggregateUsageData(
+          env.DB,
+          EPOCH_100_TIMESTAMP_MS,
+        )
 
         expect(usageData).toStrictEqual([
           {
@@ -223,7 +232,10 @@ describe('usage report', () => {
           cacheMiss: 1,
         })
 
-        const usageData = await aggregateUsageData(env.DB, EPOCH_100_TIMESTAMP)
+        const usageData = await aggregateUsageData(
+          env.DB,
+          EPOCH_100_TIMESTAMP_MS,
+        )
 
         expect(usageData).toStrictEqual([
           {
@@ -266,7 +278,10 @@ describe('usage report', () => {
           cacheMiss: 0,
         })
 
-        const usageData = await aggregateUsageData(env.DB, EPOCH_100_TIMESTAMP)
+        const usageData = await aggregateUsageData(
+          env.DB,
+          EPOCH_100_TIMESTAMP_MS,
+        )
 
         expect(usageData).toStrictEqual([
           {
