@@ -226,7 +226,7 @@ describe('usage reporter worker scheduled entrypoint', () => {
     for (let epoch = 100; epoch <= 104; epoch++) {
       const timestampMs = epochToTimestampMs(
         epoch,
-        mockEnv.GENESIS_BLOCK_TIMESTAMP,
+        BigInt(mockEnv.FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS),
       )
       const timestampIso = new Date(timestampMs).toISOString()
       await withRetrievalLog(mockEnv, {
@@ -261,7 +261,7 @@ describe('usage reporter worker scheduled entrypoint', () => {
     for (let epoch = 96; epoch <= 100; epoch++) {
       const timestampMs = epochToTimestampMs(
         epoch,
-        mockEnv.GENESIS_BLOCK_TIMESTAMP,
+        BigInt(mockEnv.FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS),
       )
       const timestampIso = new Date(timestampMs).toISOString()
       await withRetrievalLog(mockEnv, {

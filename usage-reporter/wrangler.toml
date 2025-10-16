@@ -17,7 +17,7 @@ database_id = "8cc92155-16f6-426a-b782-2965e0daf100"
 ENVIRONMENT = "dev"
 RPC_URL = "https://api.calibration.node.glif.io/"
 FILBEAM_CONTRACT_ADDRESS = "0x96e13bC98fA0cdf01b07985c804960117EAB76E8"
-GENESIS_BLOCK_TIMESTAMP = "1667326380"
+FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS = "1667326380000"
 
 [[env.dev.d1_databases]]
 binding = "DB"
@@ -28,7 +28,7 @@ database_id = "8cc92155-16f6-426a-b782-2965e0daf101"
 ENVIRONMENT = "calibration"
 RPC_URL = "https://api.calibration.node.glif.io/"
 FILBEAM_CONTRACT_ADDRESS = "0x"
-GENESIS_BLOCK_TIMESTAMP = "1667326380"
+FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS = "1667326380000"
 
 [[env.calibration.d1_databases]]
 binding = "DB"
@@ -42,7 +42,7 @@ crons = ["*/30 * * * *"]  # Run every 30 minutes
 ENVIRONMENT = "mainnet"
 RPC_URL = "https://api.node.glif.io/"
 FILBEAM_CONTRACT_ADDRESS = "0x" # TODO
-GENESIS_BLOCK_TIMESTAMP = "1598306400"
+FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS = "1598306400000"
 
 [[env.mainnet.d1_databases]]
 binding = "DB"

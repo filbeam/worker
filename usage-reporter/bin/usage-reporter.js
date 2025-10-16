@@ -34,7 +34,7 @@ import {
  *   RPC_URL: string
  *   FILBEAM_CONTRACT_ADDRESS: string
  *   FILBEAM_CONTROLLER_PRIVATE_KEY: string
- *   GENESIS_BLOCK_TIMESTAMP: string
+ *   FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS: string
  *   DB: D1Database
  *   TRANSACTION_MONITOR_WORKFLOW: import('cloudflare:workers').WorkflowEntrypoint
  *   TRANSACTION_QUEUE: import('cloudflare:workers').Queue<
@@ -68,7 +68,7 @@ export default {
 
       const upToTimestampMs = epochToTimestampMs(
         upToEpoch,
-        BigInt(env.GENESIS_BLOCK_TIMESTAMP),
+        BigInt(env.FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS),
       )
       console.log(`Aggregating usage data up to timestamp: ${upToTimestampMs}`)
 
