@@ -15,7 +15,6 @@ import {
   withRequest,
 } from './test-helpers.js'
 import { CONTENT_STORED_ON_CALIBRATION } from './test-data.js'
-import { BYTES_IN_TIB } from '../lib/constants.js'
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms))
@@ -46,12 +45,14 @@ describe('piece-retriever.fetch', () => {
     } of CONTENT_STORED_ON_CALIBRATION) {
       const pieceId = `root-${i}`
       await withDataSetPieces(env, {
-        serviceProviderId,
+        pieceId,
         pieceCid,
+        dataSetId,
+        serviceProviderId,
         payerAddress: defaultPayerAddress,
         withCDN: true,
-        dataSetId,
-        pieceId,
+        cdnEgressQuota: '100',
+        cacheMissEgressQuota: '100',
       })
       await withApprovedProvider(env, {
         id: serviceProviderId,
@@ -476,6 +477,8 @@ describe('piece-retriever.fetch', () => {
       serviceProviderId,
       pieceCid,
       payerAddress,
+      cdnEgressQuota: '100',
+      cacheMissEgressQuota: '100',
     })
 
     await withApprovedProvider(env, {
@@ -638,9 +641,9 @@ describe('piece-retriever.fetch', () => {
     await withDataSetPieces(env, {
       serviceProviderId,
       payerAddress,
-      pieceCid,
       dataSetId,
       withCDN: true,
+      pieceCid,
       pieceId,
     })
 
@@ -677,21 +680,16 @@ describe('piece-retriever.fetch', () => {
     const dataSetId = 'unsupported-serviceProvider-test'
     const unsupportedServiceProviderId = 0
 
-    await env.DB.batch([
-      env.DB.prepare(
-        'INSERT INTO data_sets (id, service_provider_id, payer_address, with_cdn, cdn_egress_quota, cache_miss_egress_quota) VALUES (?, ?, ?, ?, ?, ?)',
-      ).bind(
-        dataSetId,
-        unsupportedServiceProviderId,
-        defaultPayerAddress,
-        true,
-        String(BYTES_IN_TIB),
-        String(BYTES_IN_TIB),
-      ),
-      env.DB.prepare(
-        'INSERT INTO pieces (id, data_set_id, cid) VALUES (?, ?, ?)',
-      ).bind('piece-unsupported', dataSetId, invalidPieceCid),
-    ])
+    await withDataSetPieces(env, {
+      dataSetId,
+      serviceProviderId: unsupportedServiceProviderId,
+      payerAddress: defaultPayerAddress,
+      withCDN: true,
+      cdnEgressQuota: '100',
+      cacheMissEgressQuota: '100',
+      pieceCid: invalidPieceCid,
+      pieceId: 'piece-unsupported',
+    })
 
     const ctx = createExecutionContext()
     const req = withRequest(defaultPayerAddress, invalidPieceCid)
@@ -735,26 +733,22 @@ describe('piece-retriever.fetch', () => {
     const dataSetId = 'quota-test-dataset-exceed'
     const serviceProviderId = 'quota-test-provider-exceed'
 
-    // Set up provider
-    await env.DB.prepare(
-      'INSERT INTO service_providers (id, service_url) VALUES (?, ?)',
-    )
-      .bind(serviceProviderId, 'https://test-provider.com')
-      .run()
+    // Set up provider and data set with small quota (100 bytes)
+    await withApprovedProvider(env, {
+      id: serviceProviderId,
+      serviceUrl: 'https://test-provider.com',
+    })
 
-    // Set up data set with small quota (100 bytes)
-    await env.DB.prepare(
-      'INSERT INTO data_sets (id, service_provider_id, payer_address, with_cdn, cdn_egress_quota, cache_miss_egress_quota) VALUES (?, ?, ?, ?, ?, ?)',
-    )
-      .bind(dataSetId, serviceProviderId, payerAddress, true, '100', '100')
-      .run()
-
-    // Set up piece
-    await env.DB.prepare(
-      'INSERT INTO pieces (id, data_set_id, cid) VALUES (?, ?, ?)',
-    )
-      .bind('piece-quota-test', dataSetId, pieceCid)
-      .run()
+    await withDataSetPieces(env, {
+      dataSetId,
+      serviceProviderId,
+      payerAddress,
+      withCDN: true,
+      cdnEgressQuota: '100',
+      cacheMissEgressQuota: '100',
+      pieceCid,
+      pieceId: 'piece-quota-test',
+    })
 
     // Mock a response with more data than quota allows (500 bytes)
     const largeContent = new Uint8Array(500).fill(65) // 500 'A's
@@ -813,26 +807,22 @@ describe('piece-retriever.fetch', () => {
     const dataSetId = 'quota-ok-dataset-unique'
     const serviceProviderId = 'quota-ok-provider-unique'
 
-    // Set up provider
-    await env.DB.prepare(
-      'INSERT INTO service_providers (id, service_url) VALUES (?, ?)',
-    )
-      .bind(serviceProviderId, 'https://test-provider.com')
-      .run()
+    // Set up provider and data set with sufficient quota (1000 bytes)
+    await withApprovedProvider(env, {
+      id: serviceProviderId,
+      serviceUrl: 'https://test-provider.com',
+    })
 
-    // Set up data set with sufficient quota (1000 bytes)
-    await env.DB.prepare(
-      'INSERT INTO data_sets (id, service_provider_id, payer_address, with_cdn, cdn_egress_quota, cache_miss_egress_quota) VALUES (?, ?, ?, ?, ?, ?)',
-    )
-      .bind(dataSetId, serviceProviderId, payerAddress, true, '1000', '1000')
-      .run()
-
-    // Set up piece
-    await env.DB.prepare(
-      'INSERT INTO pieces (id, data_set_id, cid) VALUES (?, ?, ?)',
-    )
-      .bind('piece-quota-ok', dataSetId, pieceCid)
-      .run()
+    await withDataSetPieces(env, {
+      dataSetId,
+      serviceProviderId,
+      payerAddress,
+      withCDN: true,
+      cdnEgressQuota: '1000',
+      cacheMissEgressQuota: '1000',
+      pieceCid,
+      pieceId: 'piece-quota-ok',
+    })
 
     // Mock a response that fits within quota (100 bytes)
     const content = new Uint8Array(100).fill(65) // 100 'A's
