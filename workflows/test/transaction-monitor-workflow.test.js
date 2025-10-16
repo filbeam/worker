@@ -1,4 +1,4 @@
-/** @import {WorkflowEvent, WorkflowStep} from 'cloudflare:workers' */
+/** @import {WorkflowStep} from 'cloudflare:workers' */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { TransactionMonitorWorkflow } from '../lib/transaction-monitor-workflow.js'
 
@@ -7,9 +7,20 @@ vi.mock('../lib/chain.js', () => ({
 }))
 
 describe('TransactionMonitorWorkflow', () => {
+  /** @type {TransactionMonitorWorkflow} */
   let workflow
+  /**
+   * @type {{
+   *   TRANSACTION_QUEUE: { send: (message: any) => Promise<void> }
+   *   ENVIRONMENT: string
+   *   RPC_URL: string
+   *   FILCDN_CONTROLLER_ADDRESS_PRIVATE_KEY: string
+   * }}
+   */
   let mockEnv
+  /** @type {WorkflowStep} */
   let mockStep
+  /** @type {{ send: (message: any) => Promise<void> }} */
   let mockQueue
 
   beforeEach(async () => {
