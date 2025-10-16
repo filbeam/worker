@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { applyD1Migrations, env } from 'cloudflare:test'
-import { epochToTimestampMs } from '../lib/usage-report.js'
+import { epochToTimestampMs } from '../lib/epoch.js'
 import worker from '../bin/usage-reporter.js'
 import filbeamAbi from '../lib/filbeam.abi.js'
 import {
