@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { env } from 'cloudflare:test'
 import { epochToTimestampMs } from '../lib/epoch.js'
 import worker from '../bin/usage-reporter.js'
-import filbeamAbi from '../lib/filbeam.abi.js'
+import filbeamAbi from '../lib/FilBeamOperator.abi.json'
 import {
   withDataSet,
   withRetrievalLog,
