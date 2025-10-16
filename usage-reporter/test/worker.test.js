@@ -135,6 +135,7 @@ describe('usage reporter worker scheduled entrypoint', () => {
     expect(mockPublicClient.getBlockNumber).toHaveBeenCalled()
     expect(simulateContractCalls).toHaveLength(0)
     expect(writeContractCalls).toHaveLength(0)
+    expect(mockWorkflow.create).not.toHaveBeenCalled()
   })
 
   it('should filter out datasets with zero usage', async () => {
