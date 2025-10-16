@@ -316,7 +316,7 @@ describe('usage report', () => {
 
       const batchData = prepareUsageReportData(usageData)
 
-      expect(batchData).toEqual({
+      expect(batchData).toStrictEqual({
         dataSetIds: ['1', '2', '3'],
         cdnBytesUsed: [1000n, 2000n, 0n],
         cacheMissBytesUsed: [500n, 0n, 3000n],
@@ -344,7 +344,7 @@ describe('usage report', () => {
 
       const batchData = prepareUsageReportData(usageData)
 
-      expect(batchData).toEqual({
+      expect(batchData).toStrictEqual({
         dataSetIds: ['1', '2', '3'],
         cdnBytesUsed: [1000n, 2000n, 0n],
         cacheMissBytesUsed: [500n, 0n, 3000n],
@@ -355,7 +355,7 @@ describe('usage report', () => {
       const usageData = []
       const batchData = prepareUsageReportData(usageData)
 
-      expect(batchData).toEqual({
+      expect(batchData).toStrictEqual({
         dataSetIds: [],
         cdnBytesUsed: [],
         cacheMissBytesUsed: [],
