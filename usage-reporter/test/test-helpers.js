@@ -1,3 +1,43 @@
+import { epochToUnixTimestamp } from '../lib/usage-report.js'
+
+const FILECOIN_CALIBRATION_GENESIS_BLOCK_TIMESTAMP = 1667326380
+
+export const EPOCH_95_TIMESTAMP = epochToUnixTimestamp(
+  95n,
+  BigInt(FILECOIN_CALIBRATION_GENESIS_BLOCK_TIMESTAMP),
+)
+export const EPOCH_98_TIMESTAMP = epochToUnixTimestamp(
+  98n,
+  BigInt(FILECOIN_CALIBRATION_GENESIS_BLOCK_TIMESTAMP),
+)
+export const EPOCH_99_TIMESTAMP = epochToUnixTimestamp(
+  99n,
+  BigInt(FILECOIN_CALIBRATION_GENESIS_BLOCK_TIMESTAMP),
+)
+export const EPOCH_100_TIMESTAMP = epochToUnixTimestamp(
+  100n,
+  BigInt(FILECOIN_CALIBRATION_GENESIS_BLOCK_TIMESTAMP),
+)
+export const EPOCH_101_TIMESTAMP = epochToUnixTimestamp(
+  101n,
+  BigInt(FILECOIN_CALIBRATION_GENESIS_BLOCK_TIMESTAMP),
+)
+export const EPOCH_95_TIMESTAMP_ISO = new Date(
+  EPOCH_95_TIMESTAMP * 1000,
+).toISOString()
+export const EPOCH_98_TIMESTAMP_ISO = new Date(
+  EPOCH_98_TIMESTAMP * 1000,
+).toISOString()
+export const EPOCH_99_TIMESTAMP_ISO = new Date(
+  EPOCH_99_TIMESTAMP * 1000,
+).toISOString()
+export const EPOCH_100_TIMESTAMP_ISO = new Date(
+  EPOCH_100_TIMESTAMP * 1000,
+).toISOString()
+export const EPOCH_101_TIMESTAMP_ISO = new Date(
+  EPOCH_101_TIMESTAMP * 1000,
+).toISOString()
+
 // Helper to seed a wallet
 export async function withWallet(env, address, isSanctioned = false) {
   await env.DB.prepare(
@@ -43,35 +83,6 @@ export async function withDataSet(
 }
 
 export const randomId = () => String(Math.ceil(Math.random() * 1e10))
-
-// Filecoin epoch constants
-export const FILECOIN_GENESIS_UNIX_TIMESTAMP = 1598306400
-const FILECOIN_EPOCH_DURATION_SECONDS = 30
-
-/**
- * Converts a Filecoin epoch to an ISO 8601 timestamp
- *
- * @param {number} epoch - The Filecoin epoch number
- * @returns {string} ISO 8601 timestamp string
- */
-export function filecoinEpochToTimestamp(epoch) {
-  const unixTimestamp =
-    epoch * FILECOIN_EPOCH_DURATION_SECONDS + FILECOIN_GENESIS_UNIX_TIMESTAMP
-  return new Date(unixTimestamp * 1000).toISOString()
-}
-
-/**
- * Converts a Unix timestamp to a Filecoin epoch
- *
- * @param {number} timestamp - Unix timestamp in seconds
- * @returns {number} The Filecoin epoch number
- */
-export function timestampToFilecoinEpoch(timestamp) {
-  return Math.floor(
-    (timestamp - FILECOIN_GENESIS_UNIX_TIMESTAMP) /
-      FILECOIN_EPOCH_DURATION_SECONDS,
-  )
-}
 
 /**
  * Helper to insert a retrieval log entry

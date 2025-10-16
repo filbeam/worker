@@ -5,7 +5,7 @@
  * @param {bigint} genesisBlockTimestamp - Genesis block timestamp in seconds
  * @returns {number} Unix timestamp in seconds
  */
-export function epochToTimestamp(epoch, genesisBlockTimestamp) {
+export function epochToUnixTimestamp(epoch, genesisBlockTimestamp) {
   return Number(epoch) * 30 + Number(genesisBlockTimestamp)
 }
 
@@ -16,7 +16,7 @@ export function epochToTimestamp(epoch, genesisBlockTimestamp) {
  * @param {bigint} genesisBlockTimestamp - Genesis block timestamp in seconds
  * @returns {number} Filecoin epoch number
  */
-export function timestampToEpoch(timestamp, genesisBlockTimestamp) {
+export function unixTimestampToEpoch(timestamp, genesisBlockTimestamp) {
   return Math.floor((timestamp - Number(genesisBlockTimestamp)) / 30)
 }
 
@@ -77,7 +77,7 @@ export async function aggregateUsageData(db, upToTimestamp) {
  *   cacheMissBytesUsed: bigint[]
  * }}
  */
-export function prepareUsageReportData(usageData, genesisBlockTimestamp) {
+export function prepareUsageReportData(usageData) {
   const dataSetIds = []
   const cdnBytesUsed = []
   const cacheMissBytesUsed = []

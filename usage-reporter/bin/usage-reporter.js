@@ -3,7 +3,7 @@ import { getChainClient as defaultGetChainClient } from '../lib/chain.js'
 import filbeamAbi from '../lib/filbeam.abi.js'
 import {
   aggregateUsageData,
-  epochToTimestamp,
+  epochToUnixTimestamp,
   prepareUsageReportData,
 } from '../lib/usage-report.js'
 import { TransactionMonitorWorkflow } from '@filbeam/workflows'
@@ -66,7 +66,7 @@ export default {
         `Current epoch: ${currentEpoch}, reporting up to epoch: ${upToEpoch}`,
       )
 
-      const upToTimestamp = epochToTimestamp(
+      const upToTimestamp = epochToUnixTimestamp(
         upToEpoch,
         BigInt(env.GENESIS_BLOCK_TIMESTAMP),
       )
@@ -83,10 +83,7 @@ export default {
       console.log(`Found usage data for ${usageData.length} data sets`)
 
       // Prepare usage report data for contract call
-      const usageReportData = prepareUsageReportData(
-        usageData,
-        BigInt(env.GENESIS_BLOCK_TIMESTAMP),
-      )
+      const usageReportData = prepareUsageReportData(usageData)
 
       console.log(
         `Reporting usage for ${usageReportData.dataSetIds.length} data sets`,
