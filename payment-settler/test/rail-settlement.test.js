@@ -1,7 +1,9 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { env } from 'cloudflare:test'
 import { getDataSetsForSettlement } from '../lib/rail-settlement.js'
-import { withDataSet, randomId, getDaysAgo } from './test-helpers.js'
+import { withDataSet, createNextId, getDaysAgo } from './test-helpers.js'
+
+const nextId = createNextId()
 
 describe('rail settlement', () => {
   describe('getDataSetsForSettlement', () => {
@@ -11,9 +13,9 @@ describe('rail settlement', () => {
     })
 
     it('should return data sets with with_cdn = true', async () => {
-      const id1 = randomId()
-      const id2 = randomId()
-      const id3 = randomId()
+      const id1 = nextId()
+      const id2 = nextId()
+      const id3 = nextId()
 
       await withDataSet(env, {
         id: id1,
@@ -33,16 +35,13 @@ describe('rail settlement', () => {
 
       const dataSetIds = await getDataSetsForSettlement(env.DB)
 
-      expect(dataSetIds).toHaveLength(2)
-      expect(dataSetIds).toContain(id1)
-      expect(dataSetIds).toContain(id2)
-      expect(dataSetIds).not.toContain(id3)
+      expect(dataSetIds).toStrictEqual([id1, id2])
     })
 
     it('should return terminated data sets within lockup_unlocks_at window', async () => {
-      const id1 = randomId()
-      const id2 = randomId()
-      const id3 = randomId()
+      const id1 = nextId()
+      const id2 = nextId()
+      const id3 = nextId()
 
       // Terminated but still within settlement window
       await withDataSet(env, {
@@ -69,17 +68,14 @@ describe('rail settlement', () => {
 
       const dataSetIds = await getDataSetsForSettlement(env.DB)
 
-      expect(dataSetIds).toHaveLength(2)
-      expect(dataSetIds).toContain(id1) // Still within window
-      expect(dataSetIds).toContain(id3) // Active
-      expect(dataSetIds).not.toContain(id2) // Past window
+      expect(dataSetIds).toStrictEqual([id1, id3])
     })
 
     it('should handle mixed scenarios correctly', async () => {
-      const id1 = randomId()
-      const id2 = randomId()
-      const id3 = randomId()
-      const id4 = randomId()
+      const id1 = nextId()
+      const id2 = nextId()
+      const id3 = nextId()
+      const id4 = nextId()
 
       // Active with CDN
       await withDataSet(env, {
@@ -113,15 +109,11 @@ describe('rail settlement', () => {
 
       const dataSetIds = await getDataSetsForSettlement(env.DB)
 
-      expect(dataSetIds).toHaveLength(2)
-      expect(dataSetIds).toContain(id1)
-      expect(dataSetIds).toContain(id2)
-      expect(dataSetIds).not.toContain(id3)
-      expect(dataSetIds).not.toContain(id4)
+      expect(dataSetIds).toStrictEqual([id1, id2])
     })
 
     it('should return empty array when no data sets match', async () => {
-      const id1 = randomId()
+      const id1 = nextId()
 
       // Only inactive data set with recent usage
       await withDataSet(env, {
@@ -132,13 +124,13 @@ describe('rail settlement', () => {
 
       const dataSetIds = await getDataSetsForSettlement(env.DB)
 
-      expect(dataSetIds).toHaveLength(0)
+      expect(dataSetIds).toStrictEqual([])
     })
 
     it('should exclude data sets with terminate_service_tx_hash set even if with_cdn is true', async () => {
-      const id1 = randomId()
-      const id2 = randomId()
-      const id3 = randomId()
+      const id1 = nextId()
+      const id2 = nextId()
+      const id3 = nextId()
 
       // Active with CDN and no terminate_service_tx_hash
       await withDataSet(env, {
@@ -165,16 +157,13 @@ describe('rail settlement', () => {
 
       const dataSetIds = await getDataSetsForSettlement(env.DB)
 
-      expect(dataSetIds).toHaveLength(1)
-      expect(dataSetIds).toContain(id1)
-      expect(dataSetIds).not.toContain(id2)
-      expect(dataSetIds).not.toContain(id3)
+      expect(dataSetIds).toStrictEqual([id1])
     })
 
     it('should exclude data sets with terminate_service_tx_hash set even within lockup_unlocks_at window', async () => {
-      const id1 = randomId()
-      const id2 = randomId()
-      const id3 = randomId()
+      const id1 = nextId()
+      const id2 = nextId()
+      const id3 = nextId()
 
       // Within settlement window and no terminate_service_tx_hash
       await withDataSet(env, {
@@ -202,18 +191,15 @@ describe('rail settlement', () => {
 
       const dataSetIds = await getDataSetsForSettlement(env.DB)
 
-      expect(dataSetIds).toHaveLength(2)
-      expect(dataSetIds).toContain(id1)
-      expect(dataSetIds).toContain(id3)
-      expect(dataSetIds).not.toContain(id2)
+      expect(dataSetIds).toStrictEqual([id1, id3])
     })
 
     it('should handle mixed scenarios with terminate_service_tx_hash correctly', async () => {
-      const id1 = randomId()
-      const id2 = randomId()
-      const id3 = randomId()
-      const id4 = randomId()
-      const id5 = randomId()
+      const id1 = nextId()
+      const id2 = nextId()
+      const id3 = nextId()
+      const id4 = nextId()
+      const id5 = nextId()
 
       // Active with CDN, no terminate_service_tx_hash, recent usage
       await withDataSet(env, {
@@ -252,18 +238,13 @@ describe('rail settlement', () => {
 
       const dataSetIds = await getDataSetsForSettlement(env.DB)
 
-      expect(dataSetIds).toHaveLength(2)
-      expect(dataSetIds).toContain(id1)
-      expect(dataSetIds).toContain(id3)
-      expect(dataSetIds).not.toContain(id2)
-      expect(dataSetIds).not.toContain(id4)
-      expect(dataSetIds).not.toContain(id5)
+      expect(dataSetIds).toStrictEqual([id1, id3])
     })
 
     it('should exclude data sets with no recent usage (older than 30 days)', async () => {
-      const id1 = randomId()
-      const id2 = randomId()
-      const id3 = randomId()
+      const id1 = nextId()
+      const id2 = nextId()
+      const id3 = nextId()
 
       // Active with CDN, recent usage (5 days ago)
       await withDataSet(env, {
@@ -288,16 +269,13 @@ describe('rail settlement', () => {
 
       const dataSetIds = await getDataSetsForSettlement(env.DB)
 
-      expect(dataSetIds).toHaveLength(2)
-      expect(dataSetIds).toContain(id1) // Recent usage
-      expect(dataSetIds).toContain(id3) // Exactly at threshold
-      expect(dataSetIds).not.toContain(id2) // Old usage
+      expect(dataSetIds).toStrictEqual([id1, id3])
     })
 
     it('should exclude data sets with zero usage (never reported)', async () => {
-      const id1 = randomId()
-      const id2 = randomId()
-      const id3 = randomId()
+      const id1 = nextId()
+      const id2 = nextId()
+      const id3 = nextId()
 
       // Active with CDN, recent usage
       await withDataSet(env, {
@@ -318,17 +296,14 @@ describe('rail settlement', () => {
 
       const dataSetIds = await getDataSetsForSettlement(env.DB)
 
-      expect(dataSetIds).toHaveLength(1)
-      expect(dataSetIds).toContain(id1) // Has recent usage
-      expect(dataSetIds).not.toContain(id2) // Never reported (explicit 1970)
-      expect(dataSetIds).not.toContain(id3) // Never reported (default)
+      expect(dataSetIds).toStrictEqual([id1])
     })
 
     it('should handle lockup_unlocks_at with usage_reported_until correctly', async () => {
-      const id1 = randomId()
-      const id2 = randomId()
-      const id3 = randomId()
-      const id4 = randomId()
+      const id1 = nextId()
+      const id2 = nextId()
+      const id3 = nextId()
+      const id4 = nextId()
 
       // Within settlement window AND recent usage
       await withDataSet(env, {
@@ -363,11 +338,7 @@ describe('rail settlement', () => {
 
       const dataSetIds = await getDataSetsForSettlement(env.DB)
 
-      expect(dataSetIds).toHaveLength(2)
-      expect(dataSetIds).toContain(id1) // Within window AND recent usage
-      expect(dataSetIds).toContain(id4) // Active CDN AND recent usage
-      expect(dataSetIds).not.toContain(id2) // Within window BUT old usage
-      expect(dataSetIds).not.toContain(id3) // Past window
+      expect(dataSetIds).toStrictEqual([id1, id4])
     })
   })
 })

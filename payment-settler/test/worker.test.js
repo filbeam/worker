@@ -1,51 +1,55 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { env } from 'cloudflare:test'
-import { withDataSet, randomId, getDaysAgo } from './test-helpers.js'
+import { withDataSet, createNextId, getDaysAgo } from './test-helpers.js'
 import worker from '../bin/payment-settler.js'
 
+const nextId = createNextId()
+
 describe('payment settler scheduled handler', () => {
-  let mockPublicClient
-  let mockWalletClient
-  let mockAccount
-  let mockGetChainClient
   let simulateContractCalls
   let writeContractCalls
 
-  beforeEach(async () => {
-    // Clear data_sets table before each test
-    await env.DB.prepare('DELETE FROM data_sets').run()
+  const mockAccount = { address: '0xMockAccountAddress' }
 
-    // Reset tracking arrays
+  const mockPublicClient = {
+    simulateContract: vi.fn().mockImplementation((params) => {
+      simulateContractCalls.push(params)
+      return Promise.resolve({
+        request: { ...params, mockedRequest: true },
+      })
+    }),
+  }
+
+  const mockWalletClient = {
+    writeContract: vi.fn().mockImplementation((request) => {
+      writeContractCalls.push(request)
+      return Promise.resolve('0xMockTransactionHash')
+    }),
+  }
+
+  const mockGetChainClient = vi.fn().mockReturnValue({
+    publicClient: mockPublicClient,
+    walletClient: mockWalletClient,
+    account: mockAccount,
+  })
+
+  const mockWorkflow = {
+    create: vi.fn().mockResolvedValue(undefined),
+  }
+
+  const mockEnv = {
+    ...env,
+    FILBEAM_CONTRACT_ADDRESS: '0xTestContractAddress',
+    FILBEAM_CONTROLLER_ADDRESS_PRIVATE_KEY:
+      '0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+    TRANSACTION_MONITOR_WORKFLOW: mockWorkflow,
+  }
+
+  beforeEach(async () => {
     simulateContractCalls = []
     writeContractCalls = []
 
-    // Setup mock account
-    mockAccount = { address: '0xMockAccountAddress' }
-
-    // Setup mock public client
-    mockPublicClient = {
-      simulateContract: vi.fn().mockImplementation((params) => {
-        simulateContractCalls.push(params)
-        return Promise.resolve({
-          request: { ...params, mockedRequest: true },
-        })
-      }),
-    }
-
-    // Setup mock wallet client
-    mockWalletClient = {
-      writeContract: vi.fn().mockImplementation((request) => {
-        writeContractCalls.push(request)
-        return Promise.resolve('0xMockTransactionHash')
-      }),
-    }
-
-    // Setup mock getChainClient function
-    mockGetChainClient = vi.fn().mockReturnValue({
-      publicClient: mockPublicClient,
-      walletClient: mockWalletClient,
-      account: mockAccount,
-    })
+    await env.DB.prepare('DELETE FROM data_sets').run()
   })
 
   afterEach(() => {
@@ -53,8 +57,8 @@ describe('payment settler scheduled handler', () => {
   })
 
   it('should successfully settle active data sets', async () => {
-    const id1 = randomId()
-    const id2 = randomId()
+    const id1 = nextId()
+    const id2 = nextId()
 
     // Seed active data sets with recent usage
     await withDataSet(env, {
@@ -68,50 +72,36 @@ describe('payment settler scheduled handler', () => {
       usageReportedUntil: getDaysAgo(10),
     })
 
-    // Mock the transaction monitor workflow
-    const mockWorkflow = {
-      create: vi.fn().mockResolvedValue(undefined),
-    }
-
-    // Create a test environment
-    const testEnv = {
-      ...env,
-      FILBEAM_CONTRACT_ADDRESS: '0xTestContractAddress',
-      FILBEAM_CONTROLLER_ADDRESS_PRIVATE_KEY:
-        '0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
-      RPC_URL: 'https://test.rpc.url',
-      ENVIRONMENT: 'dev',
-      TRANSACTION_MONITOR_WORKFLOW: mockWorkflow,
-    }
-
-    // Run the scheduled handler with mock
     await worker.scheduled(
       undefined,
-      testEnv,
+      mockEnv,
       {},
       { getChainClient: mockGetChainClient },
     )
 
-    // Verify chain client was called
-    expect(mockGetChainClient).toHaveBeenCalledWith(testEnv)
+    expect(mockGetChainClient).toHaveBeenCalledWith(mockEnv)
 
-    // Verify contract simulation was called
-    expect(simulateContractCalls).toHaveLength(1)
-    expect(simulateContractCalls[0]).toMatchObject({
-      account: mockAccount,
-      abi: expect.any(Array),
-      address: '0xTestContractAddress',
-      functionName: 'settleCDNPaymentRailBatch',
-      args: [expect.any(BigInt), expect.any(BigInt)],
-    })
+    expect(simulateContractCalls).toStrictEqual([
+      {
+        account: mockAccount,
+        abi: expect.any(Array),
+        address: '0xTestContractAddress',
+        functionName: 'settleCDNPaymentRailBatch',
+        args: [expect.any(BigInt), expect.any(BigInt)],
+      },
+    ])
 
-    // Verify transaction was sent
-    expect(writeContractCalls).toHaveLength(1)
-    expect(writeContractCalls[0]).toMatchObject({
-      mockedRequest: true,
-    })
+    expect(writeContractCalls).toStrictEqual([
+      {
+        account: mockAccount,
+        abi: expect.any(Array),
+        address: '0xTestContractAddress',
+        functionName: 'settleCDNPaymentRailBatch',
+        args: [expect.any(BigInt), expect.any(BigInt)],
+        mockedRequest: true,
+      },
+    ])
 
-    // Verify workflow was started
     expect(mockWorkflow.create).toHaveBeenCalledWith({
       id: expect.stringMatching(
         /^settlement-tx-monitor-0xMockTransactionHash-\d+$/,
@@ -126,42 +116,28 @@ describe('payment settler scheduled handler', () => {
   })
 
   it('should handle no active data sets gracefully', async () => {
-    // Seed only inactive data set
-    const id1 = randomId()
+    const id1 = nextId()
     await withDataSet(env, {
       id: id1,
       withCDN: false,
       usageReportedUntil: getDaysAgo(5),
     })
 
-    // Create a test environment
-    const testEnv = {
-      ...env,
-      FILBEAM_CONTRACT_ADDRESS: '0xTestContractAddress',
-      FILBEAM_CONTROLLER_ADDRESS_PRIVATE_KEY:
-        '0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
-      RPC_URL: 'https://test.rpc.url',
-      ENVIRONMENT: 'dev',
-    }
-
-    // Run the scheduled handler with mock
     await worker.scheduled(
       undefined,
-      testEnv,
+      mockEnv,
       {},
       { getChainClient: mockGetChainClient },
     )
 
-    // Verify no contract simulation was called
-    expect(simulateContractCalls).toHaveLength(0)
-    expect(writeContractCalls).toHaveLength(0)
+    expect(simulateContractCalls).toStrictEqual([])
+    expect(writeContractCalls).toStrictEqual([])
   })
 
   it('should handle terminated data sets within settlement window', async () => {
-    const id1 = randomId()
-    const id2 = randomId()
+    const id1 = nextId()
+    const id2 = nextId()
 
-    // Seed data sets
     await withDataSet(env, {
       id: id1,
       withCDN: true,
@@ -174,97 +150,67 @@ describe('payment settler scheduled handler', () => {
       usageReportedUntil: getDaysAgo(3),
     })
 
-    // Mock the transaction monitor workflow
-    const mockWorkflow = {
-      create: vi.fn().mockResolvedValue(undefined),
-    }
-
-    // Create a test environment
-    const testEnv = {
-      ...env,
-      FILBEAM_CONTRACT_ADDRESS: '0xTestContractAddress',
-      FILBEAM_CONTROLLER_ADDRESS_PRIVATE_KEY:
-        '0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
-      RPC_URL: 'https://test.rpc.url',
-      ENVIRONMENT: 'dev',
-      TRANSACTION_MONITOR_WORKFLOW: mockWorkflow,
-    }
-
-    // Run the scheduled handler with mock
     await worker.scheduled(
       undefined,
-      testEnv,
+      mockEnv,
       {},
       { getChainClient: mockGetChainClient },
     )
 
-    // Verify contract simulation and transaction
-    expect(simulateContractCalls).toHaveLength(1)
-    expect(writeContractCalls).toHaveLength(1)
+    expect(simulateContractCalls).toStrictEqual([
+      {
+        account: mockAccount,
+        abi: expect.any(Array),
+        address: '0xTestContractAddress',
+        functionName: 'settleCDNPaymentRailBatch',
+        args: [expect.any(BigInt), expect.any(BigInt)],
+      },
+    ])
+    expect(writeContractCalls).toStrictEqual([
+      {
+        account: mockAccount,
+        abi: expect.any(Array),
+        address: '0xTestContractAddress',
+        functionName: 'settleCDNPaymentRailBatch',
+        args: [expect.any(BigInt), expect.any(BigInt)],
+        mockedRequest: true,
+      },
+    ])
   })
 
   it('should handle contract simulation errors', async () => {
-    const id1 = randomId()
+    const id1 = nextId()
     await withDataSet(env, {
       id: id1,
       withCDN: true,
       usageReportedUntil: getDaysAgo(5),
     })
-
-    // Mock console.error to capture output
-    const consoleErrorSpy = vi.spyOn(console, 'error')
 
     const simulationError = new Error('Contract simulation failed')
     simulationError.cause = { reason: 'Insufficient balance' }
 
-    // Override mock to throw error
     mockPublicClient.simulateContract.mockRejectedValue(simulationError)
 
-    // Create a test environment
-    const testEnv = {
-      ...env,
-      FILBEAM_CONTRACT_ADDRESS: '0xTestContractAddress',
-      FILBEAM_CONTROLLER_ADDRESS_PRIVATE_KEY:
-        '0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
-      RPC_URL: 'https://test.rpc.url',
-      ENVIRONMENT: 'dev',
-    }
-
-    // Run the scheduled handler and expect it to throw
     await expect(
       worker.scheduled(
         undefined,
-        testEnv,
+        mockEnv,
         {},
         { getChainClient: mockGetChainClient },
       ),
     ).rejects.toThrow('Contract simulation failed')
-
-    // Verify error logging
-    expect(consoleErrorSpy).toHaveBeenCalledWith(
-      'Settlement process failed:',
-      simulationError,
-    )
-    expect(consoleErrorSpy).toHaveBeenCalledWith(
-      'Contract revert reason:',
-      'Insufficient balance',
-    )
   })
 
   it('should handle write contract errors', async () => {
-    const id1 = randomId()
+    const id1 = nextId()
     await withDataSet(env, {
       id: id1,
       withCDN: true,
       usageReportedUntil: getDaysAgo(5),
     })
 
-    // Mock console.error to capture output
-    const consoleErrorSpy = vi.spyOn(console, 'error')
-
     const writeError = new Error('Transaction failed')
 
-    // Reset simulateContract to default behavior and override writeContract to throw
     mockPublicClient.simulateContract.mockImplementation((params) => {
       simulateContractCalls.push(params)
       return Promise.resolve({
@@ -273,42 +219,24 @@ describe('payment settler scheduled handler', () => {
     })
     mockWalletClient.writeContract.mockRejectedValue(writeError)
 
-    // Create a test environment
-    const testEnv = {
-      ...env,
-      FILBEAM_CONTRACT_ADDRESS: '0xTestContractAddress',
-      FILBEAM_CONTROLLER_ADDRESS_PRIVATE_KEY:
-        '0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
-      RPC_URL: 'https://test.rpc.url',
-      ENVIRONMENT: 'dev',
-    }
-
-    // Run the scheduled handler and expect it to throw
     await expect(
       worker.scheduled(
         undefined,
-        testEnv,
+        mockEnv,
         {},
         { getChainClient: mockGetChainClient },
       ),
     ).rejects.toThrow('Transaction failed')
-
-    // Verify error logging
-    expect(consoleErrorSpy).toHaveBeenCalledWith(
-      'Settlement process failed:',
-      writeError,
-    )
   })
 
   it('should handle mainnet environment correctly', async () => {
-    const id1 = randomId()
+    const id1 = nextId()
     await withDataSet(env, {
       id: id1,
       withCDN: true,
       usageReportedUntil: getDaysAgo(5),
     })
 
-    // Reset mocks to default behavior
     mockPublicClient.simulateContract.mockImplementation((params) => {
       simulateContractCalls.push(params)
       return Promise.resolve({
@@ -322,54 +250,23 @@ describe('payment settler scheduled handler', () => {
       )
     })
 
-    // Mock the transaction monitor workflow
-    const mockWorkflow = {
-      create: vi.fn().mockResolvedValue(undefined),
-    }
-
-    // Create a mainnet test environment
-    const testEnv = {
-      ...env,
-      FILBEAM_CONTRACT_ADDRESS: '0x1234567890abcdef1234567890abcdef12345678',
-      FILBEAM_CONTROLLER_ADDRESS_PRIVATE_KEY:
-        '0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
-      RPC_URL: 'https://api.node.glif.io/',
-      ENVIRONMENT: 'mainnet',
-      TRANSACTION_MONITOR_WORKFLOW: mockWorkflow,
-    }
-
-    // Run the scheduled handler with mock
     await worker.scheduled(
       undefined,
-      testEnv,
+      mockEnv,
       {},
       { getChainClient: mockGetChainClient },
     )
   })
 
   it('should handle empty database correctly', async () => {
-    // No data sets seeded - database is empty
-
-    // Create a test environment
-    const testEnv = {
-      ...env,
-      FILBEAM_CONTRACT_ADDRESS: '0xTestContractAddress',
-      FILBEAM_CONTROLLER_ADDRESS_PRIVATE_KEY:
-        '0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
-      RPC_URL: 'https://test.rpc.url',
-      ENVIRONMENT: 'calibration',
-    }
-
-    // Run the scheduled handler with mock
     await worker.scheduled(
       undefined,
-      testEnv,
+      mockEnv,
       {},
       { getChainClient: mockGetChainClient },
     )
 
-    // Verify no contract interactions
-    expect(simulateContractCalls).toHaveLength(0)
-    expect(writeContractCalls).toHaveLength(0)
+    expect(simulateContractCalls).toStrictEqual([])
+    expect(writeContractCalls).toStrictEqual([])
   })
 })

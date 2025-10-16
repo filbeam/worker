@@ -47,7 +47,17 @@ export async function withDataSet(
     .run()
 }
 
-export const randomId = () => String(Math.ceil(Math.random() * 1e10))
+/**
+ * Creates a nextId function that returns sequential IDs starting from 1 Each
+ * test file gets its own counter that resets between test files
+ *
+ * @returns {Function} A function that returns the next sequential ID as a
+ *   string
+ */
+export function createNextId() {
+  let counter = 0
+  return () => String(++counter)
+}
 
 /**
  * Get a date that is N days ago (or in the future if negative)
