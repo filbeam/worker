@@ -23,12 +23,14 @@ describe('retrieveFile', () => {
   it('constructs the correct URL', async () => {
     cachesMock.match.mockResolvedValueOnce(null)
     const ctx = createExecutionContext()
-    await retrieveFile(ctx, baseUrl, pieceCid, new Request(baseUrl))
+    const { url } = await retrieveFile(ctx, baseUrl, pieceCid, new Request(baseUrl))
     await waitOnExecutionContext(ctx)
+    const expectedUrl = `${baseUrl}/piece/${pieceCid}`
     expect(fetchMock).toHaveBeenCalledWith(
-      `${baseUrl}/piece/${pieceCid}`,
+      expectedUrl,
       expect.any(Object),
     )
+    expect(url).toBe(expectedUrl)
   })
 
   it('uses the default cacheTtl if not provided', async () => {
