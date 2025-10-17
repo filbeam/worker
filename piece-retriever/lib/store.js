@@ -83,6 +83,8 @@ export async function logRetrievalResult(env, params) {
  *   serviceProviderId: string
  *   serviceUrl: string
  *   dataSetId: string
+ *   cdnEgressQuota: bigint
+ *   cacheMissEgressQuota: bigint
  * }>}
  */
 export async function getStorageProviderAndValidatePayer(
@@ -91,7 +93,9 @@ export async function getStorageProviderAndValidatePayer(
   pieceCid,
 ) {
   const query = `
-   SELECT pieces.data_set_id, data_sets.service_provider_id, data_sets.payer_address, data_sets.with_cdn, service_providers.service_url, wallet_details.is_sanctioned
+   SELECT pieces.data_set_id, data_sets.service_provider_id, data_sets.payer_address, data_sets.with_cdn,
+          data_sets.cdn_egress_quota, data_sets.cache_miss_egress_quota,
+          service_providers.service_url, wallet_details.is_sanctioned
    FROM pieces
    LEFT OUTER JOIN data_sets
      ON pieces.data_set_id = data_sets.id
@@ -108,6 +112,8 @@ export async function getStorageProviderAndValidatePayer(
    *   data_set_id: string
    *   payer_address: string | undefined
    *   with_cdn: number | undefined
+   *   cdn_egress_quota: string | undefined
+   *   cache_miss_egress_quota: string | undefined
    *   service_url: string | undefined
    *   is_sanctioned: number | undefined
    * }[]}
@@ -166,11 +172,33 @@ export async function getStorageProviderAndValidatePayer(
     `No approved service provider found for payer '${payerAddress}' and piece_cid '${pieceCid}'.`,
   )
 
+  // Check CDN quota first
+  const withSufficientCDNQuota = withApprovedProvider.filter((row) => {
+    return BigInt(row.cdn_egress_quota ?? '0') > 0n
+  })
+  httpAssert(
+    withSufficientCDNQuota.length > 0,
+    402,
+    `CDN egress quota exhausted for payer '${payerAddress}' and data set '${withApprovedProvider[0]?.data_set_id}'. Please top up your CDN egress quota.`,
+  )
+
+  // Check cache-miss quota
+  const withSufficientCacheMissQuota = withSufficientCDNQuota.filter((row) => {
+    return BigInt(row.cache_miss_egress_quota ?? '0') > 0n
+  })
+  httpAssert(
+    withSufficientCacheMissQuota.length > 0,
+    402,
+    `Cache miss egress quota exhausted for payer '${payerAddress}' and data set '${withSufficientCDNQuota[0]?.data_set_id}'. Please top up your cache miss egress quota.`,
+  )
+
   const {
     data_set_id: dataSetId,
     service_provider_id: serviceProviderId,
     service_url: serviceUrl,
-  } = withApprovedProvider[0]
+    cdn_egress_quota: cdnEgressQuota,
+    cache_miss_egress_quota: cacheMissEgressQuota,
+  } = withSufficientCacheMissQuota[0]
 
   // We need this assertion to supress TypeScript error. The compiler is not able to infer that
   // `withCDN.filter()` above returns only rows with `service_url` defined.
@@ -180,7 +208,13 @@ export async function getStorageProviderAndValidatePayer(
     `Looked up Data set ID '${dataSetId}' and service provider id '${serviceProviderId}' for piece_cid '${pieceCid}' and payer '${payerAddress}'. Service URL: ${serviceUrl}`,
   )
 
-  return { serviceProviderId, serviceUrl, dataSetId }
+  return {
+    serviceProviderId,
+    serviceUrl,
+    dataSetId,
+    cdnEgressQuota: BigInt(cdnEgressQuota ?? '0'),
+    cacheMissEgressQuota: BigInt(cacheMissEgressQuota ?? '0'),
+  }
 }
 
 /**
@@ -188,15 +222,60 @@ export async function getStorageProviderAndValidatePayer(
  * @param {object} params - Parameters for the data set update.
  * @param {string} params.dataSetId - The ID of the data set to update.
  * @param {number} params.egressBytes - The egress bytes used for the response.
+ * @param {boolean} params.cacheMiss - Whether this was a cache miss (true) or
+ *   cache hit (false).
  */
-export async function updateDataSetStats(env, { dataSetId, egressBytes }) {
-  await env.DB.prepare(
+export async function updateDataSetStats(
+  env,
+  { dataSetId, egressBytes, cacheMiss },
+) {
+  /**
+   * @type {{
+   *   cdn_egress_quota: string
+   *   cache_miss_egress_quota: string
+   * } | null}
+   */
+  const currentStats = await env.DB.prepare(
     `
-    UPDATE data_sets
-    SET total_egress_bytes_used = total_egress_bytes_used + ?
+    SELECT 
+      cdn_egress_quota, 
+      cache_miss_egress_quota
+    FROM data_sets
     WHERE id = ?
     `,
   )
-    .bind(egressBytes, dataSetId)
+    .bind(dataSetId)
+    .first()
+
+  if (!currentStats) {
+    throw new Error(`Data set with id '${dataSetId}' not found`)
+  }
+
+  const egressBytesBigInt = BigInt(egressBytes)
+  const currentCdnQuota = BigInt(currentStats.cdn_egress_quota ?? '0')
+  const currentCacheMissQuota = BigInt(
+    currentStats.cache_miss_egress_quota ?? '0',
+  )
+
+  const newCdnQuota = currentCdnQuota - egressBytesBigInt
+  const newCacheMissQuota = cacheMiss
+    ? currentCacheMissQuota - egressBytesBigInt
+    : currentCacheMissQuota
+
+  await env.DB.prepare(
+    `
+    UPDATE data_sets
+    SET total_egress_bytes_used = total_egress_bytes_used + ?,
+        cdn_egress_quota = ?,
+        cache_miss_egress_quota = ?
+    WHERE id = ?
+    `,
+  )
+    .bind(
+      egressBytes,
+      newCdnQuota.toString(),
+      newCacheMissQuota.toString(),
+      dataSetId,
+    )
     .run()
 }
