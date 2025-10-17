@@ -31,7 +31,7 @@ import { CID } from 'multiformats/cid'
  *   CHAINALYSIS_API_KEY: string
  *   GOLDSKY_SUBGRAPH_URL: string
  *   DEFAULT_LOCKUP_PERIOD_DAYS: number
- *   GENESIS_BLOCK_TIMESTAMP: number
+ *   FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS: number
  * }} IndexerEnv
  */
 

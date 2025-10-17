@@ -1,5 +1,6 @@
+import assert from 'node:assert'
 import { checkIfAddressIsSanctioned as defaultCheckIfAddressIsSanctioned } from './chainalysis.js'
-import { epochToTimestamp } from './epoch.js'
+import { epochToTimestampMs } from './epoch.js'
 
 /**
  * Handle proof set rail creation
@@ -66,8 +67,8 @@ export async function handleFWSSDataSetCreated(
  * Handle Filecoin Warm Storage Service service termination
  *
  * @param {{
- *   DEFAULT_LOCKUP_PERIOD_DAYS?: number
- *   GENESIS_BLOCK_TIMESTAMP?: number
+ *   DEFAULT_LOCKUP_PERIOD_DAYS: number
+ *   FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS: number
  *   DB: D1Database
  * }} env
  * @param {object} payload
@@ -76,19 +77,23 @@ export async function handleFWSSDataSetCreated(
  * @throws {Error}
  */
 export async function handleFWSSServiceTerminated(env, payload) {
-  const DEFAULT_LOCKUP_PERIOD_DAYS = env.DEFAULT_LOCKUP_PERIOD_DAYS || 30 // 30 days default
-  const GENESIS_BLOCK_TIMESTAMP = env.GENESIS_BLOCK_TIMESTAMP || 1667326380 // Calibration genesis as fallback
+  assert(env.DEFAULT_LOCKUP_PERIOD_DAYS)
+  assert(env.FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS)
 
-  // Convert block_number (epoch) to Unix timestamp (in seconds)
-  const epochTimestamp = epochToTimestamp(
+  const DEFAULT_LOCKUP_PERIOD_DAYS = env.DEFAULT_LOCKUP_PERIOD_DAYS
+  const FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS =
+    env.FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS
+
+  // Convert block_number (epoch) to Unix timestamp (in milliseconds)
+  const epochTimestampMs = epochToTimestampMs(
     payload.block_number,
-    GENESIS_BLOCK_TIMESTAMP,
+    FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS,
   )
 
-  // Calculate lockup unlock timestamp based on the epoch timestamp
-  const lockupUnlocksAtUnix =
-    epochTimestamp + DEFAULT_LOCKUP_PERIOD_DAYS * 24 * 60 * 60
-  const lockupUnlocksAt = new Date(lockupUnlocksAtUnix * 1000)
+  // Calculate lockup unlock timestamp based on the epoch timestamp (in milliseconds)
+  const lockupUnlocksAtMs =
+    epochTimestampMs + DEFAULT_LOCKUP_PERIOD_DAYS * 24 * 60 * 60 * 1000
+  const lockupUnlocksAt = new Date(lockupUnlocksAtMs)
   const lockupUnlocksAtISO = lockupUnlocksAt.toISOString()
 
   await env.DB.prepare(
