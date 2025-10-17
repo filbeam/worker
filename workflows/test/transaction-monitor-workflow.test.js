@@ -10,7 +10,7 @@ vi.mock('../lib/chain.js', () => ({
 describe('TransactionMonitorWorkflow', () => {
   /** @type {WorkflowStep} */
   const mockStep = { do: vi.fn() }
-  /** @type {{ send: (message: any) => Promise<void> }} */
+  /** @type {{ send: (message: unknown) => Promise<void> }} */
   const mockQueue = { send: vi.fn().mockResolvedValue() }
   /**
    * @type {{
