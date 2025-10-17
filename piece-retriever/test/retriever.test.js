@@ -727,7 +727,7 @@ describe('piece-retriever.fetch', () => {
     const mockRetrieveFile = vi.fn().mockResolvedValue({
       response: new Response(null, { status: 500 }),
       cacheMiss: true,
-      url
+      url,
     })
     const ctx = createExecutionContext()
     const req = withRequest(defaultPayerAddress, pieceCid)

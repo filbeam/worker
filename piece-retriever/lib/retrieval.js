@@ -14,7 +14,6 @@
  *   cacheMiss: boolean
  *   url: string
  * }>}
- *
  *   - The response from the fetch request, the cache miss and the content length.
  */
 export async function retrieveFile(

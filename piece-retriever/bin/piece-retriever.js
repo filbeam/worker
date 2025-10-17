@@ -101,7 +101,11 @@ export default {
         `Unsupported Service Provider: ${serviceProviderId}`,
       )
 
-      const { response: originResponse, cacheMiss, url } = await retrieveFile(
+      const {
+        response: originResponse,
+        cacheMiss,
+        url,
+      } = await retrieveFile(
         ctx,
         serviceUrl,
         pieceCid,
@@ -121,12 +125,15 @@ export default {
             dataSetId,
           }),
         )
-        const response = new Response(`Service provider ${serviceProviderId} is unavailable at ${url}`, {
-          status: 502,
-          headers: new Headers({
-            'X-Data-Set-ID': dataSetId,
-          })
-        })
+        const response = new Response(
+          `Service provider ${serviceProviderId} is unavailable at ${url}`,
+          {
+            status: 502,
+            headers: new Headers({
+              'X-Data-Set-ID': dataSetId,
+            }),
+          },
+        )
         setContentSecurityPolicy(response)
         return response
       }
