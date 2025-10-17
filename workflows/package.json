@@ -1,0 +1,18 @@
+{
+  "name": "@filbeam/workflows",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Shared workflows for FilBeam workers",
+  "author": "Space Meridian <filbeam@meridian.space>",
+  "type": "module",
+  "main": "lib/transaction-monitor-workflow.js",
+  "scripts": {
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "viem": "^2.38.0"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "^0.9.12"
+  }
+}

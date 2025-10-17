@@ -9,7 +9,8 @@
     "bad-bits",
     "indexer",
     "piece-retriever",
-    "terminator"
+    "terminator",
+    "workflows"
   ],
   "scripts": {
     "build:types": "npm run build:types --workspaces --if-present",
