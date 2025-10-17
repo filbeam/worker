@@ -55,6 +55,8 @@ export async function withServiceProvider(
  *   withIPFSIndexing?: boolean
  *   serviceProviderId?: string
  *   payerAddress?: string
+ *   cdnEgressQuota?: string
+ *   cacheMissEgressQuota?: string
  * }} options
  * @returns {Promise<string>}
  */
@@ -66,6 +68,8 @@ export async function withDataSet(
     withIPFSIndexing = false,
     serviceProviderId,
     payerAddress,
+    cdnEgressQuota = '0',
+    cacheMissEgressQuota = '0',
   } = {},
 ) {
   await env.DB.prepare(
@@ -87,10 +91,43 @@ export async function withDataSet(
       withIPFSIndexing,
       serviceProviderId,
       payerAddress,
-      0, // Initialize cdn_egress_quota to 0
-      0, // Initialize cache_miss_egress_quota to 0
+      cdnEgressQuota,
+      cacheMissEgressQuota,
     )
     .run()
 
   return dataSetId
+}
+
+export async function withPieces(
+  env,
+  dataSetId,
+  pieceIds,
+  pieceCids,
+  ipfsRootCids = [],
+) {
+  await env.DB.prepare(
+    `
+    INSERT INTO pieces (
+      id,
+      data_set_id,
+      cid,
+      ipfs_root_cid
+    )
+    VALUES ${new Array(pieceIds.length)
+      .fill(null)
+      .map(() => '(?, ?, ?, ?)')
+      .join(', ')}
+    ON CONFLICT DO NOTHING
+  `,
+  )
+    .bind(
+      ...pieceIds.flatMap((pieceId, i) => [
+        String(pieceId),
+        String(dataSetId),
+        pieceCids[i],
+        ipfsRootCids[i] || null,
+      ]),
+    )
+    .run()
 }
