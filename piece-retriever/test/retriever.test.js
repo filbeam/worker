@@ -32,9 +32,14 @@ describe('piece-retriever.fetch', () => {
     await env.DB.batch([
       env.DB.prepare('DELETE FROM pieces'),
       env.DB.prepare('DELETE FROM data_sets'),
-      env.DB.prepare('DELETE FROM bad_bits'),
       env.DB.prepare('DELETE FROM wallet_details'),
     ])
+    const { keys } = await env.KV.list()
+    for (const key of keys) {
+      if (key.startsWith('bad-bits:')) {
+        await env.KV.delete(key)
+      }
+    }
 
     let i = 1
     for (const {

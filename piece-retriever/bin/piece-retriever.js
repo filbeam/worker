@@ -11,7 +11,7 @@ import {
 } from '../lib/store.js'
 import { httpAssert } from '../lib/http-assert.js'
 import { setContentSecurityPolicy } from '../lib/content-security-policy.js'
-import { findInBadBits } from '../lib/bad-bits-util.js'
+import { getBadBitsEntry } from '../lib/bad-bits-util.js'
 
 // We need to keep an explicit definition of RetrieverEnv because our monorepo has multiple
 // worker-configuration.d.ts files, each file (re)defining the global Env interface, causing the
@@ -23,6 +23,7 @@ import { findInBadBits } from '../lib/bad-bits-util.js'
  *   CLIENT_CACHE_TTL: 31536000
  *   DNS_ROOT: '.localhost' | '.calibration.filbeam.io' | '.filbeam.io'
  *   DB: D1Database
+ *   KV: KVNamespace
  * }} PieceRetrieverEnv
  */
 export default {
@@ -83,23 +84,42 @@ export default {
       // Timestamp to measure file retrieval performance (from cache and from SP)
       const fetchStartedAt = performance.now()
 
-      const [{ serviceProviderId, serviceUrl, dataSetId }, isBadBit] =
-        await Promise.all([
-          getStorageProviderAndValidatePayer(env, payerWalletAddress, pieceCid),
-          findInBadBits(env, pieceCid),
-        ])
-
+      const indexCacheKey = `${payerWalletAddress}/${pieceCid}`
+      const [indexCacheValue, isBadBit] = await Promise.all([
+        env.KV.get(indexCacheKey, { type: 'json' }),
+        env.KV.get(`bad-bits:${getBadBitsEntry(pieceCid)}`, { type: 'json' }),
+      ])
+      httpAssert(
+        Array.isArray(indexCacheValue) || indexCacheValue === null,
+        500,
+        'Invalid index cache value',
+      )
+      let [dataSetId, serviceUrl] = indexCacheValue ?? []
       httpAssert(
         !isBadBit,
         404,
         'The requested CID was flagged by the Bad Bits Denylist at https://badbits.dwebops.pub',
       )
 
-      httpAssert(
-        serviceProviderId,
-        404,
-        `Unsupported Service Provider: ${serviceProviderId}`,
-      )
+      if (!serviceUrl) {
+        let serviceProviderId
+        ;({ serviceProviderId, serviceUrl, dataSetId } =
+          await getStorageProviderAndValidatePayer(
+            env,
+            payerWalletAddress,
+            pieceCid,
+          ))
+
+        httpAssert(
+          serviceProviderId,
+          404,
+          `Unsupported Service Provider: ${serviceProviderId}`,
+        )
+
+        ctx.waitUntil(
+          env.KV.put(indexCacheKey, JSON.stringify([dataSetId, serviceUrl])),
+        )
+      }
 
       const {
         response: originResponse,
