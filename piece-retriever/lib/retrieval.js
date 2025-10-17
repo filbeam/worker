@@ -12,8 +12,8 @@
  * @returns {Promise<{
  *   response: Response
  *   cacheMiss: boolean
+ *   url: string
  * }>}
- *
  *   - The response from the fetch request, the cache miss and the content length.
  */
 export async function retrieveFile(
@@ -52,7 +52,7 @@ export async function retrieveFile(
     }
   }
 
-  return { response, cacheMiss }
+  return { response, cacheMiss, url }
 }
 
 /**
