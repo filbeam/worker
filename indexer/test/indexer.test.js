@@ -12,6 +12,8 @@ const randomId = () => String(Math.ceil(Math.random() * 1e10))
 env.SECRET_HEADER_KEY = 'secret-header-key'
 env.SECRET_HEADER_VALUE = 'secret-header-value'
 env.CHAINALYSIS_API_KEY = 'mock-chainalysis-api-key'
+env.DEFAULT_LOCKUP_PERIOD_DAYS = 30
+env.FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS = 1667326380000 // Calibration network genesis timestamp in milliseconds for tests
 
 describe('piece-retriever.indexer', () => {
   beforeEach(async () => {
@@ -982,6 +984,7 @@ describe('POST /fwss/cdn-service-terminated', () => {
       },
       body: JSON.stringify({
         data_set_id: dataSetId,
+        block_number: '1000000', // Add block_number for epoch-based timestamp calculation
       }),
     })
     const res = await workerImpl.fetch(req, env)
@@ -1028,6 +1031,7 @@ describe('POST /fwss/service-terminated', () => {
       },
       body: JSON.stringify({
         data_set_id: dataSetId,
+        block_number: '1000000', // Add block_number for epoch-based timestamp calculation
       }),
     })
     const res = await workerImpl.fetch(req, env)
@@ -1040,6 +1044,46 @@ describe('POST /fwss/service-terminated', () => {
       .bind(dataSetId)
       .all()
     expect(dataSets).toStrictEqual([{ id: dataSetId, with_cdn: 0 }])
+  })
+
+  it('throws assertion error when DEFAULT_LOCKUP_PERIOD_DAYS is missing', async () => {
+    const req = new Request('https://host/fwss/service-terminated', {
+      method: 'POST',
+      headers: {
+        [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+      },
+      body: JSON.stringify({
+        data_set_id: '1',
+        block_number: '1000000',
+      }),
+    })
+
+    const mockEnv = {
+      ...env,
+      DEFAULT_LOCKUP_PERIOD_DAYS: null,
+    }
+
+    await expect(workerImpl.fetch(req, mockEnv)).rejects.toThrow()
+  })
+
+  it('throws assertion error when FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS is missing', async () => {
+    const req = new Request('https://host/fwss/service-terminated', {
+      method: 'POST',
+      headers: {
+        [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+      },
+      body: JSON.stringify({
+        data_set_id: '1',
+        block_number: '1000000',
+      }),
+    })
+
+    const mockEnv = {
+      ...env,
+      FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS: null,
+    }
+
+    await expect(workerImpl.fetch(req, mockEnv)).rejects.toThrow()
   })
 })
 

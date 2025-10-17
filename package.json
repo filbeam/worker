@@ -11,7 +11,8 @@
     "piece-retriever",
     "terminator",
     "workflows",
-    "usage-reporter"
+    "usage-reporter",
+    "payment-settler"
   ],
   "scripts": {
     "build:types": "npm run build:types --workspaces --if-present",
