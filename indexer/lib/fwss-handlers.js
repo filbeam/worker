@@ -1,4 +1,3 @@
-import assert from 'node:assert'
 import { checkIfAddressIsSanctioned as defaultCheckIfAddressIsSanctioned } from './chainalysis.js'
 import { epochToTimestampMs } from './epoch.js'
 
@@ -77,9 +76,6 @@ export async function handleFWSSDataSetCreated(
  * @throws {Error}
  */
 export async function handleFWSSServiceTerminated(env, payload) {
-  assert(env.DEFAULT_LOCKUP_PERIOD_DAYS)
-  assert(env.FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS)
-
   const DEFAULT_LOCKUP_PERIOD_DAYS = env.DEFAULT_LOCKUP_PERIOD_DAYS
   const FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS =
     env.FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS
