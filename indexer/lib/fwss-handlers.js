@@ -1,4 +1,5 @@
 import { checkIfAddressIsSanctioned as defaultCheckIfAddressIsSanctioned } from './chainalysis.js'
+import { BYTES_PER_TIB } from './constants.js'
 
 /**
  * Handle proof set rail creation
@@ -77,5 +78,70 @@ export async function handleFWSSServiceTerminated(env, payload) {
     `,
   )
     .bind(String(payload.data_set_id))
+    .run()
+}
+
+/**
+ * Handle CDN Payment Rails Topped Up event Calculates and updates egress quotas
+ * for a data set based on lockup amounts
+ *
+ * @param {{
+ *   CDN_RATE_PER_TIB: string
+ *   CACHE_MISS_RATE_PER_TIB: string
+ *   DB: D1Database
+ * }} env
+ * @param {object} payload
+ * @param {string} payload.data_set_id
+ * @param {string} payload.cdn_amount_added
+ * @param {string} payload.cache_miss_amount_added
+ * @throws {Error} If there is an error during the database operation
+ */
+export async function handleFWSSCDNPaymentRailsToppedUp(env, payload) {
+  const { CDN_RATE_PER_TIB, CACHE_MISS_RATE_PER_TIB } = env
+
+  /**
+   * @type {{
+   *   cdn_egress_quota: string
+   *   cache_miss_egress_quota: string
+   * } | null}
+   */
+  const currentDataSet = await env.DB.prepare(
+    `SELECT cdn_egress_quota, cache_miss_egress_quota FROM data_sets WHERE id = ?`,
+  )
+    .bind(payload.data_set_id)
+    .first()
+
+  if (!currentDataSet) {
+    return new Response(`Data set ${payload.data_set_id} not found`, {
+      status: 404,
+    })
+  }
+
+  const currentCdnQuota = BigInt(currentDataSet.cdn_egress_quota)
+  const currentCacheMissQuota = BigInt(currentDataSet.cache_miss_egress_quota)
+  const cdnEgressQuotaAdded =
+    (BigInt(payload.cdn_amount_added) * BYTES_PER_TIB) /
+    BigInt(CDN_RATE_PER_TIB)
+
+  const cacheMissEgressQuotaAdded =
+    (BigInt(payload.cache_miss_amount_added) * BYTES_PER_TIB) /
+    BigInt(CACHE_MISS_RATE_PER_TIB)
+
+  const newCdnQuota = currentCdnQuota + cdnEgressQuotaAdded
+  const newCacheMissQuota = currentCacheMissQuota + cacheMissEgressQuotaAdded
+
+  await env.DB.prepare(
+    `
+    UPDATE data_sets
+    SET cdn_egress_quota = ?,
+        cache_miss_egress_quota = ?
+    WHERE id = ?
+    `,
+  )
+    .bind(
+      newCdnQuota.toString(),
+      newCacheMissQuota.toString(),
+      payload.data_set_id,
+    )
     .run()
 }
