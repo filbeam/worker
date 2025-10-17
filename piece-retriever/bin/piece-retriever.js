@@ -11,6 +11,7 @@ import {
 } from '../lib/store.js'
 import { httpAssert } from '../lib/http-assert.js'
 import { setContentSecurityPolicy } from '../lib/content-security-policy.js'
+import { getBadBitsEntry } from '../lib/bad-bits-util.js'
 
 // We need to keep an explicit definition of RetrieverEnv because our monorepo has multiple
 // worker-configuration.d.ts files, each file (re)defining the global Env interface, causing the
@@ -86,7 +87,7 @@ export default {
       const indexCacheKey = `${payerWalletAddress}/${pieceCid}`
       const [indexCacheValue, isBadBit] = await Promise.all([
         env.KV.get(indexCacheKey, { type: 'json' }),
-        env.KV.get(`bad-bits:${pieceCid}`, { type: 'json' }),
+        env.KV.get(`bad-bits:${getBadBitsEntry(pieceCid)}`, { type: 'json' }),
       ])
       httpAssert(
         Array.isArray(indexCacheValue) || indexCacheValue === null,
