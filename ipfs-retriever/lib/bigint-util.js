@@ -13,7 +13,7 @@ export function bigIntToUint8Array(value) {
   }
   let hex = value.toString(16)
   if (hex.length % 2) hex = '0' + hex
-  const bytes = hex.match(/.{2}/g).map((byte) => parseInt(byte, 16))
+  const bytes = hex.match(/.{2}/g)?.map((byte) => parseInt(byte, 16)) ?? []
   return new Uint8Array(bytes)
 }
 

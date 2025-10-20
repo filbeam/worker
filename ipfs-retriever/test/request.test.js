@@ -19,6 +19,7 @@ describe('parseRequest', () => {
       dataSetId,
       pieceId,
       ipfsSubpath: '/',
+      ipfsFormat: null,
     })
   })
 
@@ -37,6 +38,7 @@ describe('parseRequest', () => {
       dataSetId,
       pieceId,
       ipfsSubpath: subpath,
+      ipfsFormat: null,
     })
   })
 
@@ -54,6 +56,7 @@ describe('parseRequest', () => {
       dataSetId,
       pieceId,
       ipfsSubpath: '/',
+      ipfsFormat: null,
     })
   })
 
@@ -67,6 +70,7 @@ describe('parseRequest', () => {
       dataSetId: '0',
       pieceId: '0',
       ipfsSubpath: '/',
+      ipfsFormat: null,
     })
   })
 
@@ -162,6 +166,64 @@ describe('parseRequest', () => {
       dataSetId,
       pieceId,
       ipfsSubpath: subpath,
+      ipfsFormat: null,
+    })
+  })
+
+  it('should parse format=car from URL with subpath', () => {
+    const dataSetId = '100'
+    const pieceId = '200'
+    const encodedDataSetId = bigIntToBase32(BigInt(dataSetId))
+    const encodedPieceId = bigIntToBase32(BigInt(pieceId))
+    const slug = `1-${encodedDataSetId}-${encodedPieceId}`
+    const subpath = '/path/to/file.txt'
+
+    const request = {
+      url: `https://${slug}${DNS_ROOT}${subpath}?format=car`,
+    }
+    const result = parseRequest(request, { DNS_ROOT })
+
+    expect(result).toEqual({
+      dataSetId,
+      pieceId,
+      ipfsSubpath: subpath,
+      ipfsFormat: 'car',
+    })
+  })
+
+  it('should parse any format value from URL', () => {
+    const dataSetId = '12345'
+    const pieceId = '67890'
+    const encodedDataSetId = bigIntToBase32(BigInt(dataSetId))
+    const encodedPieceId = bigIntToBase32(BigInt(pieceId))
+    const slug = `1-${encodedDataSetId}-${encodedPieceId}`
+
+    const request = { url: `https://${slug}${DNS_ROOT}/?format=raw` }
+    const result = parseRequest(request, { DNS_ROOT })
+
+    expect(result).toEqual({
+      dataSetId,
+      pieceId,
+      ipfsSubpath: '/',
+      ipfsFormat: 'raw',
+    })
+  })
+
+  it('should return null for ipfsFormat when format parameter is not present', () => {
+    const dataSetId = '12345'
+    const pieceId = '67890'
+    const encodedDataSetId = bigIntToBase32(BigInt(dataSetId))
+    const encodedPieceId = bigIntToBase32(BigInt(pieceId))
+    const slug = `1-${encodedDataSetId}-${encodedPieceId}`
+
+    const request = { url: `https://${slug}${DNS_ROOT}/file.txt` }
+    const result = parseRequest(request, { DNS_ROOT })
+
+    expect(result).toEqual({
+      dataSetId,
+      pieceId,
+      ipfsSubpath: '/file.txt',
+      ipfsFormat: null,
     })
   })
 
@@ -182,6 +244,7 @@ describe('parseRequest', () => {
       dataSetId,
       pieceId,
       ipfsSubpath: subpath,
+      ipfsFormat: null,
     })
   })
 
@@ -202,6 +265,7 @@ describe('parseRequest', () => {
       dataSetId,
       pieceId,
       ipfsSubpath: subpath,
+      ipfsFormat: null,
     })
   })
 
@@ -219,6 +283,7 @@ describe('parseRequest', () => {
       dataSetId,
       pieceId,
       ipfsSubpath: '/',
+      ipfsFormat: null,
     })
   })
 })

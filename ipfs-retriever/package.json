@@ -14,6 +14,9 @@
     "test": "wrangler d1 migrations apply test-db --local --cwd ../db && vitest run"
   },
   "dependencies": {
+    "@ipld/car": "^5.4.2",
+    "@web3-storage/car-block-validator": "^1.2.2",
+    "ipfs-unixfs-exporter": "^13.7.3",
     "multiformats": "^13.4.1"
   }
 }

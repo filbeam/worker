@@ -19,6 +19,7 @@
   },
   "include": [
     "bad-bits",
+    "ipfs-retriever",
     "piece-retriever",
     "indexer",
     "eslint.config.js",

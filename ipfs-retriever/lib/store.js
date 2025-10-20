@@ -88,7 +88,7 @@ export async function logRetrievalResult(env, params) {
  *   serviceUrl: string
  *   dataSetId: string
  *   pieceId: string
- *   ipfsRootCid?: string
+ *   ipfsRootCid: string
  * }}
  */
 function validateQueryResultsAndGetProvider(params) {
@@ -151,6 +151,15 @@ function validateQueryResultsAndGetProvider(params) {
     withApprovedProvider.length > 0,
     404,
     `No approved service provider found for payer '${payerAddress}' and ${lookupKey}.`,
+  )
+
+  const withIpfsRootCid = withApprovedProvider.filter(
+    (row) => row.ipfs_root_cid,
+  )
+  httpAssert(
+    withIpfsRootCid.length > 0,
+    404,
+    `${lookupKey} exists but has no associated IPFS Root CID.`,
   )
 
   const {

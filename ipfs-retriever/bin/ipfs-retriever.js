@@ -3,6 +3,7 @@ import { parseRequest } from '../lib/request.js'
 import {
   retrieveIpfsContent as defaultRetrieveIpfsContent,
   measureStreamedEgress,
+  processIpfsResponse,
 } from '../lib/retrieval.js'
 import {
   getStorageProviderAndValidatePayerByDataSetAndPiece,
@@ -55,7 +56,7 @@ export default {
    * @param {RetrieverEnv} env
    * @param {ExecutionContext} ctx
    * @param {object} options
-   * @param {typeof defaultRetrieveIpfsContent} [options.retrieveIpfsContent:]
+   * @param {typeof defaultRetrieveIpfsContent} [options.retrieveIpfsContent]
    * @returns
    */
   async _fetch(
@@ -88,7 +89,10 @@ export default {
     const workerStartedAt = performance.now()
     const requestCountryCode = request.headers.get('CF-IPCountry')
 
-    const { dataSetId, pieceId, ipfsSubpath } = parseRequest(request, env)
+    const { dataSetId, pieceId, ipfsSubpath, ipfsFormat } = parseRequest(
+      request,
+      env,
+    )
 
     try {
       // Timestamp to measure file retrieval performance (from cache and from SP)
@@ -148,10 +152,16 @@ export default {
         return response
       }
 
+      const responseBody = await processIpfsResponse(originResponse.body, {
+        ipfsRootCid,
+        ipfsSubpath,
+        ipfsFormat,
+        signal: request.signal,
+      })
+
       // Stream and count bytes
       // We create two identical streams, one for the egress measurement and the other for returning the response as soon as possible
-      const [returnedStream, egressMeasurementStream] =
-        originResponse.body.tee()
+      const [returnedStream, egressMeasurementStream] = responseBody.tee()
       const reader = egressMeasurementStream.getReader()
       const firstByteAt = performance.now()
 
@@ -190,6 +200,14 @@ export default {
         'Cache-Control',
         `public, max-age=${env.CLIENT_CACHE_TTL}`,
       )
+
+      // FIXME: move this logic into processIpfsResponse function
+      // When converting from CAR to RAW, set content-disposition to inline
+      // so browsers display the content instead of downloading it
+      if (ipfsFormat !== 'car') {
+        response.headers.set('content-disposition', 'inline')
+      }
+
       return response
     } catch (error) {
       const { status } = getErrorHttpStatusMessage(error)

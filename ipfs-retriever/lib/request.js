@@ -11,6 +11,7 @@ import { base32ToBigInt } from './bigint-util.js'
  *   dataSetId: string
  *   pieceId: string
  *   ipfsSubpath: string
+ *   ipfsFormat: string | null
  * }}
  */
 export function parseRequest(request, { DNS_ROOT }) {
@@ -55,7 +56,7 @@ export function parseRequest(request, { DNS_ROOT }) {
     httpAssert(
       false,
       400,
-      `Invalid dataSetId encoding in slug: ${encodedDataSetId}. ${error.message}`,
+      `Invalid dataSetId encoding in slug: ${encodedDataSetId}. ${error instanceof Error ? error.message : String(error)}`,
     )
   }
 
@@ -65,11 +66,12 @@ export function parseRequest(request, { DNS_ROOT }) {
     httpAssert(
       false,
       400,
-      `Invalid pieceId encoding in slug: ${encodedPieceId}. ${error.message}`,
+      `Invalid pieceId encoding in slug: ${encodedPieceId}. ${error instanceof Error ? error.message : String(error)}`,
     )
   }
 
   const ipfsSubpath = url.pathname || '/'
+  const ipfsFormat = url.searchParams.get('format')
 
-  return { dataSetId, pieceId, ipfsSubpath }
+  return { dataSetId, pieceId, ipfsSubpath, ipfsFormat }
 }

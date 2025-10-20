@@ -1,3 +1,15 @@
+import { CarReader } from '@ipld/car'
+// @ts-ignore - Types exist but package.json exports configuration prevents resolution
+import * as carBlockValidator from '@web3-storage/car-block-validator'
+import { recursive as exporter } from 'ipfs-unixfs-exporter'
+import { httpAssert } from './http-assert'
+
+/** @import {UnixFSBasicEntry} from 'ipfs-unixfs-exporter' */
+/** @typedef {CarReader['_blocks'][0]} Block */
+
+/** @type {(block: Block) => Promise<void> | undefined} */
+const validateBlock = carBlockValidator.validateBlock
+
 /**
  * Retrieves the IPFS content from the SP serving requests at the provided base
  * URL.
@@ -80,4 +92,108 @@ export function getRetrievalUrl(serviceUrl, rootCid, subpath) {
     serviceUrl += '/'
   }
   return `${serviceUrl}ipfs/${rootCid}${subpath}`
+}
+
+/**
+ * @param {ReadableStream<Uint8Array>} body
+ * @param {object} options
+ * @param {string} options.ipfsRootCid
+ * @param {string} options.ipfsSubpath
+ * @param {string | null} options.ipfsFormat
+ * @param {AbortSignal} [options.signal]
+ * @returns {Promise<ReadableStream<Uint8Array>>}
+ */
+export async function processIpfsResponse(
+  body,
+  { ipfsRootCid, ipfsSubpath, ipfsFormat, signal },
+) {
+  if (ipfsFormat === 'car') return body
+  httpAssert(
+    ipfsFormat === null,
+    400,
+    `Unsupported ?format value: "${ipfsFormat}"`,
+  )
+
+  const reader = await CarReader.fromIterable(body)
+  const blocksReader = reader.blocks()
+
+  const entries = exporter(
+    `${ipfsRootCid}${ipfsSubpath}`,
+    {
+      async get(blockCid) {
+        const res = await blocksReader.next()
+        if (res.done || !res.value) {
+          throw new Error(`Block ${blockCid} not found in CAR ${ipfsRootCid}`)
+        }
+        const block = res.value
+
+        // TODO: compare multihashes only
+        if (block.cid.toString() !== blockCid.toString()) {
+          throw new Error(
+            `Unexpected block CID ${block.cid}, expected ${blockCid}`,
+          )
+        }
+
+        try {
+          await validateBlock(block)
+        } catch (err) {
+          throw new Error(`Invalid block ${blockCid} of root ${ipfsRootCid}`, {
+            cause: err,
+          })
+        }
+
+        return block.bytes
+      },
+    },
+    { signal, blockReadConcurrency: 1 },
+  )
+
+  // eslint-disable-next-line no-unreachable-loop
+  for await (const entry of entries) {
+    signal?.throwIfAborted()
+    console.log(`Entry: ${entry.path} (${entry.type})`)
+
+    const expectedPath =
+      ipfsSubpath === '/' ? ipfsRootCid : `${ipfsRootCid}${ipfsSubpath}`
+    if (entry.path !== expectedPath) {
+      throw new Error(
+        `Unexpected entry - wrong path: ${describeEntry(entry)} (expected: ${expectedPath})`,
+      )
+    }
+
+    if (entry.type !== 'file') {
+      console.log(`Unexpected entry - wrong type: ${describeEntry(entry)}`)
+      httpAssert(false, 404, 'Not Found')
+    }
+
+    const entryContent = entry.content()
+
+    // Convert AsyncGenerator to ReadableStream for Response body
+    const rawDataStream = new ReadableStream({
+      async start(controller) {
+        try {
+          for await (const chunk of entryContent) {
+            signal?.throwIfAborted()
+            controller.enqueue(chunk)
+          }
+          controller.close()
+        } catch (error) {
+          controller.error(error)
+        }
+      },
+    })
+
+    return rawDataStream
+  }
+
+  httpAssert(false, 404, 'Not Found')
+}
+
+/** @param {UnixFSBasicEntry} entry */
+export function describeEntry(entry) {
+  return JSON.stringify(
+    entry,
+    (_, v) => (typeof v === 'bigint' ? v.toString() : v),
+    2,
+  )
 }

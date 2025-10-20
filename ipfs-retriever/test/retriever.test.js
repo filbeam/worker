@@ -852,6 +852,45 @@ describe('retriever.fetch', () => {
     ).first()
     expect(countAfter).toBe(countBefore)
   })
+
+  it('converts CAR to RAW by default (no format parameter)', async () => {
+    const ctx = createExecutionContext()
+
+    // Hard-coded in the retrieval worker for testing
+    const testDataSetId = '9999'
+    const testPieceId = '9999'
+
+    const url = withRequest(
+      testDataSetId,
+      testPieceId,
+      'GET',
+      {},
+      { subpath: '/rusty-lassie.png', format: null },
+    )
+    const req = new Request(url)
+
+    const res = await worker.fetch(req, env, ctx, { retrieveIpfsContent })
+    await waitOnExecutionContext(ctx)
+
+    expect(res.status).toBe(200)
+
+    // Verify content-disposition is set to inline (not attachment)
+    expect(res.headers.get('content-disposition')).toBe('inline')
+
+    // Verify we got RAW PNG data, not a CAR file
+    const content = await res.bytes()
+    expect(content.length).toBeGreaterThan(0)
+
+    // PNG files start with the magic bytes: 89 50 4E 47 0D 0A 1A 0A
+    expect(content.slice(0, 4)).toEqual(
+      new Uint8Array([
+        0x89,
+        0x50, // 'P'
+        0x4e, // 'N'
+        0x47, // 'G'
+      ]),
+    )
+  })
 })
 
 /**
@@ -868,7 +907,7 @@ function withRequest(
   pieceId,
   method = 'GET',
   headers = {},
-  { subpath = '' } = {},
+  { subpath = '', format = 'car' } = {},
 ) {
   let url = 'http://'
   if (dataSetId && pieceId) {
@@ -883,7 +922,8 @@ function withRequest(
     url += `${dataSetId}.`
   }
   url += DNS_ROOT.slice(1) // remove the leading '.'
-  if (subpath) url += `/${subpath}`
+  if (subpath) url += `${subpath}`
+  if (format) url += `?format=${format}`
 
   return new Request(url, { method, headers })
 }
