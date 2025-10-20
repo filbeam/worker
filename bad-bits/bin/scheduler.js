@@ -1,5 +1,6 @@
 import { fetchAndStoreBadBits } from '../lib/bad-bits.js'
 
+/** @type {ExportedHandler<{ KV: KVNamespace }>} */
 export default {
   /**
    * @param {ScheduledController} _controller
