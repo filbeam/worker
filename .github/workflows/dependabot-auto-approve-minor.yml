@@ -15,6 +15,10 @@ jobs:
           - '@cloudflare/'
           - 'wrangler'
           - 'vitest'
+          - typescript
+          - viem
+          - 'p-'
+          - '@graphprotocol/'
     steps:
       - name: Dependabot metadata
         id: metadata

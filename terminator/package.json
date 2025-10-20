@@ -14,10 +14,11 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "viem": "^2.37.9"
+    "@filbeam/workflows": "^1.0.0",
+    "viem": "^2.38.3"
   },
   "devDependencies": {
-    "@cloudflare/vitest-pool-workers": "^0.9.8",
+    "@cloudflare/vitest-pool-workers": "^0.9.13",
     "@types/validator": "^13.15.2"
   }
 }
