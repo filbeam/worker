@@ -11,7 +11,7 @@ import {
 } from '../lib/store.js'
 import { httpAssert } from '../lib/http-assert.js'
 import { setContentSecurityPolicy } from '../lib/content-security-policy.js'
-import { findInBadBits } from '../lib/bad-bits-util.js'
+import { getBadBitsEntry } from '../lib/bad-bits-util.js'
 
 // We need to keep an explicit definition of RetrieverEnv because our monorepo has multiple
 // worker-configuration.d.ts files, each file (re)defining the global Env interface, causing the
@@ -23,6 +23,7 @@ import { findInBadBits } from '../lib/bad-bits-util.js'
  *   CLIENT_CACHE_TTL: 31536000
  *   DNS_ROOT: '.localhost' | '.calibration.filbeam.io' | '.filbeam.io'
  *   DB: D1Database
+ *   KV: KVNamespace
  * }} PieceRetrieverEnv
  */
 export default {
@@ -86,7 +87,7 @@ export default {
       const [{ serviceProviderId, serviceUrl, dataSetId }, isBadBit] =
         await Promise.all([
           getStorageProviderAndValidatePayer(env, payerWalletAddress, pieceCid),
-          findInBadBits(env, pieceCid),
+          env.KV.get(`bad-bits:${getBadBitsEntry(pieceCid)}`, { type: 'json' }),
         ])
 
       httpAssert(
