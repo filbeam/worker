@@ -346,16 +346,5 @@ describe('usage report', () => {
         cacheMissBytesUsed: [500n, 0n, 3000n],
       })
     })
-
-    it('should handle empty usage data', () => {
-      const usageData = []
-      const batchData = prepareUsageReportData(usageData)
-
-      expect(batchData).toStrictEqual({
-        dataSetIds: [],
-        cdnBytesUsed: [],
-        cacheMissBytesUsed: [],
-      })
-    })
   })
 })

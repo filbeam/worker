@@ -13,7 +13,9 @@ import {
 } from './test-helpers.js'
 
 describe('usage reporter worker scheduled entrypoint', () => {
+  /** @type {object[]} */
   let simulateContractCalls
+  /** @type {object[]} */
   let writeContractCalls
 
   const mockWorkflow = {
