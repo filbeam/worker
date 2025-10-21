@@ -5,7 +5,7 @@ import { getLastEtag, updateBadBitsDatabase } from './store.js'
 export const BAD_BITS_URL = 'https://badbits.dwebops.pub/badbits.deny'
 
 /**
- * @param {{ KV: KVNamespace }} env
+ * @param {{ BAD_BITS_KV: KVNamespace }} env
  * @param {object} options
  * @param {typeof globalThis.fetch} options.fetch
  * @returns

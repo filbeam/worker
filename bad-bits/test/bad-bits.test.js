@@ -1,17 +1,15 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { fetchAndStoreBadBits } from '../lib/bad-bits.js'
-import { getAllBadBitHashes } from './util.js'
+import { getAllBadBitHashes } from '../lib/store.js'
 import { env } from 'cloudflare:test'
 import { testData, testDataHashes } from './testData.js'
 
 describe('fetchAndStoreBadBits', () => {
   beforeEach(async () => {
     // Clear the database before each test to avoid interference
-    const { keys } = await env.KV.list()
+    const { keys } = await env.BAD_BITS_KV.list()
     for (const key of keys) {
-      if (key.startsWith('bad-bits:')) {
-        await env.KV.delete(key)
-      }
+      await env.BAD_BITS_KV.delete(key)
     }
 
     // tell vitest we use mocked time
@@ -39,8 +37,10 @@ describe('fetchAndStoreBadBits', () => {
   it('removes hashes not in the current denylist', async () => {
     // Insert some initial hashes into the database
     const initialHashes = ['hash1', 'hash2', 'hash3']
-    await initialHashes.map((hash) => env.KV.put(`bad-bits:${hash}`, 'true'))
-    await env.KV.put(`bad-bits:_latest-hashes:0`, initialHashes.join(','))
+    await initialHashes.map((hash) =>
+      env.BAD_BITS_KV.put(`bad-bits:${hash}`, 'true'),
+    )
+    await env.BAD_BITS_KV.put(`latest-hashes:0`, initialHashes.join(','))
 
     const text = testData
 
@@ -142,7 +142,7 @@ describe('fetchAndStoreBadBits', () => {
       expect(storedHashes.size).toBeGreaterThan(0)
 
       // Choose a random hash from the real denylist file to verify it's in the database
-      const isBadBit = await env.KV.get(
+      const isBadBit = await env.BAD_BITS_KV.get(
         'bad-bits:00003f3fdeb4f3ee55e2c601ca263b1c8eef866e7f8e018a9f8ce03e7aea4d8a',
         { type: 'json' },
       )

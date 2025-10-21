@@ -9,22 +9,22 @@ enabled = true
 head_sampling_rate = 1
 
 [[kv_namespaces]]
-binding = "KV"
+binding = "BAD_BITS_KV"
 id = "8cc92155-16f6-426a-b782-2965e0daf100"
 
 [env.dev.vars]
 ENVIRONMENT = "dev"
 
 [[env.dev.kv_namespaces]]
-binding = "KV"
-id = "cc15f5038fe140b99af6eebfbcc583f2"
+binding = "BAD_BITS_KV"
+id = "2f2e5486ea0c48e993f6dff87a4aa102"
 
 [env.calibration.vars]
 ENVIRONMENT = "calibration"
 
 [[env.calibration.kv_namespaces]]
-binding = "KV"
-id = "19567b7ea80e4a06a0b0db96e525f624"
+binding = "BAD_BIT_KV"
+id = "178592ee0a3b4b00894a23186b3a0179"
 
 [env.calibration.triggers]
 crons = ["*/5 * * * *"]  # Run every 5 minutes
@@ -33,8 +33,8 @@ crons = ["*/5 * * * *"]  # Run every 5 minutes
 ENVIRONMENT = "mainnet"
 
 [[env.mainnet.kv_namespaces]]
-binding = "KV"
-id = "6b07420fe34b4f9e87c707f61545ec8b"
+binding = "BAD_BITS_KV"
+id = "7b03c39d53a041fdbe973c20285e16e9"
 
 [env.mainnet.triggers]
 crons = ["*/5 * * * *"]  # Run every 5 minutes

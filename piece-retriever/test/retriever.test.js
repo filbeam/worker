@@ -34,11 +34,9 @@ describe('piece-retriever.fetch', () => {
       env.DB.prepare('DELETE FROM data_sets'),
       env.DB.prepare('DELETE FROM wallet_details'),
     ])
-    const { keys } = await env.KV.list()
+    const { keys } = await env.BAD_BITS_KV.list()
     for (const key of keys) {
-      if (key.startsWith('bad-bits:')) {
-        await env.KV.delete(key)
-      }
+      await env.BAD_BITS_KV.delete(key)
     }
 
     let i = 1
