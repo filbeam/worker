@@ -130,7 +130,7 @@ async function persistUpdates(env, oldHashes, addedHashes, removedHashes) {
       [...latestHashes]
         .slice(
           i * KV_SEGMENT_MAX_HASH_COUNT,
-          (i + 1) * KV_SEGMENT_MAX_HASH_COUNT - 1,
+          (i + 1) * KV_SEGMENT_MAX_HASH_COUNT,
         )
         .join(','),
     )
