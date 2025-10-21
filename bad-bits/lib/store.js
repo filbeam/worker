@@ -42,6 +42,53 @@ export async function updateBadBitsDatabase(env, currentHashes, etag) {
     }
   }
 
+  await persistUpdates(env, oldHashes, addedHashes, removedHashes)
+
+  const wasCapped =
+    addedHashes.length + removedHashes.length >= MAX_TOTAL_CHANGES
+  if (etag && !wasCapped) {
+    await env.BAD_BITS_KV.put('latest-etag', etag)
+  }
+
+  console.log(
+    `+${addedHashes.length} -${removedHashes.length} hashes in ${Date.now() - startedAt}ms`,
+  )
+}
+
+/** @param {{ BAD_BITS_KV: KVNamespace }} env */
+export async function getLastEtag(env) {
+  return await env.BAD_BITS_KV.get('latest-etag')
+}
+
+/**
+ * Gets all bad bit hashes from the database
+ *
+ * @param {{ BAD_BITS_KV: KVNamespace }} env - Environment containing database
+ *   connection
+ * @returns {Promise<string[]>} - Array of hash strings
+ */
+export async function getAllBadBitHashes(env) {
+  const hashes = []
+  const { keys } = await env.BAD_BITS_KV.list({ prefix: 'latest-hashes' })
+  for (const key of keys) {
+    const segment = await env.BAD_BITS_KV.get(key.name)
+    if (segment) {
+      for (const hash of segment.split(',')) {
+        hashes.push(hash)
+      }
+    }
+  }
+  return hashes
+}
+
+/**
+ * @param {{ BAD_BITS_KV: KVNamespace }} env
+ * @param {Set<string>} oldHashes
+ * @param {string[]} addedHashes
+ * @param {string[]} removedHashes
+ * @returns {Promise<void>}
+ */
+async function persistUpdates(env, oldHashes, addedHashes, removedHashes) {
   console.log('writing added hashes')
   for (let i = 0; i < Math.ceil(addedHashes.length / MAX_KV_BATCH_SIZE); i++) {
     const batch = addedHashes.slice(
@@ -92,40 +139,4 @@ export async function updateBadBitsDatabase(env, currentHashes, etag) {
         .join(','),
     )
   }
-
-  const wasCapped =
-    addedHashes.length + removedHashes.length >= MAX_TOTAL_CHANGES
-  if (etag && !wasCapped) {
-    await env.BAD_BITS_KV.put('latest-etag', etag)
-  }
-
-  console.log(
-    `+${addedHashes.length} -${removedHashes.length} hashes in ${Date.now() - startedAt}ms`,
-  )
-}
-
-/** @param {{ BAD_BITS_KV: KVNamespace }} env */
-export async function getLastEtag(env) {
-  return await env.BAD_BITS_KV.get('latest-etag')
-}
-
-/**
- * Gets all bad bit hashes from the database
- *
- * @param {{ BAD_BITS_KV: KVNamespace }} env - Environment containing database
- *   connection
- * @returns {Promise<string[]>} - Array of hash strings
- */
-export async function getAllBadBitHashes(env) {
-  const hashes = []
-  const { keys } = await env.BAD_BITS_KV.list({ prefix: 'latest-hashes' })
-  for (const key of keys) {
-    const segment = await env.BAD_BITS_KV.get(key.name)
-    if (segment) {
-      for (const hash of segment.split(',')) {
-        hashes.push(hash)
-      }
-    }
-  }
-  return hashes
 }
