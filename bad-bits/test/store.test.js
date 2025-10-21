@@ -1,7 +1,6 @@
 import { describe, it, beforeAll, expect } from 'vitest'
-import { updateBadBitsDatabase } from '../lib/store.js'
+import { updateBadBitsDatabase, getAllBadBitHashes } from '../lib/store.js'
 import { env } from 'cloudflare:test'
-import { getAllBadBitHashes } from './util.js'
 
 describe('updateBadBitsDatabase', () => {
   beforeAll(async () => {

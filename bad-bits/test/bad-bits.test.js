@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { fetchAndStoreBadBits } from '../lib/bad-bits.js'
-import { getAllBadBitHashes } from './util.js'
+import { getAllBadBitHashes } from '../lib/store.js'
 import { env } from 'cloudflare:test'
 import { testData, testDataHashes } from './testData.js'
 

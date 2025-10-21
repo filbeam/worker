@@ -1,5 +1,3 @@
-import { getAllBadBitHashes } from '../test/util.js'
-
 const KV_VALUE_MAX_SIZE = 26214400
 const BAD_BITS_CID_LENGTH = 64
 const KV_SEGMENT_MAX_HASH_COUNT = Math.floor(
@@ -103,4 +101,24 @@ export async function updateBadBitsDatabase(env, currentHashes, etag) {
 /** @param {{ KV: KVNamespace }} env */
 export async function getLastEtag(env) {
   return await env.KV.get('bad-bits:_latest-etag')
+}
+
+/**
+ * Gets all bad bit hashes from the database
+ *
+ * @param {{ KV: KVNamespace }} env - Environment containing database connection
+ * @returns {Promise<string[]>} - Array of hash strings
+ */
+export async function getAllBadBitHashes(env) {
+  const hashes = []
+  const { keys } = await env.KV.list({ prefix: 'bad-bits:_latest-hashes' })
+  for (const key of keys) {
+    const segment = await env.KV.get(key.name)
+    if (segment) {
+      for (const hash of segment.split(',')) {
+        hashes.push(hash)
+      }
+    }
+  }
+  return hashes
 }
