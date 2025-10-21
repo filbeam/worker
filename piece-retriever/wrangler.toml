@@ -25,7 +25,7 @@ binding = "BAD_BITS_KV"
 id = "2f2e5486ea0c48e993f6dff87a4aa102"
 
 [[env.dev.kv_namespaces]]
-binding = "KV"
+binding = "INDEX_CACHE_KV"
 id = "cc15f5038fe140b99af6eebfbcc583f2"
 
 [env.calibration.vars]
@@ -44,7 +44,7 @@ binding = "BAD_BIT_KV"
 id = "178592ee0a3b4b00894a23186b3a0179"
 
 [[env.calibration.kv_namespaces]]
-binding = "KV"
+binding = "INDEX_CACHE_KV"
 id = "19567b7ea80e4a06a0b0db96e525f624"
 
 [env.mainnet.vars]
@@ -63,5 +63,5 @@ binding = "BAD_BITS_KV"
 id = "7b03c39d53a041fdbe973c20285e16e9"
 
 [[env.mainnet.kv_namespaces]]
-binding = "KV"
+binding = "INDEX_CACHE_KV"
 id = "6b07420fe34b4f9e87c707f61545ec8b"

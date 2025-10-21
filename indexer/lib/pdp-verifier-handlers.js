@@ -27,7 +27,7 @@ export async function insertDataSetPiece(
 }
 
 /**
- * @param {{ DB: D1Database; KV: KVNamespace }} env
+ * @param {{ DB: D1Database; INDEX_CACHE_KV: KVNamespace }} env
  * @param {number | string} dataSetId
  * @param {(number | string)[]} pieceIds
  */
@@ -44,7 +44,7 @@ export async function removeDataSetPieces(env, dataSetId, pieceIds) {
 }
 
 /**
- * @param {{ DB: D1Database; KV: KVNamespace }} env
+ * @param {{ DB: D1Database; INDEX_CACHE_KV: KVNamespace }} env
  * @param {number | string} dataSetId
  * @param {(number | string)[]} pieceIds
  */
@@ -61,7 +61,7 @@ async function clearDataSetPiecesIndexCache(env, dataSetId, pieceIds) {
     .run()
   await Promise.all(
     results.map(async ({ payerAddress, pieceCID }) => {
-      await env.KV.delete(`${payerAddress}/${pieceCID}`)
+      await env.INDEX_CACHE_KV.delete(`${payerAddress}/${pieceCID}`)
     }),
   )
 }

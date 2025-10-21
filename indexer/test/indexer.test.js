@@ -642,7 +642,7 @@ describe('piece-retriever.indexer', () => {
       const pieceCids = [randomId(), randomId()]
       await withPieces(env, dataSetId, pieceIds, pieceCids)
       for (const pieceCid of pieceCids) {
-        await env.KV.put(
+        await env.INDEX_CACHE_KV.put(
           `${payerAddress}/${pieceCid}`,
           JSON.stringify([dataSetId, 'https://service.url/']),
         )
@@ -661,7 +661,9 @@ describe('piece-retriever.indexer', () => {
       expect(res.status).toBe(200)
 
       for (const pieceCid of pieceCids) {
-        expect(await env.KV.get(`${payerAddress}/${pieceCid}`)).toBe(null)
+        expect(
+          await env.INDEX_CACHE_KV.get(`${payerAddress}/${pieceCid}`),
+        ).toBe(null)
       }
     })
   })
@@ -786,7 +788,7 @@ describe('piece-retriever.indexer', () => {
       const pieceCids = [randomId(), randomId()]
       await withPieces(env, dataSetId, pieceIds, pieceCids)
       for (const pieceCid of pieceCids) {
-        await env.KV.put(
+        await env.INDEX_CACHE_KV.put(
           `${payerAddress}/${pieceCid}`,
           JSON.stringify([dataSetId, serviceUrl]),
         )
@@ -827,7 +829,9 @@ describe('piece-retriever.indexer', () => {
       expect(res.status).toBe(200)
 
       for (const pieceCid of pieceCids) {
-        expect(await env.KV.get(`${payerAddress}/${pieceCid}`)).toBe(null)
+        expect(
+          await env.INDEX_CACHE_KV.get(`${payerAddress}/${pieceCid}`),
+        ).toBe(null)
       }
     })
   })
@@ -934,7 +938,7 @@ describe('piece-retriever.indexer', () => {
       const pieceCids = [randomId(), randomId()]
       await withPieces(env, dataSetId, pieceIds, pieceCids)
       for (const pieceCid of pieceCids) {
-        await env.KV.put(
+        await env.INDEX_CACHE_KV.put(
           `${payerAddress}/${pieceCid}`,
           JSON.stringify([dataSetId, serviceUrl]),
         )
@@ -976,7 +980,9 @@ describe('piece-retriever.indexer', () => {
       expect(res.status).toBe(200)
 
       for (const pieceCid of pieceCids) {
-        expect(await env.KV.get(`${payerAddress}/${pieceCid}`)).toBe(null)
+        expect(
+          await env.INDEX_CACHE_KV.get(`${payerAddress}/${pieceCid}`),
+        ).toBe(null)
       }
     })
   })
@@ -1083,7 +1089,7 @@ describe('POST /service-provider-registry/provider-removed', () => {
     const pieceCids = [randomId(), randomId()]
     await withPieces(env, dataSetId, pieceIds, pieceCids)
     for (const pieceCid of pieceCids) {
-      await env.KV.put(
+      await env.INDEX_CACHE_KV.put(
         `${payerAddress}/${pieceCid}`,
         JSON.stringify([dataSetId, serviceUrl]),
       )
@@ -1124,7 +1130,9 @@ describe('POST /service-provider-registry/provider-removed', () => {
     expect(res.status).toBe(200)
 
     for (const pieceCid of pieceCids) {
-      expect(await env.KV.get(`${payerAddress}/${pieceCid}`)).toBe(null)
+      expect(await env.INDEX_CACHE_KV.get(`${payerAddress}/${pieceCid}`)).toBe(
+        null,
+      )
     }
   })
 })
@@ -1218,7 +1226,7 @@ describe('POST /fwss/cdn-service-terminated', () => {
     const pieceCids = [randomId(), randomId()]
     await withPieces(env, dataSetId, pieceIds, pieceCids)
     for (const pieceCid of pieceCids) {
-      await env.KV.put(
+      await env.INDEX_CACHE_KV.put(
         `${payerAddress}/${pieceCid}`,
         JSON.stringify([dataSetId, 'https://service.url/']),
       )
@@ -1236,7 +1244,9 @@ describe('POST /fwss/cdn-service-terminated', () => {
     expect(res.status).toBe(200)
 
     for (const pieceCid of pieceCids) {
-      expect(await env.KV.get(`${payerAddress}/${pieceCid}`)).toBe(null)
+      expect(await env.INDEX_CACHE_KV.get(`${payerAddress}/${pieceCid}`)).toBe(
+        null,
+      )
     }
   })
 })
@@ -1297,7 +1307,7 @@ describe('POST /fwss/service-terminated', () => {
     const pieceCids = [randomId(), randomId()]
     await withPieces(env, dataSetId, pieceIds, pieceCids)
     for (const pieceCid of pieceCids) {
-      await env.KV.put(
+      await env.INDEX_CACHE_KV.put(
         `${payerAddress}/${pieceCid}`,
         JSON.stringify([dataSetId, 'https://service.url/']),
       )
@@ -1315,7 +1325,9 @@ describe('POST /fwss/service-terminated', () => {
     expect(res.status).toBe(200)
 
     for (const pieceCid of pieceCids) {
-      expect(await env.KV.get(`${payerAddress}/${pieceCid}`)).toBe(null)
+      expect(await env.INDEX_CACHE_KV.get(`${payerAddress}/${pieceCid}`)).toBe(
+        null,
+      )
     }
   })
 })

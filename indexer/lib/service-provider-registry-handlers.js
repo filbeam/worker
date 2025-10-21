@@ -3,7 +3,7 @@ import validator from 'validator'
 const PRODUCT_TYPE_PDP = 0
 
 /**
- * @param {{ DB: D1Database; KV: KVNamespace }} env
+ * @param {{ DB: D1Database; INDEX_CACHE_KV: KVNamespace }} env
  * @param {string | number} providerId
  * @param {string | number} productType
  * @param {string} serviceUrl
@@ -34,7 +34,7 @@ export async function handleProductAdded(
 }
 
 /**
- * @param {{ DB: D1Database; KV: KVNamespace }} env
+ * @param {{ DB: D1Database; INDEX_CACHE_KV: KVNamespace }} env
  * @param {string | number} providerId
  * @param {string | number} productType
  * @param {string} serviceUrl
@@ -65,7 +65,7 @@ export async function handleProductUpdated(
 }
 
 /**
- * @param {{ DB: D1Database; KV: KVNamespace }} env
+ * @param {{ DB: D1Database; INDEX_CACHE_KV: KVNamespace }} env
  * @param {string | number} providerId
  * @param {string | number} productType
  * @returns {Promise<Response>}
@@ -100,7 +100,7 @@ export async function handleProductRemoved(env, providerId, productType) {
 }
 
 /**
- * @param {{ DB: D1Database; KV: KVNamespace }} env
+ * @param {{ DB: D1Database; INDEX_CACHE_KV: KVNamespace }} env
  * @param {string | number} providerId
  * @returns {Promise<Response>}
  */
@@ -127,7 +127,7 @@ export async function handleProviderRemoved(env, providerId) {
 }
 
 /**
- * @param {{ DB: D1Database; KV: KVNamespace }} env
+ * @param {{ DB: D1Database; INDEX_CACHE_KV: KVNamespace }} env
  * @param {string | number} providerId
  * @param {string} serviceUrl
  * @returns {Promise<Response>}
@@ -161,7 +161,7 @@ async function handleProviderServiceUrlUpdate(env, providerId, serviceUrl) {
 }
 
 /**
- * @param {{ DB: D1Database; KV: KVNamespace }} env
+ * @param {{ DB: D1Database; INDEX_CACHE_KV: KVNamespace }} env
  * @param {string | number} providerId
  */
 async function clearServiceProviderIndexCache(env, providerId) {
@@ -177,7 +177,7 @@ async function clearServiceProviderIndexCache(env, providerId) {
     .run()
   await Promise.all(
     results.map(async ({ payerAddress, pieceCID }) => {
-      await env.KV.delete(`${payerAddress}/${pieceCID}`)
+      await env.INDEX_CACHE_KV.delete(`${payerAddress}/${pieceCID}`)
     }),
   )
 }
