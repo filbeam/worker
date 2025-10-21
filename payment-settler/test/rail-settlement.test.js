@@ -1,15 +1,21 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { env } from 'cloudflare:test'
 import { getDataSetsForSettlement } from '../lib/rail-settlement.js'
-import { withDataSet, createNextId, getDaysAgo } from './test-helpers.js'
+import {
+  withDataSet,
+  withWallet,
+  createNextId,
+  getDaysAgo,
+} from './test-helpers.js'
 
 const nextId = createNextId()
 
 describe('rail settlement', () => {
   describe('getDataSetsForSettlement', () => {
     beforeEach(async () => {
-      // Clear data_sets table before each test
+      // Clear data_sets and wallet_details tables before each test
       await env.DB.prepare('DELETE FROM data_sets').run()
+      await env.DB.prepare('DELETE FROM wallet_details').run()
     })
 
     it('should return data sets with with_cdn = true', async () => {
@@ -339,6 +345,223 @@ describe('rail settlement', () => {
       const dataSetIds = await getDataSetsForSettlement(env.DB)
 
       expect(dataSetIds).toStrictEqual([id1, id4])
+    })
+
+    it('should exclude data sets with sanctioned payer addresses', async () => {
+      const id1 = nextId()
+      const id2 = nextId()
+      const id3 = nextId()
+      const sanctionedAddress = '0xSanctioned'
+      const cleanAddress = '0xClean'
+
+      // Create wallet entries
+      await withWallet(env, sanctionedAddress, true) // sanctioned
+      await withWallet(env, cleanAddress, false) // not sanctioned
+
+      // Sanctioned address with CDN - should be excluded
+      await withDataSet(env, {
+        id: id1,
+        withCDN: true,
+        payerAddress: sanctionedAddress,
+        usageReportedUntil: getDaysAgo(5),
+      })
+
+      // Clean address with CDN - should be included
+      await withDataSet(env, {
+        id: id2,
+        withCDN: true,
+        payerAddress: cleanAddress,
+        usageReportedUntil: getDaysAgo(5),
+      })
+
+      // Another clean address with CDN - should be included
+      await withDataSet(env, {
+        id: id3,
+        withCDN: true,
+        payerAddress: cleanAddress,
+        usageReportedUntil: getDaysAgo(10),
+      })
+
+      const dataSetIds = await getDataSetsForSettlement(env.DB)
+
+      expect(dataSetIds).toStrictEqual([id2, id3])
+    })
+
+    it('should exclude sanctioned addresses even within lockup_unlocks_at window', async () => {
+      const id1 = nextId()
+      const id2 = nextId()
+      const id3 = nextId()
+      const sanctionedAddress = '0xSanctioned2'
+      const cleanAddress = '0xClean2'
+
+      // Create wallet entries
+      await withWallet(env, sanctionedAddress, true) // sanctioned
+      await withWallet(env, cleanAddress, false) // not sanctioned
+
+      // Sanctioned address within settlement window - should be excluded
+      await withDataSet(env, {
+        id: id1,
+        withCDN: false,
+        payerAddress: sanctionedAddress,
+        lockupUnlocksAt: getDaysAgo(-10),
+        usageReportedUntil: getDaysAgo(5),
+      })
+
+      // Clean address within settlement window - should be included
+      await withDataSet(env, {
+        id: id2,
+        withCDN: false,
+        payerAddress: cleanAddress,
+        lockupUnlocksAt: getDaysAgo(-10),
+        usageReportedUntil: getDaysAgo(5),
+      })
+
+      // Clean address with CDN - should be included
+      await withDataSet(env, {
+        id: id3,
+        withCDN: true,
+        payerAddress: cleanAddress,
+        usageReportedUntil: getDaysAgo(5),
+      })
+
+      const dataSetIds = await getDataSetsForSettlement(env.DB)
+
+      expect(dataSetIds).toStrictEqual([id2, id3])
+    })
+
+    it('should handle data sets with payer addresses not in wallet_details table', async () => {
+      const id1 = nextId()
+      const id2 = nextId()
+      const id3 = nextId()
+      const unknownAddress = '0xUnknown'
+      const cleanAddress = '0xClean3'
+
+      // Only create wallet entry for cleanAddress
+      await withWallet(env, cleanAddress, false)
+
+      // Unknown address (not in wallet_details) with CDN - should be included (treated as non-sanctioned)
+      await withDataSet(env, {
+        id: id1,
+        withCDN: true,
+        payerAddress: unknownAddress,
+        usageReportedUntil: getDaysAgo(5),
+      })
+
+      // Clean address with CDN - should be included
+      await withDataSet(env, {
+        id: id2,
+        withCDN: true,
+        payerAddress: cleanAddress,
+        usageReportedUntil: getDaysAgo(5),
+      })
+
+      // Another unknown address within settlement window - should be included
+      await withDataSet(env, {
+        id: id3,
+        withCDN: false,
+        payerAddress: unknownAddress,
+        lockupUnlocksAt: getDaysAgo(-10),
+        usageReportedUntil: getDaysAgo(5),
+      })
+
+      const dataSetIds = await getDataSetsForSettlement(env.DB)
+
+      expect(dataSetIds).toStrictEqual([id1, id2, id3])
+    })
+
+    it('should handle mixed scenarios with sanctioned addresses correctly', async () => {
+      const id1 = nextId()
+      const id2 = nextId()
+      const id3 = nextId()
+      const id4 = nextId()
+      const id5 = nextId()
+      const sanctionedAddress = '0xSanctioned3'
+      const cleanAddress = '0xClean4'
+      const unknownAddress = '0xUnknown2'
+
+      // Create wallet entries
+      await withWallet(env, sanctionedAddress, true) // sanctioned
+      await withWallet(env, cleanAddress, false) // not sanctioned
+
+      // Clean address with CDN - should be included
+      await withDataSet(env, {
+        id: id1,
+        withCDN: true,
+        payerAddress: cleanAddress,
+        usageReportedUntil: getDaysAgo(5),
+      })
+
+      // Sanctioned address with CDN - should be excluded
+      await withDataSet(env, {
+        id: id2,
+        withCDN: true,
+        payerAddress: sanctionedAddress,
+        usageReportedUntil: getDaysAgo(5),
+      })
+
+      // Unknown address within settlement window - should be included
+      await withDataSet(env, {
+        id: id3,
+        withCDN: false,
+        payerAddress: unknownAddress,
+        lockupUnlocksAt: getDaysAgo(-10),
+        usageReportedUntil: getDaysAgo(10),
+      })
+
+      // Sanctioned address within settlement window - should be excluded
+      await withDataSet(env, {
+        id: id4,
+        withCDN: false,
+        payerAddress: sanctionedAddress,
+        lockupUnlocksAt: getDaysAgo(-10),
+        usageReportedUntil: getDaysAgo(5),
+      })
+
+      // Clean address with terminate_service_tx_hash - should still be excluded due to termination
+      await withDataSet(env, {
+        id: id5,
+        withCDN: true,
+        payerAddress: cleanAddress,
+        terminateServiceTxHash: '0xabc123',
+        usageReportedUntil: getDaysAgo(5),
+      })
+
+      const dataSetIds = await getDataSetsForSettlement(env.DB)
+
+      expect(dataSetIds).toStrictEqual([id1, id3])
+    })
+
+    it('should exclude sanctioned addresses even if terminate_service_tx_hash IS NULL', async () => {
+      const id1 = nextId()
+      const id2 = nextId()
+      const sanctionedAddress = '0xSanctioned4'
+      const cleanAddress = '0xClean5'
+
+      // Create wallet entries
+      await withWallet(env, sanctionedAddress, true) // sanctioned
+      await withWallet(env, cleanAddress, false) // not sanctioned
+
+      // Sanctioned address with CDN and NULL terminate_service_tx_hash - should be excluded
+      await withDataSet(env, {
+        id: id1,
+        withCDN: true,
+        payerAddress: sanctionedAddress,
+        terminateServiceTxHash: null,
+        usageReportedUntil: getDaysAgo(5),
+      })
+
+      // Clean address with CDN and NULL terminate_service_tx_hash - should be included
+      await withDataSet(env, {
+        id: id2,
+        withCDN: true,
+        payerAddress: cleanAddress,
+        terminateServiceTxHash: null,
+        usageReportedUntil: getDaysAgo(5),
+      })
+
+      const dataSetIds = await getDataSetsForSettlement(env.DB)
+
+      expect(dataSetIds).toStrictEqual([id2])
     })
   })
 })

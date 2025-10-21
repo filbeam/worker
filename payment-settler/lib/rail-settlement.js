@@ -8,11 +8,13 @@ export async function getDataSetsForSettlement(db) {
   const result = await db
     .prepare(
       `
-      SELECT id
+      SELECT data_sets.id
       FROM data_sets
-      WHERE (with_cdn = 1 OR lockup_unlocks_at >= datetime('now'))
-        AND terminate_service_tx_hash IS NULL
-        AND usage_reported_until >= datetime('now', '-30 days')
+      LEFT JOIN wallet_details ON data_sets.payer_address = wallet_details.address
+      WHERE (data_sets.with_cdn = 1 OR data_sets.lockup_unlocks_at >= datetime('now'))
+        AND data_sets.terminate_service_tx_hash IS NULL
+        AND data_sets.usage_reported_until >= datetime('now', '-30 days')
+        AND (wallet_details.is_sanctioned IS NULL OR wallet_details.is_sanctioned = 0)
       `,
     )
     .all()
