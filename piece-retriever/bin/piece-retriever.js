@@ -101,13 +101,42 @@ export default {
         `Unsupported Service Provider: ${serviceProviderId}`,
       )
 
-      const { response: originResponse, cacheMiss } = await retrieveFile(
+      const {
+        response: originResponse,
+        cacheMiss,
+        url,
+      } = await retrieveFile(
+        ctx,
         serviceUrl,
         pieceCid,
         request,
         env.ORIGIN_CACHE_TTL,
         { signal: request.signal },
       )
+
+      if (originResponse.status >= 500) {
+        ctx.waitUntil(
+          logRetrievalResult(env, {
+            cacheMiss,
+            responseStatus: originResponse.status,
+            egressBytes: 0,
+            requestCountryCode,
+            timestamp: requestTimestamp,
+            dataSetId,
+          }),
+        )
+        const response = new Response(
+          `Service provider ${serviceProviderId} is unavailable at ${url}`,
+          {
+            status: 502,
+            headers: new Headers({
+              'X-Data-Set-ID': dataSetId,
+            }),
+          },
+        )
+        setContentSecurityPolicy(response)
+        return response
+      }
 
       if (!originResponse.body) {
         // The upstream response does not have any readable body

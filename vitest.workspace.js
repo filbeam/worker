@@ -5,4 +5,5 @@ export default defineWorkspace([
   'indexer',
   'piece-retriever',
   'terminator',
+  'workflows',
 ])
