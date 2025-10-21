@@ -3,7 +3,7 @@
     "allowJs": true,
     "checkJs": true,
     "skipLibCheck": true,
-    "lib": ["es2022"],
+    "lib": ["esnext"],
     "target": "es2022",
     "module": "preserve",
     "moduleResolution": "bundler",
