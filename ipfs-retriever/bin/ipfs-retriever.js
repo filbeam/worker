@@ -196,9 +196,13 @@ export default {
 
       // FIXME: move this logic into processIpfsResponse function
       // When converting from CAR to RAW, set content-disposition to inline
-      // so browsers display the content instead of downloading it
+      // so browsers display the content instead of downloading it.
       if (ipfsFormat !== 'car') {
         response.headers.set('content-disposition', 'inline')
+        // Also remove the content-type header, remove x-content-type-options,
+        // and let the browser to sniff the content type.
+        response.headers.delete('content-type')
+        response.headers.delete('x-content-type-options')
       }
 
       return response
