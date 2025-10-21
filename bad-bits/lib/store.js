@@ -123,12 +123,8 @@ async function persistUpdates(env, oldHashes, addedHashes, removedHashes) {
   for (const hash of removedHashes) {
     latestHashes.delete(hash)
   }
-
-  for (
-    let i = 0;
-    i < Math.ceil(latestHashes.size / KV_SEGMENT_MAX_HASH_COUNT);
-    i++
-  ) {
+  const segmentCount = Math.ceil(latestHashes.size / KV_SEGMENT_MAX_HASH_COUNT)
+  for (let i = 0; i < segmentCount; i++) {
     await env.BAD_BITS_KV.put(
       `latest-hashes:${i}`,
       [...latestHashes]
@@ -138,5 +134,12 @@ async function persistUpdates(env, oldHashes, addedHashes, removedHashes) {
         )
         .join(','),
     )
+  }
+  const { keys } = await env.BAD_BITS_KV.list({ prefix: 'latest-hashes:' })
+  for (const key of keys) {
+    const i = Number(key.name.split(':')[1])
+    if (i > segmentCount - 1) {
+      await env.BAD_BITS_KV.delete(key.name)
+    }
   }
 }
