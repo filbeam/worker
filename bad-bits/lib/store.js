@@ -93,7 +93,7 @@ async function persistUpdates(env, oldHashes, addedHashes, removedHashes) {
   for (let i = 0; i < Math.ceil(addedHashes.length / MAX_KV_BATCH_SIZE); i++) {
     const batch = addedHashes.slice(
       i * MAX_KV_BATCH_SIZE,
-      (i + 1) * MAX_KV_BATCH_SIZE - 1,
+      (i + 1) * MAX_KV_BATCH_SIZE ,
     )
     await Promise.all(
       batch.map((hash) => env.BAD_BITS_KV.put(`bad-bits:${hash}`, 'true')),
