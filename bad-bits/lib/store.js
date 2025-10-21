@@ -89,7 +89,10 @@ export async function updateBadBitsDatabase(env, currentHashes, etag) {
         .join(','),
     )
   }
-  if (etag) {
+
+  const wasCapped =
+    addedHashes.length + removedHashes.length >= MAX_TOTAL_CHANGES
+  if (etag && !wasCapped) {
     await env.KV.put('bad-bits:_latest-etag', etag)
   }
 
