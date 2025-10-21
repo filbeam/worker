@@ -41,6 +41,7 @@ export async function retrieveIpfsContent(
   // See https://specs.ipfs.tech/http-gateways/trustless-gateway/
   // TODO: support `raw` format too, see https://github.com/filbeam/worker/issues/295
   const url = getRetrievalUrl(baseUrl, ipfsRootCid, ipfsSubpath) + '?format=car'
+  console.log(`Fetching IPFS content from: ${url}`)
   const response = await fetch(url, {
     cf: {
       cacheTtlByStatus: {
@@ -100,19 +101,21 @@ export function getRetrievalUrl(serviceUrl, rootCid, subpath) {
 }
 
 /**
- * @param {ReadableStream<Uint8Array>} body
+ * @param {Response} response
  * @param {object} options
  * @param {string} options.ipfsRootCid
  * @param {string} options.ipfsSubpath
  * @param {string | null} options.ipfsFormat
  * @param {AbortSignal} [options.signal]
- * @returns {Promise<ReadableStream<Uint8Array>>}
+ * @returns {Promise<ReadableStream<Uint8Array> | null>}
  */
 export async function processIpfsResponse(
-  body,
+  response,
   { ipfsRootCid, ipfsSubpath, ipfsFormat, signal },
 ) {
-  if (ipfsFormat === 'car') return body
+  const body = response.body
+  if (!response.ok || !body || ipfsFormat === 'car') return body
+
   httpAssert(
     ipfsFormat === null,
     400,

@@ -121,7 +121,14 @@ export default {
         { signal: request.signal },
       )
 
-      if (!originResponse.body) {
+      const responseBody = await processIpfsResponse(originResponse, {
+        ipfsRootCid,
+        ipfsSubpath,
+        ipfsFormat,
+        signal: request.signal,
+      })
+
+      if (!responseBody) {
         // The upstream response does not have any readable body
         // There is no need to measure response body size, we can
         // return the original response object.
@@ -144,13 +151,6 @@ export default {
         )
         return response
       }
-
-      const responseBody = await processIpfsResponse(originResponse.body, {
-        ipfsRootCid,
-        ipfsSubpath,
-        ipfsFormat,
-        signal: request.signal,
-      })
 
       // Stream and count bytes
       // We create two identical streams, one for the egress measurement and the other for returning the response as soon as possible
