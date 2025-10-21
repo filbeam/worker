@@ -24,11 +24,8 @@ export async function updateBadBitsDatabase(env, currentHashes, etag) {
   console.log('comparing current hashes')
   const addedHashes = [...currentHashes.difference(oldHashes)]
   const removedHashes = [...oldHashes.difference(currentHashes)]
-  addedHashes.length = Math.min(addedHashes.length, MAX_TOTAL_CHANGES)
-  removedHashes.length = Math.min(
-    removedHashes.length,
-    MAX_TOTAL_CHANGES - addedHashes.length,
-  )
+  addedHashes.splice(MAX_TOTAL_CHANGES)
+  removedHashes.splice(MAX_TOTAL_CHANGES - addedHashes.length)
 
   await persistUpdates(env, oldHashes, addedHashes, removedHashes)
 
