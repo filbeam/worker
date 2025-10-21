@@ -23,7 +23,7 @@ import { getBadBitsEntry } from '../lib/bad-bits-util.js'
  *   CLIENT_CACHE_TTL: 31536000
  *   DNS_ROOT: '.localhost' | '.calibration.filbeam.io' | '.filbeam.io'
  *   DB: D1Database
- *   KV: KVNamespace
+ *   BAD_BITS_KV: KVNamespace
  * }} PieceRetrieverEnv
  */
 export default {
@@ -87,7 +87,9 @@ export default {
       const [{ serviceProviderId, serviceUrl, dataSetId }, isBadBit] =
         await Promise.all([
           getStorageProviderAndValidatePayer(env, payerWalletAddress, pieceCid),
-          env.KV.get(`bad-bits:${getBadBitsEntry(pieceCid)}`, { type: 'json' }),
+          env.BAD_BITS_KV.get(`bad-bits:${getBadBitsEntry(pieceCid)}`, {
+            type: 'json',
+          }),
         ])
 
       httpAssert(

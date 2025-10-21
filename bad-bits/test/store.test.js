@@ -5,11 +5,9 @@ import { env } from 'cloudflare:test'
 describe('updateBadBitsDatabase', () => {
   beforeAll(async () => {
     // Clear the database before running tests
-    const { keys } = await env.KV.list()
+    const { keys } = await env.BAD_BITS_KV.list()
     for (const key of keys) {
-      if (key.startsWith('bad-bits:')) {
-        await env.KV.delete(key)
-      }
+      await env.BAD_BITS_KV.delete(key)
     }
   })
 
@@ -26,8 +24,10 @@ describe('updateBadBitsDatabase', () => {
   it('removes hashes not in the current set', async () => {
     // Insert some initial hashes into the database
     const initialHashes = ['hash1', 'hash2', 'hash3']
-    await initialHashes.map((hash) => env.KV.put(`bad-bits:${hash}`, 'true'))
-    await env.KV.put(`bad-bits:_latest-hashes:0`, initialHashes.join(','))
+    await initialHashes.map((hash) =>
+      env.BAD_BITS_KV.put(`bad-bits:${hash}`, 'true'),
+    )
+    await env.BAD_BITS_KV.put(`latest-hashes:0`, initialHashes.join(','))
 
     const currentHashes = new Set(['hash2', 'hash4'])
 
@@ -47,9 +47,11 @@ describe('updateBadBitsDatabase', () => {
 
     // Insert the same hashes into the database
     await Promise.all(
-      currentHashes.map((hash) => env.KV.put(`bad-bits:${hash}`, 'true')),
+      currentHashes.map((hash) =>
+        env.BAD_BITS_KV.put(`bad-bits:${hash}`, 'true'),
+      ),
     )
-    await env.KV.put(`bad-bits:_latest-hashes:0`, currentHashes.join(','))
+    await env.BAD_BITS_KV.put(`latest-hashes:0`, currentHashes.join(','))
 
     await updateBadBitsDatabase(env, new Set(currentHashes))
     const storedHashes = await getAllBadBitHashes(env)
