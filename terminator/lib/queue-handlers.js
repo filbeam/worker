@@ -17,17 +17,6 @@ import { getRecentSendMessage as defaultGetRecentSendMessage } from './filfox.js
  * }} TransactionRetryMessage
  */
 
-// /**
-//  * @typedef {{
-//  *   ENVIRONMENT: 'dev' | 'calibration' | 'mainnet'
-//  *   RPC_URL: string
-//  *   FILECOIN_WARM_STORAGE_SERVICE_ADDRESS: string
-//  *   FILCDN_CONTROLLER_ADDRESS_PRIVATE_KEY: string
-//  *   TRANSACTION_MONITOR_WORKFLOW: WorkflowEntrypoint
-//  *   TRANSACTION_QUEUE: Queue<TerminateServiceMessage | TransactionRetryMessage>
-//  * }} Env
-//  */
-
 /**
  * Handles terminate CDN service queue messages
  *

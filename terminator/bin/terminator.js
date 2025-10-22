@@ -71,7 +71,9 @@ export default {
 
           default:
             unknownMessageErrors.push(
-              new Error(`Unknown message type: ${message.body}`),
+              new Error(
+                `Unknown message type: ${JSON.stringify(message.body)}`,
+              ),
             )
         }
         message.ack()
