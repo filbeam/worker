@@ -14,6 +14,7 @@ describe('updateBadBitsDatabase', () => {
       if (list.list_complete) break
       cursor = list.cursor
     }
+    await env.BAD_BITS_R2.delete('latest-hashes')
   })
 
   it('adds new hashes to the database', async () => {
@@ -32,7 +33,7 @@ describe('updateBadBitsDatabase', () => {
     await initialHashes.map((hash) =>
       env.BAD_BITS_KV.put(`bad-bits:${hash}`, 'true'),
     )
-    await env.BAD_BITS_KV.put(`latest-hashes:0`, initialHashes.join(','))
+    await env.BAD_BITS_R2.put('latest-hashes', JSON.stringify(initialHashes))
 
     const currentHashes = new Set(['hash2', 'hash4'])
 
@@ -56,7 +57,7 @@ describe('updateBadBitsDatabase', () => {
         env.BAD_BITS_KV.put(`bad-bits:${hash}`, 'true'),
       ),
     )
-    await env.BAD_BITS_KV.put(`latest-hashes:0`, currentHashes.join(','))
+    await env.BAD_BITS_R2.put('latest-hashes', JSON.stringify(currentHashes))
 
     await updateBadBitsDatabase(env, new Set(currentHashes))
     const storedHashes = await getAllBadBitHashes(env)
