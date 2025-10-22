@@ -87,10 +87,10 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           environment: ${{ matrix.environment }}
-      - name: Deploy Analytics Worker
+      - name: Deploy Analytics Writer
         uses: cloudflare/wrangler-action@v3
         with:
-          workingDirectory: analytics
+          workingDirectory: analytics-writer
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           environment: ${{ matrix.environment }}

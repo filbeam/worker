@@ -1,6 +1,6 @@
-# Analytics Worker
+# Analytics Writer
 
-Cloudflare Worker that receives TTFB (Time To First Byte) metrics from the FilBeam bot and stores them in Analytics Engine.
+Cloudflare Worker that receives TTFB (Time To First Byte) metrics from the FilBeam bot and writes them to Analytics Engine.
 
 ## API
 
@@ -18,9 +18,12 @@ Content-Type: application/json
 ```json
 {
   "blobs": ["url", "location", "client", "cid"],
-  "doubles": [ttfb, status, bytes]
+  "doubles": [ttfb, status, bytes],
+  "indexes": ["optional-index-string"]
 }
 ```
+
+**Note:** Use either `index` (string) or `indexes` (array with max 1 item), not both.
 
 **Response:**
 ```json
@@ -37,22 +40,39 @@ Content-Type: application/json
 
 ## Data Structure
 
-- **blobs**: Array of 4 strings containing:
+Each data point consists of:
+
+- **Blobs** (strings) — Dimensions used for grouping and filtering
+- **Doubles** (numbers) — Numeric values to record  
+- **Indexes** (strings) — Sampling key (single index only)
+
+### Analytics Engine Limits
+
+- **Blobs**: Maximum 20 items, total size must not exceed 16 KB
+- **Doubles**: Maximum 20 items
+- **Indexes**: Maximum 1 item, each index must not exceed 96 bytes
+- **Data Points**: Maximum 25 data points per Worker invocation
+
+### Field Details
+
+- **blobs**: Array of strings containing dimensions for grouping and filtering:
   - `url`: The URL that was requested
   - `location`: Geographic location of the request
   - `client`: Client identifier
   - `cid`: Content identifier
 
-- **doubles**: Array of 3 numbers containing:
+- **doubles**: Array of numbers containing numeric values:
   - `ttfb`: Time to first byte in milliseconds
   - `status`: HTTP status code
   - `bytes`: Number of bytes transferred
+
+- **indexes**: Optional array with at most 1 item for sampling key
 
 ## Development
 
 ### Set up authentication
 
-For local development, create a `.dev.vars` file in the `analytics` directory:
+For local development, create a `.dev.vars` file in the `analytics-writer` directory:
 ```bash
 echo "ANALYTICS_AUTH_KEY=your-local-dev-key" > .dev.vars
 ```
@@ -87,7 +107,7 @@ npm run deploy:mainnet
 
 ## Configuration
 
-The worker uses Cloudflare Analytics Engine with the dataset `ttfb_metrics`. The binding `analytics-engine` is configured in `wrangler.toml`.
+The worker uses Cloudflare Analytics Engine with the dataset `ttfb_metrics`. The binding `analytics_engine` is configured in `wrangler.toml`.
 
 ## Error Handling
 

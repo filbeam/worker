@@ -6,7 +6,7 @@
   "author": "Space Meridian <filbeam@meridian.space>",
   "type": "module",
   "workspaces": [
-    "analytics",
+    "analytics-writer",
     "bad-bits",
     "indexer",
     "piece-retriever",

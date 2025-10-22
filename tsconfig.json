@@ -18,10 +18,11 @@
     "resolveJsonModule": true
   },
   "include": [
-    "analytics",
+    "analytics-writer",
     "bad-bits",
     "piece-retriever",
     "indexer",
+    "terminator",
     "eslint.config.js",
     "worker-configuration.d.ts"
   ],
