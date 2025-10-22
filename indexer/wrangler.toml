@@ -24,6 +24,10 @@ binding = "DB"
 database_name = "dev-db"
 database_id = "8cc92155-16f6-426a-b782-2965e0daf101"
 
+[[env.dev.kv_namespaces]]
+binding = "INDEX_CACHE_KV"
+id = "cc15f5038fe140b99af6eebfbcc583f2"
+
 [env.calibration.vars]
 ENVIRONMENT = "calibration"
 WALLET_SCREENING_BATCH_SIZE = 1
@@ -47,6 +51,10 @@ queue = "indexer-retry-queue-calibration"
 max_batch_size = 100
 max_batch_timeout = 30
 
+[[env.calibration.kv_namespaces]]
+binding = "INDEX_CACHE_KV"
+id = "19567b7ea80e4a06a0b0db96e525f624"
+
 [env.mainnet.vars]
 ENVIRONMENT = "mainnet"
 WALLET_SCREENING_BATCH_SIZE = 10
@@ -69,3 +77,7 @@ binding = "RETRY_QUEUE"
 queue = "indexer-retry-queue-mainnet"
 max_batch_size = 100
 max_batch_timeout = 30
+
+[[env.mainnet.kv_namespaces]]
+binding = "INDEX_CACHE_KV"
+id = "6b07420fe34b4f9e87c707f61545ec8b"

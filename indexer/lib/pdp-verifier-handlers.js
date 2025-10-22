@@ -27,20 +27,51 @@ export async function insertDataSetPiece(
 }
 
 /**
- * @param {{ DB: D1Database }} env
+ * @param {{ DB: D1Database; INDEX_CACHE_KV: KVNamespace }} env
  * @param {number | string} dataSetId
  * @param {(number | string)[]} pieceIds
  */
 export async function removeDataSetPieces(env, dataSetId, pieceIds) {
+  await clearDataSetPiecesIndexCache(env, dataSetId, pieceIds)
   await env.DB.prepare(
     `
     DELETE FROM pieces
-    WHERE data_set_id = ? AND id IN (${new Array(pieceIds.length)
-      .fill(null)
-      .map(() => '?')
-      .join(', ')})
+    WHERE data_set_id = ? AND id IN (${sqlPlaceholders(pieceIds.length)})
     `,
   )
     .bind(String(dataSetId), ...pieceIds.map(String))
     .run()
 }
+
+/**
+ * @param {{ DB: D1Database; INDEX_CACHE_KV: KVNamespace }} env
+ * @param {number | string} dataSetId
+ * @param {(number | string)[]} pieceIds
+ */
+async function clearDataSetPiecesIndexCache(env, dataSetId, pieceIds) {
+  const { results } = await env.DB.prepare(
+    `
+      SELECT data_sets.payer_address AS payerAddress, pieces.cid AS pieceCID
+      FROM data_sets
+      INNER JOIN pieces ON pieces.data_set_id = data_sets.id
+      WHERE data_sets.id = ? AND pieces.id IN (${sqlPlaceholders(pieceIds.length)})
+    `,
+  )
+    .bind(String(dataSetId), ...pieceIds.map(String))
+    .run()
+  await Promise.all(
+    results.map(async ({ payerAddress, pieceCID }) => {
+      await env.INDEX_CACHE_KV.delete(`${payerAddress}/${pieceCID}`)
+    }),
+  )
+}
+
+/**
+ * @param {number} count
+ * @returns String
+ */
+const sqlPlaceholders = (count) =>
+  new Array(count)
+    .fill(null)
+    .map(() => '?')
+    .join(', ')

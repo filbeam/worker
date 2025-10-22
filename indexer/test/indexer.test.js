@@ -630,6 +630,42 @@ describe('piece-retriever.indexer', () => {
         .all()
       expect(pieces.length).toBe(0)
     })
+
+    it('clears index cache entries', async () => {
+      const payerAddress = '0xPayerAddress'
+      const dataSetId = await withDataSet(env, {
+        withCDN: true,
+        serviceProviderId: '1',
+        payerAddress,
+      })
+      const pieceIds = [randomId(), randomId()]
+      const pieceCids = [randomId(), randomId()]
+      await withPieces(env, dataSetId, pieceIds, pieceCids)
+      for (const pieceCid of pieceCids) {
+        await env.INDEX_CACHE_KV.put(
+          `${payerAddress}/${pieceCid}`,
+          JSON.stringify([dataSetId, 'https://service.url/']),
+        )
+      }
+      const req = new Request('https://host/pdp-verifier/pieces-removed', {
+        method: 'POST',
+        headers: {
+          [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+        },
+        body: JSON.stringify({
+          data_set_id: dataSetId,
+          piece_ids: pieceIds,
+        }),
+      })
+      const res = await workerImpl.fetch(req, env)
+      expect(res.status).toBe(200)
+
+      for (const pieceCid of pieceCids) {
+        expect(
+          await env.INDEX_CACHE_KV.get(`${payerAddress}/${pieceCid}`),
+        ).toBe(null)
+      }
+    })
   })
 
   describe('POST /service-provider-registry/product-added', () => {
@@ -711,7 +747,7 @@ describe('piece-retriever.indexer', () => {
 
       // Now update the provider URL
       req = new Request(
-        'https://host/service-provider-registry/product-added',
+        'https://host/service-provider-registry/product-updated',
         {
           method: 'POST',
           headers: {
@@ -737,6 +773,66 @@ describe('piece-retriever.indexer', () => {
         .all()
       expect(providers.length).toBe(1)
       expect(providers[0].service_url).toBe(newServiceUrl)
+    })
+    it('clears index cache entries', async () => {
+      const payerAddress = '0xPayerAddress'
+      const serviceProviderId = '1'
+      const productType = 0
+      const serviceUrl = 'https://service.url/'
+      const dataSetId = await withDataSet(env, {
+        withCDN: true,
+        serviceProviderId,
+        payerAddress,
+      })
+      const pieceIds = [randomId(), randomId()]
+      const pieceCids = [randomId(), randomId()]
+      await withPieces(env, dataSetId, pieceIds, pieceCids)
+      for (const pieceCid of pieceCids) {
+        await env.INDEX_CACHE_KV.put(
+          `${payerAddress}/${pieceCid}`,
+          JSON.stringify([dataSetId, serviceUrl]),
+        )
+      }
+
+      const insertReq = new Request(
+        'https://host/service-provider-registry/product-updated',
+        {
+          method: 'POST',
+          headers: {
+            [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+          },
+          body: JSON.stringify({
+            provider_id: serviceProviderId,
+            product_type: productType,
+            service_url: serviceUrl,
+          }),
+        },
+      )
+      const ctx = createExecutionContext()
+      const insertRes = await workerImpl.fetch(insertReq, env, ctx)
+      await waitOnExecutionContext(ctx)
+      expect(insertRes.status).toBe(200)
+
+      const req = new Request(
+        'https://host/service-provider-registry/provider-removed',
+        {
+          method: 'POST',
+          headers: {
+            [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+          },
+          body: JSON.stringify({
+            provider_id: serviceProviderId,
+          }),
+        },
+      )
+      const res = await workerImpl.fetch(req, env)
+      expect(res.status).toBe(200)
+
+      for (const pieceCid of pieceCids) {
+        expect(
+          await env.INDEX_CACHE_KV.get(`${payerAddress}/${pieceCid}`),
+        ).toBe(null)
+      }
     })
   })
   describe('POST /service-provider-registry/product-removed', () => {
@@ -827,6 +923,68 @@ describe('piece-retriever.indexer', () => {
       expect(res.status).toBe(404)
       expect(await res.text()).toBe('Provider Not Found')
     })
+
+    it('clears index cache entries', async () => {
+      const payerAddress = '0xPayerAddress'
+      const serviceProviderId = '1'
+      const productType = 0
+      const serviceUrl = 'https://service.url/'
+      const dataSetId = await withDataSet(env, {
+        withCDN: true,
+        serviceProviderId,
+        payerAddress,
+      })
+      const pieceIds = [randomId(), randomId()]
+      const pieceCids = [randomId(), randomId()]
+      await withPieces(env, dataSetId, pieceIds, pieceCids)
+      for (const pieceCid of pieceCids) {
+        await env.INDEX_CACHE_KV.put(
+          `${payerAddress}/${pieceCid}`,
+          JSON.stringify([dataSetId, serviceUrl]),
+        )
+      }
+
+      const insertReq = new Request(
+        'https://host/service-provider-registry/product-added',
+        {
+          method: 'POST',
+          headers: {
+            [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+          },
+          body: JSON.stringify({
+            provider_id: serviceProviderId,
+            product_type: productType,
+            service_url: serviceUrl,
+          }),
+        },
+      )
+      const ctx = createExecutionContext()
+      const insertRes = await workerImpl.fetch(insertReq, env, ctx)
+      await waitOnExecutionContext(ctx)
+      expect(insertRes.status).toBe(200)
+
+      const req = new Request(
+        'https://host/service-provider-registry/product-removed',
+        {
+          method: 'POST',
+          headers: {
+            [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+          },
+          body: JSON.stringify({
+            provider_id: serviceProviderId,
+            product_type: productType,
+          }),
+        },
+      )
+      const res = await workerImpl.fetch(req, env)
+      expect(res.status).toBe(200)
+
+      for (const pieceCid of pieceCids) {
+        expect(
+          await env.INDEX_CACHE_KV.get(`${payerAddress}/${pieceCid}`),
+        ).toBe(null)
+      }
+    })
   })
 })
 describe('POST /service-provider-registry/provider-removed', () => {
@@ -916,6 +1074,67 @@ describe('POST /service-provider-registry/provider-removed', () => {
     expect(res.status).toBe(404)
     expect(await res.text()).toBe('Provider Not Found')
   })
+
+  it('clears index cache entries', async () => {
+    const payerAddress = '0xPayerAddress'
+    const serviceProviderId = '1'
+    const productType = 0
+    const serviceUrl = 'https://service.url/'
+    const dataSetId = await withDataSet(env, {
+      withCDN: true,
+      serviceProviderId,
+      payerAddress,
+    })
+    const pieceIds = [randomId(), randomId()]
+    const pieceCids = [randomId(), randomId()]
+    await withPieces(env, dataSetId, pieceIds, pieceCids)
+    for (const pieceCid of pieceCids) {
+      await env.INDEX_CACHE_KV.put(
+        `${payerAddress}/${pieceCid}`,
+        JSON.stringify([dataSetId, serviceUrl]),
+      )
+    }
+
+    const insertReq = new Request(
+      'https://host/service-provider-registry/product-added',
+      {
+        method: 'POST',
+        headers: {
+          [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+        },
+        body: JSON.stringify({
+          provider_id: serviceProviderId,
+          product_type: productType,
+          service_url: serviceUrl,
+        }),
+      },
+    )
+    const ctx = createExecutionContext()
+    const insertRes = await workerImpl.fetch(insertReq, env, ctx)
+    await waitOnExecutionContext(ctx)
+    expect(insertRes.status).toBe(200)
+
+    const req = new Request(
+      'https://host/service-provider-registry/provider-removed',
+      {
+        method: 'POST',
+        headers: {
+          [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+        },
+        body: JSON.stringify({
+          provider_id: serviceProviderId,
+        }),
+      },
+    )
+    const res = await workerImpl.fetch(req, env)
+    expect(res.status).toBe(200)
+
+    for (const pieceCid of pieceCids) {
+      expect(await env.INDEX_CACHE_KV.get(`${payerAddress}/${pieceCid}`)).toBe(
+        null,
+      )
+    }
+  })
 })
 
 async function withPieces(
@@ -995,6 +1214,41 @@ describe('POST /fwss/cdn-service-terminated', () => {
       .all()
     expect(dataSets).toStrictEqual([{ id: dataSetId, with_cdn: 0 }])
   })
+
+  it('clears index cache entries', async () => {
+    const payerAddress = '0xPayerAddress'
+    const dataSetId = await withDataSet(env, {
+      withCDN: true,
+      serviceProviderId: '1',
+      payerAddress,
+    })
+    const pieceIds = [randomId(), randomId()]
+    const pieceCids = [randomId(), randomId()]
+    await withPieces(env, dataSetId, pieceIds, pieceCids)
+    for (const pieceCid of pieceCids) {
+      await env.INDEX_CACHE_KV.put(
+        `${payerAddress}/${pieceCid}`,
+        JSON.stringify([dataSetId, 'https://service.url/']),
+      )
+    }
+    const req = new Request('https://host/fwss/cdn-service-terminated', {
+      method: 'POST',
+      headers: {
+        [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+      },
+      body: JSON.stringify({
+        data_set_id: dataSetId,
+      }),
+    })
+    const res = await workerImpl.fetch(req, env)
+    expect(res.status).toBe(200)
+
+    for (const pieceCid of pieceCids) {
+      expect(await env.INDEX_CACHE_KV.get(`${payerAddress}/${pieceCid}`)).toBe(
+        null,
+      )
+    }
+  })
 })
 
 describe('POST /fwss/service-terminated', () => {
@@ -1040,6 +1294,41 @@ describe('POST /fwss/service-terminated', () => {
       .bind(dataSetId)
       .all()
     expect(dataSets).toStrictEqual([{ id: dataSetId, with_cdn: 0 }])
+  })
+
+  it('clears index cache entries', async () => {
+    const payerAddress = '0xPayerAddress'
+    const dataSetId = await withDataSet(env, {
+      withCDN: true,
+      serviceProviderId: '1',
+      payerAddress,
+    })
+    const pieceIds = [randomId(), randomId()]
+    const pieceCids = [randomId(), randomId()]
+    await withPieces(env, dataSetId, pieceIds, pieceCids)
+    for (const pieceCid of pieceCids) {
+      await env.INDEX_CACHE_KV.put(
+        `${payerAddress}/${pieceCid}`,
+        JSON.stringify([dataSetId, 'https://service.url/']),
+      )
+    }
+    const req = new Request('https://host/fwss/service-terminated', {
+      method: 'POST',
+      headers: {
+        [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+      },
+      body: JSON.stringify({
+        data_set_id: dataSetId,
+      }),
+    })
+    const res = await workerImpl.fetch(req, env)
+    expect(res.status).toBe(200)
+
+    for (const pieceCid of pieceCids) {
+      expect(await env.INDEX_CACHE_KV.get(`${payerAddress}/${pieceCid}`)).toBe(
+        null,
+      )
+    }
   })
 })
 

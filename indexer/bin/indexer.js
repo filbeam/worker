@@ -25,7 +25,7 @@ import { CID } from 'multiformats/cid'
  *   WALLET_SCREENING_BATCH_SIZE: 1 | 10
  *   WALLET_SCREENING_STALE_THRESHOLD_MS: 86400000 | 21600000
  *   DB: D1Database
- *   KV: KVNamespace
+ *   INDEX_CACHE_KV: KVNamespace
  *   RETRY_QUEUE: Queue
  *   SECRET_HEADER_KEY: string
  *   SECRET_HEADER_VALUE: string

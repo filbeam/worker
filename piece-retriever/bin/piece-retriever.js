@@ -23,6 +23,7 @@ import { getBadBitsEntry } from '../lib/bad-bits-util.js'
  *   CLIENT_CACHE_TTL: 31536000
  *   DNS_ROOT: '.localhost' | '.calibration.filbeam.io' | '.filbeam.io'
  *   DB: D1Database
+ *   INDEX_CACHE_KV: KVNamespace
  *   BAD_BITS_KV: KVNamespace
  * }} PieceRetrieverEnv
  */
@@ -84,25 +85,46 @@ export default {
       // Timestamp to measure file retrieval performance (from cache and from SP)
       const fetchStartedAt = performance.now()
 
-      const [{ serviceProviderId, serviceUrl, dataSetId }, isBadBit] =
-        await Promise.all([
-          getStorageProviderAndValidatePayer(env, payerWalletAddress, pieceCid),
-          env.BAD_BITS_KV.get(`bad-bits:${getBadBitsEntry(pieceCid)}`, {
-            type: 'json',
-          }),
-        ])
-
+      const indexCacheKey = `${payerWalletAddress}/${pieceCid}`
+      const [indexCacheValue, isBadBit] = await Promise.all([
+        env.INDEX_CACHE_KV.get(indexCacheKey, { type: 'json' }),
+        env.BAD_BITS_KV.get(`bad-bits:${getBadBitsEntry(pieceCid)}`, {
+          type: 'json',
+        }),
+      ])
+      httpAssert(
+        Array.isArray(indexCacheValue) || indexCacheValue === null,
+        500,
+        'Invalid index cache value',
+      )
+      let [dataSetId, serviceProviderId, serviceUrl] = indexCacheValue ?? []
       httpAssert(
         !isBadBit,
         404,
         'The requested CID was flagged by the Bad Bits Denylist at https://badbits.dwebops.pub',
       )
 
-      httpAssert(
-        serviceProviderId,
-        404,
-        `Unsupported Service Provider: ${serviceProviderId}`,
-      )
+      if (!serviceUrl) {
+        ;({ serviceProviderId, serviceUrl, dataSetId } =
+          await getStorageProviderAndValidatePayer(
+            env,
+            payerWalletAddress,
+            pieceCid,
+          ))
+
+        httpAssert(
+          serviceProviderId,
+          404,
+          `Unsupported Service Provider: ${serviceProviderId}`,
+        )
+
+        ctx.waitUntil(
+          env.INDEX_CACHE_KV.put(
+            indexCacheKey,
+            JSON.stringify([dataSetId, serviceProviderId, serviceUrl]),
+          ),
+        )
+      }
 
       const {
         response: originResponse,
