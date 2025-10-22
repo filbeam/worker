@@ -465,7 +465,11 @@ interface DurableObjectStorage {
     deleteAlarm(options?: DurableObjectSetAlarmOptions): Promise<void>;
     sync(): Promise<void>;
     sql: SqlStorage;
+<<<<<<< HEAD
     INDEX_CACHE_KV: SyncKvStorage;
+=======
+    kv: SyncKvStorage;
+>>>>>>> main
     transactionSync<T>(closure: () => T): T;
     getCurrentBookmark(): Promise<string>;
     getBookmarkForTime(timestamp: number | Date): Promise<string>;
