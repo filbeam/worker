@@ -174,7 +174,7 @@ export async function handleTransactionRetryQueueMessage(
       nonce: originalTx.nonce,
       value: originalTx.value,
       input: originalTx.input,
-      gasLimit: newGasLimit,
+      gas: newGasLimit,
       maxFeePerGas: newMaxFeePerGas,
       maxPriorityFeePerGas: newMaxPriorityFeePerGas,
     })

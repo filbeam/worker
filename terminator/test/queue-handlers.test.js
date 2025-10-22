@@ -238,7 +238,7 @@ describe('handleTransactionRetryQueueMessage', () => {
           value: 0n,
           nonce: 42,
           input: '0x',
-          gasLimit: 275000n,
+          gas: 275000n,
           maxFeePerGas: 3000000000n,
           maxPriorityFeePerGas: 13n,
         },
@@ -296,7 +296,7 @@ describe('handleTransactionRetryQueueMessage', () => {
           value: 0n,
           nonce: 42,
           input: '0x',
-          gasLimit: 275000n, // uses the gas limit from recent message + 10%
+          gas: 275000n, // uses the gas limit from recent message + 10%
           maxFeePerGas: 3000000000n, // uses the gas fee cap from recent message
           maxPriorityFeePerGas: 13n, // increase by 25% + 1 attoFIL
         },
