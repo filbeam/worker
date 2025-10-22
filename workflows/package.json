@@ -14,6 +14,6 @@
     "viem": "^2.38.3"
   },
   "devDependencies": {
-    "@cloudflare/vitest-pool-workers": "^0.9.12"
+    "@cloudflare/vitest-pool-workers": "^0.9.14"
   }
 }
