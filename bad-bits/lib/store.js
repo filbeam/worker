@@ -1,4 +1,4 @@
-const MAX_TOTAL_CHANGES = 10_000
+const MAX_TOTAL_CHANGES = 5_000
 const MAX_KV_BATCH_SIZE = 1_000
 
 /**
