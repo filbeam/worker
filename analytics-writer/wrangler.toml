@@ -1,5 +1,5 @@
-name = "filbeam-analytics-worker"
-main = "bin/analytics-worker.js"
+name = "filbeam-analytics-writer"
+main = "bin/analytics-writer.js"
 compatibility_date = "2024-01-01"
 compatibility_flags = ["nodejs_compat"]
 logpush = true
@@ -11,6 +11,8 @@ head_sampling_rate = 1
 [[analytics_engine_datasets]]
 dataset = "ttfb_metrics"
 binding = "analytics_engine"
+
+# Set ANALYTICS_AUTH_KEY as a secret using: wrangler secret put ANALYTICS_AUTH_KEY
 
 [env.calibration]
 # Set ANALYTICS_AUTH_KEY as a secret using: wrangler secret put ANALYTICS_AUTH_KEY --env calibration
