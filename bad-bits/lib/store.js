@@ -59,7 +59,7 @@ export async function getLastEtag(env) {
  */
 export async function getAllBadBitHashes(env) {
   const hashes = []
-  const { keys } = await env.BAD_BITS_KV.list({ prefix: 'latest-hashes' })
+  const { keys } = await env.BAD_BITS_KV.list({ prefix: 'latest-hashes:' })
   for (const key of keys) {
     const segment = await env.BAD_BITS_KV.get(key.name)
     if (segment) {
