@@ -7,7 +7,7 @@
   "type": "module",
   "main": "bin/terminator.js",
   "scripts": {
-    "build:types": "wrangler types",
+    "build:types": "wrangler types --env dev",
     "deploy:calibration": "wrangler deploy --env calibration",
     "deploy:mainnet": "wrangler deploy --env mainnet",
     "start": "wrangler d1 migrations apply dev-db --local --env dev --cwd ../db  && wrangler dev --env dev",

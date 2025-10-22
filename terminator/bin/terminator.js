@@ -1,4 +1,3 @@
-/** @import {MessageBatch} from 'cloudflare:workers' */
 import { TransactionMonitorWorkflow } from '@filbeam/workflows'
 import { terminateCDNServiceForSanctionedWallets as defaultTerminateCDNServiceForSanctionedWallets } from '../lib/terminate-cdn-service.js'
 import {
@@ -16,31 +15,14 @@ import {
 /**
  * @typedef {{
  *   type: 'transaction-retry'
- *   transactionHash: string
+ *   transactionHash: `0x${string}`
  * }} TransactionRetryMessage
- */
-
-/**
- * @typedef {{
- *   GLIF_TOKEN: string
- *   ENVIRONMENT: 'dev' | 'calibration' | 'mainnet'
- *   RPC_URL:
- *     | 'https://api.calibration.node.glif.io/'
- *     | 'https://api.node.glif.io/'
- *   FILECOIN_WARM_STORAGE_SERVICE_ADDRESS: string
- *   FILCDN_CONTROLLER_ADDRESS_PRIVATE_KEY: string
- *   DB: D1Database
- *   TRANSACTION_QUEUE: import('cloudflare:workers').Queue<
- *     TerminateServiceMessage | TransactionRetryMessage
- *   >
- *   TRANSACTION_MONITOR_WORKFLOW: import('cloudflare:workers').WorkflowEntrypoint
- * }} TerminatorEnv
  */
 
 export default {
   /**
    * @param {any} _controller
-   * @param {TerminatorEnv} env
+   * @param {Env} env
    * @param {ExecutionContext} _ctx
    * @param {object} options
    * @param {typeof defaultTerminateCDNServiceForSanctionedWallets} [options.terminateCDNServiceForSanctionedWallets]
@@ -60,7 +42,7 @@ export default {
    * Queue consumer for all transaction-related messages
    *
    * @param {MessageBatch<TerminateServiceMessage | TransactionRetryMessage>} batch
-   * @param {TerminatorEnv} env
+   * @param {Env} env
    * @param {ExecutionContext} ctx
    */
   async queue(
@@ -89,7 +71,7 @@ export default {
 
           default:
             unknownMessageErrors.push(
-              new Error(`Unknown message type: ${message.body.type}`),
+              new Error(`Unknown message type: ${message.body}`),
             )
         }
         message.ack()

@@ -1,6 +1,6 @@
 name = "filcdn-terminator"
 main = "bin/terminator.js"
-compatibility_date = "2024-12-05"
+compatibility_date = "2025-09-08"
 compatibility_flags = ["nodejs_compat"]
 logpush = true
 
@@ -53,7 +53,7 @@ crons = ["*/1 * * * *"]  # Run every minute
 queue = "terminator-transaction-queue-dev"
 binding = "TRANSACTION_QUEUE"
 
-# queue concurrency has to be set to 1 in order to send 
+# queue concurrency has to be set to 1 in order to send
 # transactions one at a time and avoid nonce tracking
 [[env.dev.queues.consumers]]
 queue = "terminator-transaction-queue-dev"
@@ -65,7 +65,7 @@ dead_letter_queue = "transaction-dlq"
 queue = "terminator-transaction-queue-mainnet"
 binding = "TRANSACTION_QUEUE"
 
-# queue concurrency has to be set to 1 in order to send 
+# queue concurrency has to be set to 1 in order to send
 # transactions one at a time and avoid nonce tracking
 [[env.mainnet.queues.consumers]]
 queue = "terminator-transaction-queue-mainnet"
@@ -77,7 +77,7 @@ dead_letter_queue = "transaction-dlq"
 queue = "terminator-transaction-queue-calibration"
 binding = "TRANSACTION_QUEUE"
 
-# queue concurrency has to be set to 1 in order to send 
+# queue concurrency has to be set to 1 in order to send
 # transactions one at a time and avoid nonce tracking
 [[env.calibration.queues.consumers]]
 queue = "terminator-transaction-queue-calibration"

@@ -59,7 +59,7 @@ describe('TransactionMonitorWorkflow', () => {
         `wait for transaction receipt ${transactionHash}`,
         {
           timeout: '5 minutes',
-          retries: { limit: 3 },
+          retries: { delay: '10 seconds', limit: 3 },
         },
         expect.any(Function),
       )
