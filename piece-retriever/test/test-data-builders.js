@@ -73,7 +73,7 @@ export async function withBadBits(env, ...cids) {
       env.BAD_BITS_KV.put(`bad-bits:${getBadBitsEntry(cid)}`, 'true'),
     ),
   )
-  await env.BAD_BITS_KV.put('latest-hashes:0', cids.join(','))
+  await env.BAD_BITS_R2.put('latest-hashes', JSON.stringify(cids))
 }
 
 /**

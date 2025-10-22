@@ -7,10 +7,16 @@ import { testData, testDataHashes } from './testData.js'
 describe('fetchAndStoreBadBits', () => {
   beforeEach(async () => {
     // Clear the database before each test to avoid interference
-    const { keys } = await env.BAD_BITS_KV.list()
-    for (const key of keys) {
-      await env.BAD_BITS_KV.delete(key)
+    let cursor
+    while (true) {
+      const list = await env.BAD_BITS_KV.list({ cursor })
+      for (const key of list.keys) {
+        await env.BAD_BITS_KV.delete(key)
+      }
+      if (list.list_complete) break
+      cursor = list.cursor
     }
+    await env.BAD_BITS_R2.delete('latest-hashes')
 
     // tell vitest we use mocked time
     vi.useFakeTimers()
@@ -40,7 +46,7 @@ describe('fetchAndStoreBadBits', () => {
     await initialHashes.map((hash) =>
       env.BAD_BITS_KV.put(`bad-bits:${hash}`, 'true'),
     )
-    await env.BAD_BITS_KV.put(`latest-hashes:0`, initialHashes.join(','))
+    await env.BAD_BITS_R2.put('latest-hashes', JSON.stringify(initialHashes))
 
     const text = testData
 

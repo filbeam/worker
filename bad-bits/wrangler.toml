@@ -19,12 +19,20 @@ ENVIRONMENT = "dev"
 binding = "BAD_BITS_KV"
 id = "2f2e5486ea0c48e993f6dff87a4aa102"
 
+[[env.dev.r2_buckets]]
+binding = "BAD_BITS_R2"
+bucket_name = "filbeam-bad-bits-dev"
+
 [env.calibration.vars]
 ENVIRONMENT = "calibration"
 
 [[env.calibration.kv_namespaces]]
 binding = "BAD_BIT_KV"
 id = "178592ee0a3b4b00894a23186b3a0179"
+
+[[env.calibration.r2_buckets]]
+binding = "BAD_BITS_R2"
+bucket_name = "filbeam-bad-bits-calibration"
 
 [env.calibration.triggers]
 crons = ["*/5 * * * *"]  # Run every 5 minutes
@@ -35,6 +43,10 @@ ENVIRONMENT = "mainnet"
 [[env.mainnet.kv_namespaces]]
 binding = "BAD_BITS_KV"
 id = "7b03c39d53a041fdbe973c20285e16e9"
+
+[[env.mainnet.r2_buckets]]
+binding = "BAD_BITS_R2"
+bucket_name = "filbeam-bad-bits-mainnet"
 
 [env.mainnet.triggers]
 crons = ["*/5 * * * *"]  # Run every 5 minutes
