@@ -5,9 +5,14 @@ import { env } from 'cloudflare:test'
 describe('updateBadBitsDatabase', () => {
   beforeAll(async () => {
     // Clear the database before running tests
-    const { keys } = await env.BAD_BITS_KV.list()
-    for (const key of keys) {
-      await env.BAD_BITS_KV.delete(key)
+    let cursor
+    while (true) {
+      const list = await env.BAD_BITS_KV.list({ cursor })
+      for (const key of list.keys) {
+        await env.BAD_BITS_KV.delete(key)
+      }
+      if (list.list_complete) break
+      cursor = list.cursor
     }
   })
 
