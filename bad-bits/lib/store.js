@@ -22,15 +22,20 @@ export async function updateBadBitsDatabase(env, currentHashes, etag) {
   const oldHashes = new Set(await getAllBadBitHashes(env))
 
   console.log('comparing current hashes')
+  let wasCapped = false
   const addedHashes = [...currentHashes.difference(oldHashes)]
   const removedHashes = [...oldHashes.difference(currentHashes)]
-  addedHashes.splice(MAX_TOTAL_CHANGES)
-  removedHashes.splice(MAX_TOTAL_CHANGES - addedHashes.length)
+  if (addedHashes.length > MAX_TOTAL_CHANGES) {
+    addedHashes.splice(MAX_TOTAL_CHANGES)
+    wasCapped = true
+  }
+  if (removedHashes.length > MAX_TOTAL_CHANGES - addedHashes.length) {
+    removedHashes.splice(MAX_TOTAL_CHANGES - addedHashes.length)
+    wasCapped = true
+  }
 
   await persistUpdates(env, oldHashes, addedHashes, removedHashes)
 
-  const wasCapped =
-    addedHashes.length + removedHashes.length >= MAX_TOTAL_CHANGES
   if (etag && !wasCapped) {
     await env.BAD_BITS_KV.put('latest-etag', etag)
   }
