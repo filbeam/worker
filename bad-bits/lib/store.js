@@ -63,9 +63,7 @@ export async function getAllBadBitHashes(env) {
   for (const key of keys) {
     const segment = await env.BAD_BITS_KV.get(key.name)
     if (segment) {
-      for (const hash of segment.split(',')) {
-        hashes.push(hash)
-      }
+      hashes.push(...segment.split(','))
     }
   }
   return hashes
