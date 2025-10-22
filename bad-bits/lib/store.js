@@ -1,5 +1,5 @@
-const MAX_TOTAL_CHANGES = 1_000
-const MAX_KV_BATCH_SIZE = 500
+const MAX_TOTAL_CHANGES = 500
+const MAX_KV_BATCH_SIZE = 100
 
 /**
  * Updates the bad bits database with new hashes
