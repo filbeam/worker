@@ -27,7 +27,7 @@ bucket_name = "filbeam-bad-bits-dev"
 ENVIRONMENT = "calibration"
 
 [[env.calibration.kv_namespaces]]
-binding = "BAD_BIT_KV"
+binding = "BAD_BITS_KV"
 id = "178592ee0a3b4b00894a23186b3a0179"
 
 [[env.calibration.r2_buckets]]

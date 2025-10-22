@@ -36,7 +36,7 @@ database_name = "filcdn-calibration-db"
 database_id = "78f15bbb-391f-4797-9016-a6cb86c0b9b8"
 
 [[env.calibration.kv_namespaces]]
-binding = "BAD_BIT_KV"
+binding = "BAD_BITS_KV"
 id = "178592ee0a3b4b00894a23186b3a0179"
 
 [env.mainnet.vars]
