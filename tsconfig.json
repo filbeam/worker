@@ -1,21 +1,8 @@
 {
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "extends": "./tsconfig.base.json",
   "compilerOptions": {
-    "allowJs": true,
-    "checkJs": true,
-    "skipLibCheck": true,
-    "lib": ["es2022"],
-    "target": "es2022",
-    "module": "preserve",
-    "moduleResolution": "bundler",
-
-    "strict": true,
-    "forceConsistentCasingInFileNames": true,
-
-    "declaration": true,
-    "emitDeclarationOnly": true,
-    "outDir": "dist",
-    "declarationMap": true,
-    "resolveJsonModule": true
+    "outDir": "dist"
   },
   "include": [
     "bad-bits",
