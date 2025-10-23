@@ -1135,9 +1135,9 @@ describe('POST /fwss/cdn-payment-rails-topped-up', () => {
       .bind(dataSetId)
       .first()
 
-    expect(result).toEqual({
-      cdn_egress_quota: BYTES_PER_TIB.toString(),
-      cache_miss_egress_quota: (BYTES_PER_TIB * 2n).toString(),
+    expect(result).toStrictEqual({
+      cdn_egress_quota: Number(BYTES_PER_TIB),
+      cache_miss_egress_quota: Number(BYTES_PER_TIB * 2n),
     })
   })
 
@@ -1173,9 +1173,9 @@ describe('POST /fwss/cdn-payment-rails-topped-up', () => {
       .bind(dataSetId)
       .first()
 
-    expect(result).toEqual({
-      cdn_egress_quota: '0',
-      cache_miss_egress_quota: '0',
+    expect(result).toStrictEqual({
+      cdn_egress_quota: 0,
+      cache_miss_egress_quota: 0,
     })
   })
 
@@ -1228,9 +1228,9 @@ describe('POST /fwss/cdn-payment-rails-topped-up', () => {
       .first()
 
     // Accumulated values: 5+5 USDFC = 2 TiB, 10+10 USDFC = 4 TiB
-    expect(result).toEqual({
-      cdn_egress_quota: (BYTES_PER_TIB * 2n).toString(),
-      cache_miss_egress_quota: (BYTES_PER_TIB * 4n).toString(),
+    expect(result).toStrictEqual({
+      cdn_egress_quota: Number(BYTES_PER_TIB * 2n),
+      cache_miss_egress_quota: Number(BYTES_PER_TIB * 4n),
     })
   })
 
