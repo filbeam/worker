@@ -1,6 +1,6 @@
 name = "filbeam-piece-retriever"
 main = "bin/piece-retriever.js"
-compatibility_date = "2024-12-05"
+compatibility_date = "2025-09-08"
 compatibility_flags = ["nodejs_compat"]
 logpush = true
 

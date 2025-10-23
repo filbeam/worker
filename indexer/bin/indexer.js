@@ -16,28 +16,10 @@ import {
 import { screenWallets } from '../lib/wallet-screener.js'
 import { CID } from 'multiformats/cid'
 
-// We need to keep an explicit definition of IndexerEnv because our monorepo has multiple
-// worker-configuration.d.ts files, each file (re)defining the global Env interface, causing the
-// final Env interface to contain only properties available to all workers.
-/**
- * @typedef {{
- *   ENVIRONMENT: 'dev' | 'calibration' | 'mainnet'
- *   WALLET_SCREENING_BATCH_SIZE: 1 | 10
- *   WALLET_SCREENING_STALE_THRESHOLD_MS: 86400000 | 21600000
- *   DB: D1Database
- *   KV: KVNamespace
- *   RETRY_QUEUE: Queue
- *   SECRET_HEADER_KEY: string
- *   SECRET_HEADER_VALUE: string
- *   CHAINALYSIS_API_KEY: string
- *   GOLDSKY_SUBGRAPH_URL: string
- * }} IndexerEnv
- */
-
 export default {
   /**
    * @param {Request} request
-   * @param {IndexerEnv} env
+   * @param {Env} env
    * @param {ExecutionContext} ctx
    * @param {object} options
    * @param {typeof defaultCheckIfAddressIsSanctioned} [options.checkIfAddressIsSanctioned]
@@ -216,7 +198,7 @@ export default {
    * Handles incoming messages from the retry queue.
    *
    * @param {MessageBatch<{ type: string; payload: any }>} batch
-   * @param {IndexerEnv} env
+   * @param {Env} env
    * @param {object} options
    * @param {typeof defaultCheckIfAddressIsSanctioned} [options.checkIfAddressIsSanctioned]
    */
@@ -248,7 +230,7 @@ export default {
 
   /**
    * @param {any} _controller
-   * @param {IndexerEnv} env
+   * @param {Env} env
    * @param {ExecutionContext} _ctx
    * @param {object} [options]
    * @param {typeof globalThis.fetch} [options.fetch]
@@ -282,7 +264,7 @@ export default {
   },
 
   /**
-   * @param {IndexerEnv} env
+   * @param {Env} env
    * @param {object} options
    * @param {typeof globalThis.fetch} options.fetch
    */
