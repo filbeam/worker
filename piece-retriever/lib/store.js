@@ -229,53 +229,15 @@ export async function updateDataSetStats(
   env,
   { dataSetId, egressBytes, cacheMiss },
 ) {
-  /**
-   * @type {{
-   *   cdn_egress_quota: string
-   *   cache_miss_egress_quota: string
-   * } | null}
-   */
-  const currentStats = await env.DB.prepare(
-    `
-    SELECT 
-      cdn_egress_quota, 
-      cache_miss_egress_quota
-    FROM data_sets
-    WHERE id = ?
-    `,
-  )
-    .bind(dataSetId)
-    .first()
-
-  if (!currentStats) {
-    throw new Error(`Data set with id '${dataSetId}' not found`)
-  }
-
-  const egressBytesBigInt = BigInt(egressBytes)
-  const currentCdnQuota = BigInt(currentStats.cdn_egress_quota ?? '0')
-  const currentCacheMissQuota = BigInt(
-    currentStats.cache_miss_egress_quota ?? '0',
-  )
-
-  const newCdnQuota = currentCdnQuota - egressBytesBigInt
-  const newCacheMissQuota = cacheMiss
-    ? currentCacheMissQuota - egressBytesBigInt
-    : currentCacheMissQuota
-
   await env.DB.prepare(
     `
     UPDATE data_sets
     SET total_egress_bytes_used = total_egress_bytes_used + ?,
-        cdn_egress_quota = ?,
-        cache_miss_egress_quota = ?
+        cdn_egress_quota = cdn_egress_quota - ?,
+        cache_miss_egress_quota = cache_miss_egress_quota - ?
     WHERE id = ?
     `,
   )
-    .bind(
-      egressBytes,
-      newCdnQuota.toString(),
-      newCacheMissQuota.toString(),
-      dataSetId,
-    )
+    .bind(egressBytes, egressBytes, cacheMiss ? egressBytes : 0, dataSetId)
     .run()
 }

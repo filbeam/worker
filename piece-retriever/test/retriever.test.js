@@ -51,8 +51,8 @@ describe('piece-retriever.fetch', () => {
         serviceProviderId,
         payerAddress: defaultPayerAddress,
         withCDN: true,
-        cdnEgressQuota: '100',
-        cacheMissEgressQuota: '100',
+        cdnEgressQuota: 100,
+        cacheMissEgressQuota: 100,
       })
       await withApprovedProvider(env, {
         id: serviceProviderId,
@@ -477,8 +477,8 @@ describe('piece-retriever.fetch', () => {
       serviceProviderId,
       pieceCid,
       payerAddress,
-      cdnEgressQuota: '100',
-      cacheMissEgressQuota: '100',
+      cdnEgressQuota: 100,
+      cacheMissEgressQuota: 100,
     })
 
     await withApprovedProvider(env, {
@@ -685,8 +685,8 @@ describe('piece-retriever.fetch', () => {
       serviceProviderId: unsupportedServiceProviderId,
       payerAddress: defaultPayerAddress,
       withCDN: true,
-      cdnEgressQuota: '100',
-      cacheMissEgressQuota: '100',
+      cdnEgressQuota: 100,
+      cacheMissEgressQuota: 100,
       pieceCid: invalidPieceCid,
       pieceId: 'piece-unsupported',
     })
@@ -744,8 +744,8 @@ describe('piece-retriever.fetch', () => {
       serviceProviderId,
       payerAddress,
       withCDN: true,
-      cdnEgressQuota: '100',
-      cacheMissEgressQuota: '100',
+      cdnEgressQuota: 100,
+      cacheMissEgressQuota: 100,
       pieceCid,
       pieceId: 'piece-quota-test',
     })
@@ -795,8 +795,8 @@ describe('piece-retriever.fetch', () => {
       .first()
 
     expect(quotaResult).toStrictEqual({
-      cdn_egress_quota: '-400',
-      cache_miss_egress_quota: '-400',
+      cdn_egress_quota: -400,
+      cache_miss_egress_quota: -400,
     })
   })
 
@@ -818,8 +818,8 @@ describe('piece-retriever.fetch', () => {
       serviceProviderId,
       payerAddress,
       withCDN: true,
-      cdnEgressQuota: '1000',
-      cacheMissEgressQuota: '1000',
+      cdnEgressQuota: 1000,
+      cacheMissEgressQuota: 1000,
       pieceCid,
       pieceId: 'piece-quota-ok',
     })
@@ -872,8 +872,8 @@ describe('piece-retriever.fetch', () => {
       .first()
 
     expect(quotaResult).toStrictEqual({
-      cdn_egress_quota: '900',
-      cache_miss_egress_quota: '1000',
+      cdn_egress_quota: 900,
+      cache_miss_egress_quota: 1000,
     })
   })
 })

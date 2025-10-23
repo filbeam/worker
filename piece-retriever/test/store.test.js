@@ -289,8 +289,8 @@ describe('Egress Quota Management', () => {
       serviceProviderId: APPROVED_SERVICE_PROVIDER_ID,
       payerAddress,
       withCDN: true,
-      cdnEgressQuota: '0',
-      cacheMissEgressQuota: '1',
+      cdnEgressQuota: 0,
+      cacheMissEgressQuota: 1,
       pieceCid,
       pieceId: 'piece-exhausted',
     })
@@ -310,8 +310,8 @@ describe('Egress Quota Management', () => {
       serviceProviderId: APPROVED_SERVICE_PROVIDER_ID,
       payerAddress,
       withCDN: true,
-      cdnEgressQuota: '1',
-      cacheMissEgressQuota: '0',
+      cdnEgressQuota: 1,
+      cacheMissEgressQuota: 0,
       pieceCid,
       pieceId: 'piece-cache-miss-exhausted',
     })
@@ -331,8 +331,8 @@ describe('Egress Quota Management', () => {
       serviceProviderId: APPROVED_SERVICE_PROVIDER_ID,
       payerAddress,
       withCDN: true,
-      cdnEgressQuota: '1',
-      cacheMissEgressQuota: '1',
+      cdnEgressQuota: 1,
+      cacheMissEgressQuota: 1,
       pieceCid,
       pieceId: 'piece-sufficient',
     })
@@ -353,7 +353,7 @@ describe('Egress Quota Management', () => {
 
   it('correctly decrements CDN quota on cache hit', async () => {
     const dataSetId = 'test-quota-decrement-cdn'
-    const initialQuota = '1000'
+    const initialQuota = 1000
     const egressBytes = 100
 
     await withDataSet(env, {
@@ -378,14 +378,14 @@ describe('Egress Quota Management', () => {
       .first()
 
     expect(result).toStrictEqual({
-      cdn_egress_quota: '900',
+      cdn_egress_quota: 900,
       cache_miss_egress_quota: initialQuota,
     })
   })
 
   it('correctly decrements cache miss quota on cache miss', async () => {
     const dataSetId = 'test-quota-decrement-miss'
-    const initialQuota = '1000'
+    const initialQuota = 1000
     const egressBytes = 100
 
     await withDataSet(env, {
@@ -410,14 +410,14 @@ describe('Egress Quota Management', () => {
       .first()
 
     expect(result).toStrictEqual({
-      cdn_egress_quota: '900',
-      cache_miss_egress_quota: '900',
+      cdn_egress_quota: 900,
+      cache_miss_egress_quota: 900,
     })
   })
 
   it('allows quota to go negative when egress exceeds quota', async () => {
     const dataSetId = 'test-quota-below-zero'
-    const insufficientQuota = '100'
+    const insufficientQuota = 100
     const egressBytes = 200
 
     await withDataSet(env, {
@@ -444,15 +444,15 @@ describe('Egress Quota Management', () => {
 
     // Both quotas should be negative (100 - 200 = -100)
     expect(result).toStrictEqual({
-      cdn_egress_quota: '-100',
-      cache_miss_egress_quota: '-100',
+      cdn_egress_quota: -100,
+      cache_miss_egress_quota: -100,
     })
   })
 
   it('allows CDN quota to go negative when egress exceeds quota', async () => {
     const dataSetId = 'test-cdn-quota-below-zero'
-    const insufficientQuota = '50'
-    const sufficientQuota = '1000'
+    const insufficientQuota = 50
+    const sufficientQuota = 1000
     const egressBytes = 150
 
     await withDataSet(env, {
@@ -480,7 +480,7 @@ describe('Egress Quota Management', () => {
     // CDN quota should be negative (50 - 150 = -100)
     // Cache miss quota should remain unchanged on cache hit
     expect(result).toStrictEqual({
-      cdn_egress_quota: '-100',
+      cdn_egress_quota: -100,
       cache_miss_egress_quota: sufficientQuota,
     })
   })
@@ -511,7 +511,7 @@ describe('Egress Quota Management', () => {
     const dataSetId = 'test-quota-exact'
     const pieceCid = 'test-cid-exact'
     const payerAddress = '0x1234567890abcdef1234567890abcdef12345678'
-    const exactQuota = '100'
+    const exactQuota = 100
 
     await withDataSetPieces(env, {
       dataSetId,
@@ -551,7 +551,7 @@ describe('Egress Quota Management', () => {
       .bind(dataSetId)
       .first()
     expect(afterDecrement).toStrictEqual({
-      cdn_egress_quota: '0',
+      cdn_egress_quota: 0,
     })
   })
 })
@@ -563,8 +563,8 @@ describe('updateDataSetStats', () => {
 
     await withDataSet(env, {
       dataSetId: DATA_SET_ID,
-      cdnEgressQuota: '100',
-      cacheMissEgressQuota: '100',
+      cdnEgressQuota: 100,
+      cacheMissEgressQuota: 100,
     })
     await updateDataSetStats(env, {
       dataSetId: DATA_SET_ID,

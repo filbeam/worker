@@ -29,8 +29,8 @@ export function withRequest(
  * @param {number} options.serviceProviderId
  * @param {string} options.payerAddress
  * @param {boolean} options.withCDN
- * @param {string} options.cdnEgressQuota
- * @param {string} options.cacheMissEgressQuota
+ * @param {number} options.cdnEgressQuota
+ * @param {number} options.cacheMissEgressQuota
  */
 export async function withDataSet(
   env,
@@ -39,8 +39,8 @@ export async function withDataSet(
     serviceProviderId = 0,
     payerAddress = '0x1234567890abcdef1234567890abcdef12345608',
     withCDN = true,
-    cdnEgressQuota = '0',
-    cacheMissEgressQuota = '0',
+    cdnEgressQuota = 0,
+    cacheMissEgressQuota = 0,
   } = {},
 ) {
   await env.DB.prepare(
@@ -89,8 +89,8 @@ export async function withPiece(
  * @param {number} options.serviceProviderId
  * @param {string} options.payerAddress
  * @param {boolean} options.withCDN
- * @param {string} options.cdnEgressQuota
- * @param {string} options.cacheMissEgressQuota
+ * @param {number} options.cdnEgressQuota
+ * @param {number} options.cacheMissEgressQuota
  * @param {string} options.pieceId
  * @param {string} options.pieceCid
  */
@@ -101,8 +101,8 @@ export async function withDataSetPieces(
     serviceProviderId = 0,
     payerAddress = '0x1234567890abcdef1234567890abcdef12345608',
     withCDN = true,
-    cdnEgressQuota = '0',
-    cacheMissEgressQuota = '0',
+    cdnEgressQuota = 0,
+    cacheMissEgressQuota = 0,
     pieceId = 0,
     pieceCid = 'bagaTEST',
   } = {},
