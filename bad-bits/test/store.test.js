@@ -1,12 +1,20 @@
 import { describe, it, beforeAll, expect } from 'vitest'
-import { updateBadBitsDatabase } from '../lib/store.js'
+import { updateBadBitsDatabase, getAllBadBitHashes } from '../lib/store.js'
 import { env } from 'cloudflare:test'
-import { getAllBadBitHashes } from './util.js'
 
 describe('updateBadBitsDatabase', () => {
   beforeAll(async () => {
     // Clear the database before running tests
-    await env.DB.prepare('DELETE FROM bad_bits').run()
+    let cursor
+    while (true) {
+      const list = await env.BAD_BITS_KV.list({ cursor })
+      for (const key of list.keys) {
+        await env.BAD_BITS_KV.delete(key)
+      }
+      if (list.list_complete) break
+      cursor = list.cursor
+    }
+    await env.BAD_BITS_R2.delete('latest-hashes')
   })
 
   it('adds new hashes to the database', async () => {
@@ -22,14 +30,10 @@ describe('updateBadBitsDatabase', () => {
   it('removes hashes not in the current set', async () => {
     // Insert some initial hashes into the database
     const initialHashes = ['hash1', 'hash2', 'hash3']
-    const now = '2020-01-01T00:00:00.000Z'
-    await env.DB.batch(
-      initialHashes.map((hash) =>
-        env.DB.prepare(
-          'INSERT INTO bad_bits (hash, last_modified_at) VALUES (?, ?)',
-        ).bind(hash, now),
-      ),
+    await initialHashes.map((hash) =>
+      env.BAD_BITS_KV.put(`bad-bits:${hash}`, 'true'),
     )
+    await env.BAD_BITS_R2.put('latest-hashes', JSON.stringify(initialHashes))
 
     const currentHashes = new Set(['hash2', 'hash4'])
 
@@ -45,20 +49,18 @@ describe('updateBadBitsDatabase', () => {
   })
 
   it('does not modify the database if hashes are unchanged', async () => {
-    const currentHashes = new Set(['hash1', 'hash2', 'hash3'])
-    const now = '2020-01-01T00:00:00.000Z'
+    const currentHashes = ['hash1', 'hash2', 'hash3']
 
     // Insert the same hashes into the database
-    await env.DB.batch(
-      [...currentHashes].map((hash) =>
-        env.DB.prepare(
-          'INSERT INTO bad_bits (hash, last_modified_at) VALUES (?, ?)',
-        ).bind(hash, now),
+    await Promise.all(
+      currentHashes.map((hash) =>
+        env.BAD_BITS_KV.put(`bad-bits:${hash}`, 'true'),
       ),
     )
+    await env.BAD_BITS_R2.put('latest-hashes', JSON.stringify(currentHashes))
 
-    await updateBadBitsDatabase(env, currentHashes)
-    const storedHashes = new Set(await getAllBadBitHashes(env))
+    await updateBadBitsDatabase(env, new Set(currentHashes))
+    const storedHashes = await getAllBadBitHashes(env)
 
     // Verify the database remains unchanged
     expect(storedHashes).toEqual(currentHashes)

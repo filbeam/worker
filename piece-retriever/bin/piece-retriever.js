@@ -11,7 +11,7 @@ import {
 } from '../lib/store.js'
 import { httpAssert } from '../lib/http-assert.js'
 import { setContentSecurityPolicy } from '../lib/content-security-policy.js'
-import { findInBadBits } from '../lib/bad-bits-util.js'
+import { getBadBitsEntry } from '../lib/bad-bits-util.js'
 
 export default {
   /**
@@ -74,7 +74,9 @@ export default {
       const [{ serviceProviderId, serviceUrl, dataSetId }, isBadBit] =
         await Promise.all([
           getStorageProviderAndValidatePayer(env, payerWalletAddress, pieceCid),
-          findInBadBits(env, pieceCid),
+          env.BAD_BITS_KV.get(`bad-bits:${getBadBitsEntry(pieceCid)}`, {
+            type: 'json',
+          }),
         ])
 
       httpAssert(

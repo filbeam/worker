@@ -1,10 +1,15 @@
 import { fetchAndStoreBadBits } from '../lib/bad-bits.js'
 
-/** @type {ExportedHandler<Env>} */
+/**
+ * @type {ExportedHandler<{
+ *   BAD_BITS_KV: KVNamespace
+ *   BAD_BITS_R2: R2Bucket
+ * }>}
+ */
 export default {
   /**
    * @param {ScheduledController} _controller
-   * @param {Env} env
+   * @param {{ BAD_BITS_KV: KVNamespace; BAD_BITS_R2: R2Bucket }} env
    * @param {ExecutionContext} _ctx
    */
   async scheduled(_controller, env, _ctx) {
