@@ -1,10 +1,11 @@
 import assert from 'node:assert'
 import { getChainClient as defaultGetChainClient } from './chain.js'
+import { getRecentSendMessage as defaultGetRecentSendMessage } from './filfox.js'
 
 /**
  * @typedef {{
  *   type: 'transaction-retry'
- *   transactionHash: string
+ *   transactionHash: `0x${string}`
  * }} TransactionRetryMessage
  */
 
@@ -12,11 +13,11 @@ import { getChainClient as defaultGetChainClient } from './chain.js'
  * @typedef {{
  *   ENVIRONMENT: 'dev' | 'calibration' | 'mainnet'
  *   RPC_URL: string
- *   FILBEAM_CONTRACT_ADDRESS: string
- *   FILBEAM_CONTROLLER_PRIVATE_KEY: string
+ *   FILBEAM_CONTRACT_ADDRESS: `0x${string}`
+ *   FILBEAM_CONTROLLER_ADDRESS_PRIVATE_KEY: `0x${string}`
  *   DB: D1Database
- *   TRANSACTION_MONITOR_WORKFLOW: import('cloudflare:workers').WorkflowEntrypoint
- *   TRANSACTION_QUEUE: import('cloudflare:workers').Queue<TransactionRetryMessage>
+ *   TRANSACTION_MONITOR_WORKFLOW: Workflow
+ *   TRANSACTION_QUEUE: Queue<TransactionRetryMessage>
  * }} Env
  */
 
@@ -29,7 +30,10 @@ import { getChainClient as defaultGetChainClient } from './chain.js'
 export async function handleTransactionRetryQueueMessage(
   message,
   env,
-  { getChainClient = defaultGetChainClient } = {},
+  {
+    getChainClient = defaultGetChainClient,
+    getRecentSendMessage = defaultGetRecentSendMessage,
+  } = {},
 ) {
   const { transactionHash } = message
   assert(transactionHash)
@@ -59,29 +63,42 @@ export async function handleTransactionRetryQueueMessage(
       )
     }
 
-    // Get the original transaction
+    // Get the original transaction to determine gas price
     const originalTx = await publicClient.getTransaction({
       hash: transactionHash,
     })
 
     console.log(`Retrieved original transaction ${transactionHash} for retry`)
 
-    // Increase gas fees by 25% and round up
+    const recentSendMessage = await getRecentSendMessage()
+    console.log(
+      `Calculating gas fees from the recent Send message ${recentSendMessage.cid}`,
+    )
+
+    const originalMaxPriorityFeePerGas = originalTx.maxPriorityFeePerGas
+    assert(
+      originalMaxPriorityFeePerGas !== undefined,
+      'originalTx.maxPriorityFeePerGas is null',
+    )
+
+    // Increase by 25% + 1 attoFIL (easier: 25.2%) and round up
     const newMaxPriorityFeePerGas =
-      (originalTx.maxPriorityFeePerGas * 1252n + 1000n) / 1000n
+      (originalMaxPriorityFeePerGas * 1252n + 1000n) / 1000n
 
     const newGasLimit = BigInt(
       Math.min(
-        Math.ceil(Number(originalTx.gasLimit) * 1.1),
+        Math.ceil(
+          Math.max(Number(originalTx.gas), recentSendMessage.gasLimit) * 1.1,
+        ),
         1e10, // block gas limit
       ),
     )
 
-    // Use the higher of the increased priority fee or the original max fee
+    const recentGasFeeCap = BigInt(recentSendMessage.gasFeeCap)
     const newMaxFeePerGas =
-      newMaxPriorityFeePerGas > originalTx.maxFeePerGas
+      newMaxPriorityFeePerGas > recentGasFeeCap
         ? newMaxPriorityFeePerGas
-        : originalTx.maxFeePerGas
+        : recentGasFeeCap
 
     // Replace the transaction by sending a new one with the same nonce but higher gas fees
     const retryHash = await walletClient.sendTransaction({
@@ -90,10 +107,14 @@ export async function handleTransactionRetryQueueMessage(
       nonce: originalTx.nonce,
       value: originalTx.value,
       input: originalTx.input,
-      gasLimit: newGasLimit,
+      gas: newGasLimit,
       maxFeePerGas: newMaxFeePerGas,
       maxPriorityFeePerGas: newMaxPriorityFeePerGas,
     })
+
+    console.log(
+      `Sent retry transaction ${retryHash} for original transaction ${transactionHash}`,
+    )
 
     console.log(
       `Sent retry transaction ${retryHash} for original transaction ${transactionHash}`,

@@ -1,4 +1,3 @@
-/** @import {MessageBatch} from 'cloudflare:workers' */
 import { getChainClient as defaultGetChainClient } from '../lib/chain.js'
 import filbeamAbi from '../lib/FilBeamOperator.abi.json'
 import { getDataSetsForSettlement } from '../lib/rail-settlement.js'
@@ -8,7 +7,7 @@ import { handleTransactionRetryQueueMessage as defaultHandleTransactionRetryQueu
 /**
  * @typedef {{
  *   type: 'transaction-retry'
- *   transactionHash: string
+ *   transactionHash: `0x${string}`
  * }} TransactionRetryMessage
  */
 
@@ -16,11 +15,11 @@ import { handleTransactionRetryQueueMessage as defaultHandleTransactionRetryQueu
  * @typedef {{
  *   ENVIRONMENT: 'dev' | 'calibration' | 'mainnet'
  *   RPC_URL: string
- *   FILBEAM_CONTRACT_ADDRESS: string
- *   FILBEAM_CONTROLLER_ADDRESS_PRIVATE_KEY: string
+ *   FILBEAM_CONTRACT_ADDRESS: `0x${string}`
+ *   FILBEAM_CONTROLLER_ADDRESS_PRIVATE_KEY: `0x${string}`
  *   DB: D1Database
- *   TRANSACTION_MONITOR_WORKFLOW: import('cloudflare:workers').WorkflowEntrypoint
- *   TRANSACTION_QUEUE: import('cloudflare:workers').Queue<TransactionRetryMessage>
+ *   TRANSACTION_MONITOR_WORKFLOW: Workflow
+ *   TRANSACTION_QUEUE: Queue<TransactionRetryMessage>
  * }} RailSettlementEnv
  */
 
@@ -84,12 +83,6 @@ export default {
       console.log(`Settled ${dataSetIds.length} data sets`)
     } catch (error) {
       console.error('Settlement process failed:', error)
-
-      // Log more details if it's a contract revert
-      if (error.cause?.reason) {
-        console.error('Contract revert reason:', error.cause.reason)
-      }
-
       throw error
     }
   },
@@ -119,7 +112,9 @@ export default {
             await handleTransactionRetryQueueMessage(message.body, env)
             break
           default:
-            throw new Error(`Unknown message type: ${message.body.type}`)
+            throw new Error(
+              `Unknown message type: ${JSON.stringify(message.body)}`,
+            )
         }
         message.ack()
       } catch (error) {

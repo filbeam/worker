@@ -67,26 +67,23 @@ export async function handleFWSSDataSetCreated(
  *
  * @param {{
  *   DB: D1Database
- *   DEFAULT_LOCKUP_PERIOD_DAYS: string
- *   FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS: string
+ *   DEFAULT_LOCKUP_PERIOD_DAYS: number
+ *   FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS: number
  * }} env
  * @param {any} payload
  * @throws {Error}
  */
 export async function handleFWSSServiceTerminated(env, payload) {
-  const DEFAULT_LOCKUP_PERIOD_DAYS = env.DEFAULT_LOCKUP_PERIOD_DAYS
-  const FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS =
-    env.FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS
-
   // Convert block_number (epoch) to Unix timestamp (in milliseconds)
   const epochTimestampMs = epochToTimestampMs(
     payload.block_number,
-    FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS,
+    Number(env.FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS),
   )
 
   // Calculate lockup unlock timestamp based on the epoch timestamp (in milliseconds)
   const lockupUnlocksAtMs =
-    epochTimestampMs + Number(DEFAULT_LOCKUP_PERIOD_DAYS) * 24 * 60 * 60 * 1000
+    epochTimestampMs +
+    Number(env.DEFAULT_LOCKUP_PERIOD_DAYS) * 24 * 60 * 60 * 1000
   const lockupUnlocksAt = new Date(lockupUnlocksAtMs)
   const lockupUnlocksAtISO = lockupUnlocksAt.toISOString()
 
