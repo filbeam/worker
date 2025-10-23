@@ -17,19 +17,21 @@
     "build:types": "npm run build:types --workspaces --if-present",
     "deploy:calibration": "npm run deploy:calibration --workspaces --if-present",
     "deploy:mainnet": "npm run deploy:mainnet --workspaces --if-present",
-    "lint": "eslint && prettier --check . && tsc -p .",
+    "lint": "eslint && prettier --check . && tsc -b",
     "lint:fix": "eslint --fix && prettier --write .",
-    "test": "npm run lint && wrangler d1 migrations apply test-db --local --cwd db && vitest run"
+    "test": "npm run lint && wrangler d1 migrations apply test-db --local --cwd db && vitest run",
+    "update-ts-project": "node bin/update-ts-project.js"
   },
   "prettier": "@checkernetwork/prettier-config",
   "devDependencies": {
     "@checkernetwork/prettier-config": "^1.0.1",
-    "@cloudflare/vitest-pool-workers": "^0.9.13",
-    "@types/node": "^22.18.11",
+    "@cloudflare/vitest-pool-workers": "^0.9.14",
+    "@npmcli/map-workspaces": "^5.0.0",
+    "@types/node": "^22.18.12",
     "neostandard": "^0.12.1",
     "prettier": "^3.6.2",
     "typescript": "^5.9.3",
     "vitest": "3.1.4",
-    "wrangler": "^4.43.0"
+    "wrangler": "^4.44.0"
   }
 }
