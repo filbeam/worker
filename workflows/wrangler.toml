@@ -1,11 +1,7 @@
-name = "workflows"
+name = "filbeam-workflows"
 main = "lib/transaction-monitor-workflow.js"
-compatibility_date = "2024-01-01"
+compatibility_date = "2025-09-08"
 compatibility_flags = ["nodejs_compat"]
 
 [env.dev.vars]
 RPC_URL = "https://api.calibration.node.glif.io/rpc/v0"
-
-[[env.dev.queues.producers]]
-queue = "transaction-queue"
-binding = "TRANSACTION_QUEUE"

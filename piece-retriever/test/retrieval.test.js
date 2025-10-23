@@ -1,3 +1,4 @@
+import { createExecutionContext, waitOnExecutionContext } from 'cloudflare:test'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { retrieveFile, getRetrievalUrl } from '../lib/retrieval.js'
 
@@ -21,16 +22,24 @@ describe('retrieveFile', () => {
 
   it('constructs the correct URL', async () => {
     cachesMock.match.mockResolvedValueOnce(null)
-    await retrieveFile(baseUrl, pieceCid, new Request(baseUrl))
-    expect(fetchMock).toHaveBeenCalledWith(
-      `${baseUrl}/piece/${pieceCid}`,
-      expect.any(Object),
+    const ctx = createExecutionContext()
+    const { url } = await retrieveFile(
+      ctx,
+      baseUrl,
+      pieceCid,
+      new Request(baseUrl),
     )
+    await waitOnExecutionContext(ctx)
+    const expectedUrl = `${baseUrl}/piece/${pieceCid}`
+    expect(fetchMock).toHaveBeenCalledWith(expectedUrl, expect.any(Object))
+    expect(url).toBe(expectedUrl)
   })
 
   it('uses the default cacheTtl if not provided', async () => {
     cachesMock.match.mockResolvedValueOnce(null)
-    await retrieveFile(baseUrl, pieceCid, new Request(baseUrl))
+    const ctx = createExecutionContext()
+    await retrieveFile(ctx, baseUrl, pieceCid, new Request(baseUrl))
+    await waitOnExecutionContext(ctx)
     expect(cachesMock.put.mock.calls[0][1].headers.get('Cache-Control')).toBe(
       'public, max-age=86400',
     )
@@ -38,7 +47,9 @@ describe('retrieveFile', () => {
 
   it('uses the provided cacheTtl', async () => {
     cachesMock.match.mockResolvedValueOnce(null)
-    await retrieveFile(baseUrl, pieceCid, new Request(baseUrl), 1234)
+    const ctx = createExecutionContext()
+    await retrieveFile(ctx, baseUrl, pieceCid, new Request(baseUrl), 1234)
+    await waitOnExecutionContext(ctx)
     expect(cachesMock.put.mock.calls[0][1].headers.get('Cache-Control')).toBe(
       'public, max-age=1234',
     )
@@ -47,7 +58,14 @@ describe('retrieveFile', () => {
   it('returns the cached response', async () => {
     const response = { ok: true, status: 200, headers: new Headers({}) }
     cachesMock.match.mockResolvedValueOnce(response)
-    const result = await retrieveFile(baseUrl, pieceCid, new Request(baseUrl))
+    const ctx = createExecutionContext()
+    const result = await retrieveFile(
+      ctx,
+      baseUrl,
+      pieceCid,
+      new Request(baseUrl),
+    )
+    await waitOnExecutionContext(ctx)
     expect(result.response).toBe(response)
   })
 
@@ -55,7 +73,14 @@ describe('retrieveFile', () => {
     cachesMock.match.mockResolvedValueOnce(null)
     const response = { ok: false, status: 500, headers: new Headers({}) }
     fetchMock.mockResolvedValueOnce(response)
-    const result = await retrieveFile(baseUrl, pieceCid, new Request(baseUrl))
+    const ctx = createExecutionContext()
+    const result = await retrieveFile(
+      ctx,
+      baseUrl,
+      pieceCid,
+      new Request(baseUrl),
+    )
+    await waitOnExecutionContext(ctx)
     expect(result.response).toBe(response)
   })
 
@@ -67,7 +92,14 @@ describe('retrieveFile', () => {
       headers: new Headers({ foo: 'bar' }),
     }
     fetchMock.mockResolvedValueOnce(response)
-    const result = await retrieveFile(baseUrl, pieceCid, new Request(baseUrl))
+    const ctx = createExecutionContext()
+    const result = await retrieveFile(
+      ctx,
+      baseUrl,
+      pieceCid,
+      new Request(baseUrl),
+    )
+    await waitOnExecutionContext(ctx)
     expect(result.response.status).toBe(201)
     expect(result.response.headers.get('foo')).toBe('bar')
     expect(cachesMock.put.mock.calls[0][0]).toBe(`${baseUrl}/piece/${pieceCid}`)

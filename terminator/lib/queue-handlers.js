@@ -13,21 +13,8 @@ import { getRecentSendMessage as defaultGetRecentSendMessage } from './filfox.js
 /**
  * @typedef {{
  *   type: 'transaction-retry'
- *   transactionHash: string
+ *   transactionHash: `0x${string}`
  * }} TransactionRetryMessage
- */
-
-/**
- * @typedef {{
- *   ENVIRONMENT: 'dev' | 'calibration' | 'mainnet'
- *   RPC_URL: string
- *   FILECOIN_WARM_STORAGE_SERVICE_ADDRESS: string
- *   FILCDN_CONTROLLER_ADDRESS_PRIVATE_KEY: string
- *   TRANSACTION_MONITOR_WORKFLOW: import('cloudflare:workers').WorkflowEntrypoint
- *   TRANSACTION_QUEUE: import('cloudflare:workers').Queue<
- *     TerminateServiceMessage | TransactionRetryMessage
- *   >
- * }} Env
  */
 
 /**
@@ -55,7 +42,9 @@ export async function handleTerminateCdnServiceQueueMessage(
     const { request } = await publicClient.simulateContract({
       account,
       abi: fwssAbi,
-      address: env.FILECOIN_WARM_STORAGE_SERVICE_ADDRESS,
+      address: /** @type {`0x${string}`} */ (
+        env.FILECOIN_WARM_STORAGE_SERVICE_ADDRESS
+      ),
       functionName: 'terminateCDNService',
       args: [BigInt(dataSetId)],
     })
@@ -150,24 +139,33 @@ export async function handleTransactionRetryQueueMessage(
       `Calculating gas fees from the recent Send message ${recentSendMessage.cid}`,
     )
 
+    const originalMaxPriorityFeePerGas = originalTx.maxPriorityFeePerGas
+    assert(
+      originalMaxPriorityFeePerGas !== undefined,
+      'originalTx.maxPriorityFeePerGas is null',
+    )
+
     // Increase by 25% + 1 attoFIL (easier: 25.2%) and round up
     const newMaxPriorityFeePerGas =
-      (originalTx.maxPriorityFeePerGas * 1252n + 1000n) / 1000n
+      (originalMaxPriorityFeePerGas * 1252n + 1000n) / 1000n
 
     const newGasLimit = BigInt(
       Math.min(
         Math.ceil(
-          Math.max(Number(originalTx.gasLimit), recentSendMessage.gasLimit) *
-            1.1,
+          // THIS REQUIRES CAREFUL REVIEW
+          // Viem does not provide `originalTx.gasLimit`, only `gas`.
+          // Is this new calculation still correct?
+          Math.max(Number(originalTx.gas), recentSendMessage.gasLimit) * 1.1,
         ),
         1e10, // block gas limit
       ),
     )
 
+    const recentGasFeeCap = BigInt(recentSendMessage.gasFeeCap)
     const newMaxFeePerGas =
-      newMaxPriorityFeePerGas > recentSendMessage.gasFeeCap
+      newMaxPriorityFeePerGas > recentGasFeeCap
         ? newMaxPriorityFeePerGas
-        : recentSendMessage.gasFeeCap
+        : recentGasFeeCap
 
     // Replace the transaction by sending a new one with the same nonce but higher gas fees
     const retryHash = await walletClient.sendTransaction({
@@ -176,7 +174,7 @@ export async function handleTransactionRetryQueueMessage(
       nonce: originalTx.nonce,
       value: originalTx.value,
       input: originalTx.input,
-      gasLimit: newGasLimit,
+      gas: newGasLimit,
       maxFeePerGas: newMaxFeePerGas,
       maxPriorityFeePerGas: newMaxPriorityFeePerGas,
     })

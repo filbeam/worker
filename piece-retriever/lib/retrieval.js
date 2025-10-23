@@ -1,6 +1,7 @@
 /**
  * Retrieves the file under the pieceCID from the constructed URL.
  *
+ * @param {ExecutionContext} ctx
  * @param {string} baseUrl - The base URL to service provider serving the piece.
  * @param {string} pieceCid - The CID of the piece to retrieve.
  * @param {Request} request - Worker request
@@ -11,11 +12,12 @@
  * @returns {Promise<{
  *   response: Response
  *   cacheMiss: boolean
+ *   url: string
  * }>}
- *
  *   - The response from the fetch request, the cache miss and the content length.
  */
 export async function retrieveFile(
+  ctx,
   baseUrl,
   pieceCid,
   request,
@@ -34,21 +36,23 @@ export async function retrieveFile(
     response = await fetch(url, { signal })
     if (response.ok) {
       const [body1, body2] = response.body?.tee() ?? [null, null]
-      await caches.default.put(
-        url,
-        new Response(body1, {
-          ...response,
-          headers: {
-            ...Object.fromEntries(response.headers),
-            'Cache-Control': `public, max-age=${cacheTtl}`,
-          },
-        }),
+      ctx.waitUntil(
+        caches.default.put(
+          url,
+          new Response(body1, {
+            ...response,
+            headers: {
+              ...Object.fromEntries(response.headers),
+              'Cache-Control': `public, max-age=${cacheTtl}`,
+            },
+          }),
+        ),
       )
       response = new Response(body2, response)
     }
   }
 
-  return { response, cacheMiss }
+  return { response, cacheMiss, url }
 }
 
 /**

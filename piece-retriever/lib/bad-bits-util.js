@@ -12,7 +12,7 @@ export async function getBadBitsEntry(cid) {
 }
 
 /**
- * @param {Pick<Env, 'DB'>} env
+ * @param {{ DB: D1Database }} env
  * @param {string} cid
  * @returns {Promise<boolean>}
  */
