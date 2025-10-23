@@ -7,7 +7,7 @@
   "type": "module",
   "main": "bin/indexer.js",
   "scripts": {
-    "build:types": "wrangler types",
+    "build:types": "wrangler types --env dev",
     "deploy:calibration": "wrangler deploy --env calibration",
     "deploy:mainnet": "wrangler deploy --env mainnet",
     "start": "wrangler d1 migrations apply dev-db --local --env dev --cwd ../db  && wrangler dev --env dev",
@@ -19,7 +19,7 @@
     "validator": "^13.15.15"
   },
   "devDependencies": {
-    "@cloudflare/vitest-pool-workers": "^0.9.13",
+    "@cloudflare/vitest-pool-workers": "^0.9.14",
     "@types/validator": "^13.15.3"
   }
 }

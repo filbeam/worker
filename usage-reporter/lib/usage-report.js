@@ -34,7 +34,17 @@ export async function aggregateUsageData(db, upToTimestampMs) {
     HAVING (cdn_bytes > 0 OR cache_miss_bytes > 0)
   `
 
-  const { results } = await db.prepare(query).bind(upToTimestampIso).all()
+  const results = /**
+   * @type {{
+   *   data_set_id: string
+   *   cdn_bytes: number
+   *   cache_miss_bytes: number
+   * }[]}
+   */ (
+    /** @type {any[]} */ (
+      (await db.prepare(query).bind(upToTimestampIso).all()).results
+    )
+  )
 
   return results
 }
@@ -46,9 +56,7 @@ export async function aggregateUsageData(db, upToTimestampMs) {
  *   data_set_id: string
  *   cdn_bytes: number
  *   cache_miss_bytes: number
- *   max_timestamp: number
  * }[]} usageData
- * @param {bigint} genesisBlockTimestamp - Genesis block timestamp in seconds
  * @returns {{
  *   dataSetIds: string[]
  *   cdnBytesUsed: bigint[]

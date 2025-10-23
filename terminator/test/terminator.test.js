@@ -94,14 +94,14 @@ describe('Terminator - queue entrypoint', () => {
   it('handles unknown message types -- single unknown message', async () => {
     const ctx = createExecutionContext()
     const mockMessage = {
-      body: { type: 'unknown-type', data: 'test' },
+      body: { data: 'test' },
       ack: vi.fn(),
       retry: vi.fn(),
     }
     const batch = { messages: [mockMessage] }
 
     await expect(terminator.queue(batch, env, ctx)).rejects.toThrowError(
-      'Unknown message type: unknown-type',
+      'Unknown message type: {"data":"test"}',
     )
     await waitOnExecutionContext(ctx)
     expect(mockMessage.ack).toHaveBeenCalled()

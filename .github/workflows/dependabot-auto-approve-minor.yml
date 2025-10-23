@@ -19,6 +19,7 @@ jobs:
           - viem
           - 'p-'
           - '@graphprotocol/'
+          - vite
     steps:
       - name: Dependabot metadata
         id: metadata

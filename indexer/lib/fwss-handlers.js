@@ -66,13 +66,11 @@ export async function handleFWSSDataSetCreated(
  * Handle Filecoin Warm Storage Service service termination
  *
  * @param {{
- *   DEFAULT_LOCKUP_PERIOD_DAYS: number
- *   FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS: number
  *   DB: D1Database
+ *   DEFAULT_LOCKUP_PERIOD_DAYS: string
+ *   FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS: string
  * }} env
- * @param {object} payload
- * @param {string} payload.data_set_id
- * @param {string} payload.block_number
+ * @param {any} payload
  * @throws {Error}
  */
 export async function handleFWSSServiceTerminated(env, payload) {
@@ -88,7 +86,7 @@ export async function handleFWSSServiceTerminated(env, payload) {
 
   // Calculate lockup unlock timestamp based on the epoch timestamp (in milliseconds)
   const lockupUnlocksAtMs =
-    epochTimestampMs + DEFAULT_LOCKUP_PERIOD_DAYS * 24 * 60 * 60 * 1000
+    epochTimestampMs + Number(DEFAULT_LOCKUP_PERIOD_DAYS) * 24 * 60 * 60 * 1000
   const lockupUnlocksAt = new Date(lockupUnlocksAtMs)
   const lockupUnlocksAtISO = lockupUnlocksAt.toISOString()
 
