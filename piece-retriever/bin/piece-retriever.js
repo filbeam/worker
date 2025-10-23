@@ -58,7 +58,7 @@ export default {
     const workerStartedAt = performance.now()
     const requestCountryCode = request.headers.get('CF-IPCountry')
 
-    const { payerWalletAddress, pieceCid } = parseRequest(request, env)
+    const { payerWalletAddress, pieceCid, botName } = parseRequest(request, env)
 
     httpAssert(payerWalletAddress && pieceCid, 400, 'Missing required fields')
     httpAssert(
@@ -113,6 +113,7 @@ export default {
             requestCountryCode,
             timestamp: requestTimestamp,
             dataSetId,
+            botName,
           }),
         )
         const response = new Response(
@@ -140,6 +141,7 @@ export default {
             requestCountryCode,
             timestamp: requestTimestamp,
             dataSetId,
+            botName,
           }),
         )
         const response = new Response(originResponse.body, originResponse)
@@ -176,6 +178,7 @@ export default {
               workerTtfb: firstByteAt - workerStartedAt,
             },
             dataSetId,
+            botName,
           })
 
           await updateDataSetStats(env, { dataSetId, egressBytes })
@@ -206,6 +209,7 @@ export default {
           requestCountryCode,
           timestamp: requestTimestamp,
           dataSetId: null,
+          botName,
         }),
       )
 

@@ -15,6 +15,12 @@ SECRET_HEADER_VALUE=SecretToken
 CHAINALYSIS_API_KEY=YourChainalysisApiKey
 ```
 
+Create `piece-retriever/.dev.vars` file with the following content:
+
+```
+BOT_TOKENS=dev_secret
+```
+
 Create `terminator/.dev.vars` file with the following content:
 
 ```
