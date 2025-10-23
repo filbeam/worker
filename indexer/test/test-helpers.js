@@ -55,8 +55,8 @@ export async function withServiceProvider(
  *   withIPFSIndexing?: boolean
  *   serviceProviderId?: string
  *   payerAddress?: string
- *   cdnEgressQuota?: string
- *   cacheMissEgressQuota?: string
+ *   cdnEgressQuota?: number
+ *   cacheMissEgressQuota?: number
  * }} options
  * @returns {Promise<string>}
  */
@@ -68,8 +68,8 @@ export async function withDataSet(
     withIPFSIndexing = false,
     serviceProviderId,
     payerAddress,
-    cdnEgressQuota = '0',
-    cacheMissEgressQuota = '0',
+    cdnEgressQuota = 0,
+    cacheMissEgressQuota = 0,
   } = {},
 ) {
   await env.DB.prepare(

@@ -54,9 +54,9 @@ describe('handleFWSSCDNPaymentRailsToppedUp', () => {
       .bind(testDataSetId)
       .first()
 
-    expect(result).toEqual({
-      cdn_egress_quota: BYTES_PER_TIB.toString(), // 1 TiB in bytes
-      cache_miss_egress_quota: (BYTES_PER_TIB * 2n).toString(), // 2 TiB in bytes
+    expect(result).toStrictEqual({
+      cdn_egress_quota: Number(BYTES_PER_TIB), // 1 TiB in bytes
+      cache_miss_egress_quota: Number(BYTES_PER_TIB * 2n), // 2 TiB in bytes
     })
   })
 
@@ -81,9 +81,9 @@ describe('handleFWSSCDNPaymentRailsToppedUp', () => {
       .bind(testDataSetId)
       .first()
 
-    expect(result).toEqual({
-      cdn_egress_quota: '0',
-      cache_miss_egress_quota: '0',
+    expect(result).toStrictEqual({
+      cdn_egress_quota: 0,
+      cache_miss_egress_quota: 0,
     })
   })
 
@@ -109,9 +109,9 @@ describe('handleFWSSCDNPaymentRailsToppedUp', () => {
       .bind(testDataSetId)
       .first()
 
-    const expectedQuota1 = (BYTES_PER_TIB / 5n).toString() // 0.2 TiB
-    const expectedQuota2 = ((BYTES_PER_TIB * 2n) / 5n).toString() // 0.4 TiB
-    expect(result).toEqual({
+    const expectedQuota1 = Number(BYTES_PER_TIB / 5n) // 0.2 TiB
+    const expectedQuota2 = Number((BYTES_PER_TIB * 2n) / 5n) // 0.4 TiB
+    expect(result).toStrictEqual({
       cdn_egress_quota: expectedQuota1,
       cache_miss_egress_quota: expectedQuota2,
     })
@@ -132,15 +132,11 @@ describe('handleFWSSCDNPaymentRailsToppedUp', () => {
       .first()
 
     // Should be accumulated: 0.2 + 1 = 1.2 TiB for CDN, 0.4 + 2 = 2.4 TiB for cache miss
-    const expectedAccumulatedCdn = (
-      BYTES_PER_TIB / 5n +
-      BYTES_PER_TIB
-    ).toString()
-    const expectedAccumulatedCacheMiss = (
-      (BYTES_PER_TIB * 2n) / 5n +
-      BYTES_PER_TIB * 2n
-    ).toString()
-    expect(result).toEqual({
+    const expectedAccumulatedCdn = Number(BYTES_PER_TIB / 5n + BYTES_PER_TIB)
+    const expectedAccumulatedCacheMiss = Number(
+      (BYTES_PER_TIB * 2n) / 5n + BYTES_PER_TIB * 2n,
+    )
+    expect(result).toStrictEqual({
       cdn_egress_quota: expectedAccumulatedCdn,
       cache_miss_egress_quota: expectedAccumulatedCacheMiss,
     })
