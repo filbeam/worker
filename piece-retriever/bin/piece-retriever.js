@@ -11,24 +11,12 @@ import {
 } from '../lib/store.js'
 import { httpAssert } from '../lib/http-assert.js'
 import { setContentSecurityPolicy } from '../lib/content-security-policy.js'
-import { findInBadBits } from '../lib/bad-bits-util.js'
+import { getBadBitsEntry } from '../lib/bad-bits-util.js'
 
-// We need to keep an explicit definition of RetrieverEnv because our monorepo has multiple
-// worker-configuration.d.ts files, each file (re)defining the global Env interface, causing the
-// final Env interface to contain only properties available to all workers.
-/**
- * @typedef {{
- *   ENVIRONMENT: 'dev' | 'calibration ' | 'mainnet'
- *   ORIGIN_CACHE_TTL: 86400
- *   CLIENT_CACHE_TTL: 31536000
- *   DNS_ROOT: '.localhost' | '.calibration.filbeam.io' | '.filbeam.io'
- *   DB: D1Database
- * }} PieceRetrieverEnv
- */
 export default {
   /**
    * @param {Request} request
-   * @param {PieceRetrieverEnv} env
+   * @param {Env} env
    * @param {ExecutionContext} ctx
    * @param {object} options
    * @param {typeof defaultRetrieveFile} [options.retrieveFile]
@@ -44,7 +32,7 @@ export default {
 
   /**
    * @param {Request} request
-   * @param {PieceRetrieverEnv} env
+   * @param {Env} env
    * @param {ExecutionContext} ctx
    * @param {object} options
    * @param {typeof defaultRetrieveFile} [options.retrieveFile]
@@ -86,7 +74,9 @@ export default {
       const [{ serviceProviderId, serviceUrl, dataSetId }, isBadBit] =
         await Promise.all([
           getStorageProviderAndValidatePayer(env, payerWalletAddress, pieceCid),
-          findInBadBits(env, pieceCid),
+          env.BAD_BITS_KV.get(`bad-bits:${getBadBitsEntry(pieceCid)}`, {
+            type: 'json',
+          }),
         ])
 
       httpAssert(
@@ -101,13 +91,42 @@ export default {
         `Unsupported Service Provider: ${serviceProviderId}`,
       )
 
-      const { response: originResponse, cacheMiss } = await retrieveFile(
+      const {
+        response: originResponse,
+        cacheMiss,
+        url,
+      } = await retrieveFile(
+        ctx,
         serviceUrl,
         pieceCid,
         request,
         env.ORIGIN_CACHE_TTL,
         { signal: request.signal },
       )
+
+      if (originResponse.status >= 500) {
+        ctx.waitUntil(
+          logRetrievalResult(env, {
+            cacheMiss,
+            responseStatus: originResponse.status,
+            egressBytes: 0,
+            requestCountryCode,
+            timestamp: requestTimestamp,
+            dataSetId,
+          }),
+        )
+        const response = new Response(
+          `Service provider ${serviceProviderId} is unavailable at ${url}`,
+          {
+            status: 502,
+            headers: new Headers({
+              'X-Data-Set-ID': dataSetId,
+            }),
+          },
+        )
+        setContentSecurityPolicy(response)
+        return response
+      }
 
       if (!originResponse.body) {
         // The upstream response does not have any readable body

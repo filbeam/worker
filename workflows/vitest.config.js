@@ -5,7 +5,6 @@ export default defineWorkersProject(async () => {
     test: {
       poolOptions: {
         workers: {
-          singleWorker: true,
           wrangler: {
             configPath: './wrangler.toml',
             environment: 'dev',
