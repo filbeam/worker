@@ -11,10 +11,11 @@
  *   fetch request.
  * @returns {Promise<{
  *   response: Response
- *   cacheMiss: boolean
+ *   egressType: 'cdn' | 'cache-miss'
+ *   egressSize: number
  *   url: string
  * }>}
- *   - The response from the fetch request, the cache miss and the content length.
+ *   - The response from the fetch request, the egress type, size and the content URL.
  */
 export async function retrieveFile(
   ctx,
@@ -33,8 +34,10 @@ export async function retrieveFile(
   if (response) {
     cacheMiss = false
   } else {
+    // If not in worker cache, fetch from upstream origin.
     response = await fetch(url, { signal })
     if (response.ok) {
+      // Tee the body: one stream for caching, one for the actual response.
       const [body1, body2] = response.body?.tee() ?? [null, null]
       ctx.waitUntil(
         caches.default.put(
@@ -48,11 +51,36 @@ export async function retrieveFile(
           }),
         ),
       )
+      // The `response` object for the current request will use the second stream.
       response = new Response(body2, response)
     }
   }
 
-  return { response, cacheMiss, url }
+  // Determine egress type: 'cdn' for worker cache hit, 'cache-miss' for upstream fetch.
+  const egressType = cacheMiss ? 'cache-miss' : 'cdn'
+
+  let egressSize = 0
+  const contentLengthHeader = response.headers.get('Content-Length')
+
+  // Attempt to get egress size from Content-Length header first.
+  if (contentLengthHeader) {
+    const parsedLength = parseInt(contentLengthHeader, 10)
+    if (!isNaN(parsedLength) && parsedLength >= 0) {
+      egressSize = parsedLength
+    }
+  }
+
+  // If Content-Length is missing, invalid, or zero (and response has a body),
+  // measure egress by consuming a teed copy of the response body.
+  // This ensures the main response body remains unconsumed for the client.
+  if (egressSize === 0 && response.body) {
+    const [measureBody, actualBody] = response.body.tee()
+    egressSize = await measureStreamedEgress(measureBody.getReader())
+    // Replace the response body with the unmeasured stream.
+    response = new Response(actualBody, response)
+  }
+
+  return { response, egressType, egressSize, url }
 }
 
 /**
