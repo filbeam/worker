@@ -1,4 +1,3 @@
-/** @import {MessageBatch} from 'cloudflare:workers' */
 import { getChainClient as defaultGetChainClient } from '../lib/chain.js'
 import filbeamAbi from '../lib/FilBeamOperator.abi.json'
 import {
@@ -15,7 +14,7 @@ import {
 /**
  * @typedef {{
  *   type: 'transaction-retry'
- *   transactionHash: string
+ *   transactionHash: `0x${string}`
  *   upToTimestamp: string
  * }} TransactionRetryMessage
  */
@@ -23,7 +22,7 @@ import {
 /**
  * @typedef {{
  *   type: 'transaction-confirmed'
- *   transactionHash: string
+ *   transactionHash: `0x${string}`
  *   upToTimestamp: string
  * }} TransactionConfirmedMessage
  */
@@ -32,12 +31,12 @@ import {
  * @typedef {{
  *   ENVIRONMENT: 'dev' | 'calibration' | 'mainnet'
  *   RPC_URL: string
- *   FILBEAM_CONTRACT_ADDRESS: string
- *   FILBEAM_CONTROLLER_PRIVATE_KEY: string
+ *   FILBEAM_CONTRACT_ADDRESS: `0x${string}`
+ *   FILBEAM_CONTROLLER_PRIVATE_KEY: `0x${string}`
  *   FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS: string
  *   DB: D1Database
- *   TRANSACTION_MONITOR_WORKFLOW: import('cloudflare:workers').WorkflowEntrypoint
- *   TRANSACTION_QUEUE: import('cloudflare:workers').Queue<
+ *   TRANSACTION_MONITOR_WORKFLOW: Workflow
+ *   TRANSACTION_QUEUE: Queue<
  *     TransactionRetryMessage | TransactionConfirmedMessage
  *   >
  * }} UsageReporterEnv
@@ -180,7 +179,9 @@ export default {
             await handleTransactionConfirmedQueueMessage(message.body, env)
             break
           default:
-            throw new Error(`Unknown message type: ${message.body.type}`)
+            throw new Error(
+              `Unknown message type: ${JSON.stringify(message.body)}`,
+            )
         }
         message.ack()
       } catch (error) {
