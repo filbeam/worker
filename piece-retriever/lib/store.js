@@ -3,7 +3,7 @@ import { httpAssert } from './http-assert.js'
 /**
  * Logs the result of a file retrieval attempt to the D1 database.
  *
- * @param {Pick<Env, 'DB'>} env - Worker environment (contains D1 binding).
+ * @param {{ DB: D1Database }} env - Worker environment (contains D1 binding).
  * @param {object} params - Parameters for the retrieval log.
  * @param {number | null} params.egressBytes - The egress bytes of the response.
  * @param {number} params.responseStatus - The HTTP response status code.
@@ -74,7 +74,7 @@ export async function logRetrievalResult(env, params) {
 /**
  * Retrieves the provider and data set id for a given root CID.
  *
- * @param {Pick<Env, 'DB'>} env - Cloudflare Worker environment with D1 DB
+ * @param {{ DB: D1Database }} env - Cloudflare Worker environment with D1 DB
  *   binding
  * @param {string} payerAddress - The address of the client paying for the
  *   request
@@ -156,16 +156,16 @@ export async function getStorageProviderAndValidatePayer(
     `The Filecoin Warm Storage Service deal for payer '${payerAddress}' and piece_cid '${pieceCid}' has withCDN=false.`,
   )
 
-  const withPayerNotSanctioned = withPaymentRail.filter(
-    (row) => !row.is_sanctioned,
-  )
+  const withPayerNotSanctioned = withCDN.filter((row) => !row.is_sanctioned)
   httpAssert(
     withPayerNotSanctioned.length > 0,
     403,
     `Wallet '${payerAddress}' is sanctioned and cannot retrieve piece_cid '${pieceCid}'.`,
   )
 
-  const withApprovedProvider = withCDN.filter((row) => row.service_url)
+  const withApprovedProvider = withPayerNotSanctioned.filter(
+    (row) => row.service_url,
+  )
   httpAssert(
     withApprovedProvider.length > 0,
     404,
@@ -218,7 +218,7 @@ export async function getStorageProviderAndValidatePayer(
 }
 
 /**
- * @param {Pick<Env, 'DB'>} env - Worker environment (contains D1 binding).
+ * @param {{ DB: D1Database }} env - Worker environment (contains D1 binding).
  * @param {object} params - Parameters for the data set update.
  * @param {string} params.dataSetId - The ID of the data set to update.
  * @param {number} params.egressBytes - The egress bytes used for the response.

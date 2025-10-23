@@ -1,5 +1,5 @@
-import { getBadBitsEntry } from '../lib/bad-bits-util'
 import { DNS_ROOT } from './retriever.test'
+import { getBadBitsEntry } from '../lib/bad-bits-util'
 
 /**
  * @param {string} payerWalletAddress
@@ -138,18 +138,19 @@ export async function withApprovedProvider(
     .bind(String(id), serviceUrl)
     .run()
 }
+
 /**
  * @param {Env} env
  * @param {...string} cids
  */
-
 export async function withBadBits(env, ...cids) {
-  const stmt = await env.DB.prepare(
-    'INSERT INTO bad_bits (hash, last_modified_at) VALUES (?, CURRENT_TIME)',
+  await Promise.all(
+    cids.map((cid) =>
+      env.BAD_BITS_KV.put(`bad-bits:${getBadBitsEntry(cid)}`, 'true'),
+    ),
   )
-  const entries = await Promise.all(cids.map(getBadBitsEntry))
-  await env.DB.batch(entries.map((it) => stmt.bind(it)))
 }
+
 /**
  * Inserts an address into the database with an optional sanctioned flag.
  *

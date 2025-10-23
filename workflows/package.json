@@ -5,17 +5,15 @@
   "description": "Shared workflows for FilBeam workers",
   "author": "Space Meridian <filbeam@meridian.space>",
   "type": "module",
-  "exports": {
-    ".": "./lib/transaction-monitor-workflow.js"
-  },
   "main": "lib/transaction-monitor-workflow.js",
   "scripts": {
+    "build:types": "wrangler types --env dev",
     "test": "vitest run"
   },
   "dependencies": {
-    "viem": "^2.38.0"
+    "viem": "^2.38.3"
   },
   "devDependencies": {
-    "@cloudflare/vitest-pool-workers": "^0.9.12"
+    "@cloudflare/vitest-pool-workers": "^0.9.14"
   }
 }

@@ -1,14 +1,22 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { fetchAndStoreBadBits } from '../lib/bad-bits.js'
-import { getAllBadBitHashes, getBadBitsHistory } from './util.js'
+import { getAllBadBitHashes } from '../lib/store.js'
 import { env } from 'cloudflare:test'
 import { testData, testDataHashes } from './testData.js'
 
 describe('fetchAndStoreBadBits', () => {
   beforeEach(async () => {
     // Clear the database before each test to avoid interference
-    await env.DB.exec('DELETE FROM bad_bits')
-    await env.DB.exec('DELETE FROM bad_bits_history')
+    let cursor
+    while (true) {
+      const list = await env.BAD_BITS_KV.list({ cursor })
+      for (const key of list.keys) {
+        await env.BAD_BITS_KV.delete(key)
+      }
+      if (list.list_complete) break
+      cursor = list.cursor
+    }
+    await env.BAD_BITS_R2.delete('latest-hashes')
 
     // tell vitest we use mocked time
     vi.useFakeTimers()
@@ -35,13 +43,10 @@ describe('fetchAndStoreBadBits', () => {
   it('removes hashes not in the current denylist', async () => {
     // Insert some initial hashes into the database
     const initialHashes = ['hash1', 'hash2', 'hash3']
-    await env.DB.batch(
-      initialHashes.map((hash) =>
-        env.DB.prepare(
-          'INSERT INTO bad_bits (hash, last_modified_at) VALUES (?, ?)',
-        ).bind(hash, '2000-01-01T00:00:00Z' /* time in the past */),
-      ),
+    await initialHashes.map((hash) =>
+      env.BAD_BITS_KV.put(`bad-bits:${hash}`, 'true'),
     )
+    await env.BAD_BITS_R2.put('latest-hashes', JSON.stringify(initialHashes))
 
     const text = testData
 
@@ -103,11 +108,6 @@ describe('fetchAndStoreBadBits', () => {
       'If-None-Match in the first request',
     ).toBe(null)
 
-    // The history is updated when new bad bits are fetched
-    expect(await getBadBitsHistory(env)).toStrictEqual([
-      { timestamp: lastUpdateAt.toISOString(), etag },
-    ])
-
     const now = new Date('2025-07-01T00:00:00Z')
     vi.setSystemTime(now)
 
@@ -122,11 +122,6 @@ describe('fetchAndStoreBadBits', () => {
       request.headers?.get('If-None-Match'),
       'If-None-Match in the second request',
     ).toBe(etag)
-
-    // The history should not be updated on 304 response
-    expect(await getBadBitsHistory(env)).toStrictEqual([
-      { timestamp: lastUpdateAt.toISOString(), etag },
-    ])
   })
 
   it(
@@ -153,14 +148,11 @@ describe('fetchAndStoreBadBits', () => {
       expect(storedHashes.size).toBeGreaterThan(0)
 
       // Choose a random hash from the real denylist file to verify it's in the database
-      const { hash } = await env.DB.prepare(
-        'SELECT hash FROM bad_bits WHERE hash = ?',
+      const isBadBit = await env.BAD_BITS_KV.get(
+        'bad-bits:00003f3fdeb4f3ee55e2c601ca263b1c8eef866e7f8e018a9f8ce03e7aea4d8a',
+        { type: 'json' },
       )
-        .bind(
-          'f52158d2e286c09693117194c6ba34c5670aac484fc4631d2fa409897a5dfd38',
-        )
-        .first()
-      expect(storedHashes).toContain(hash)
+      expect(isBadBit).toBe(true)
     },
   )
 })

@@ -65,7 +65,7 @@ export async function handleFWSSDataSetCreated(
 /**
  * Handle Filecoin Warm Storage Service service termination
  *
- * @param {Env} env
+ * @param {{ DB: D1Database }} env
  * @param {any} payload
  * @throws {Error}
  */

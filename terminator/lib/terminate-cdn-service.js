@@ -1,12 +1,6 @@
-/**
- * @param {{
- *   DB: D1Database
- *   TRANSACTION_QUEUE: import('cloudflare:workers').Queue<{
- *     dataSetId: string
- *   }>
- * }} env
- */
+/** @param {Env} env */
 export async function terminateCDNServiceForSanctionedWallets(env) {
+  /** @type {D1Result<{ id: string }>} */
   const { results: dataSets } = await env.DB.prepare(
     `
       SELECT DISTINCT data_sets.id

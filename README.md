@@ -12,6 +12,13 @@ Create `indexer/.dev.vars` file with the following content:
 ```
 SECRET_HEADER_KEY=X-SECRET-KEY
 SECRET_HEADER_VALUE=SecretToken
+CHAINALYSIS_API_KEY=YourChainalysisApiKey
+```
+
+Create `terminator/.dev.vars` file with the following content:
+
+```
+FILCDN_CONTROLLER_ADDRESS_PRIVATE_KEY=0xSomePrivateKey
 ```
 
 ### Workflow

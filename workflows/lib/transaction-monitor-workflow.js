@@ -19,11 +19,18 @@ import { getChainClient } from './chain.js'
  */
 export class TransactionMonitorWorkflow extends WorkflowEntrypoint {
   /**
-   * @param {WorkflowEvent} event
+   * @param {WorkflowEvent<{
+   *   transactionHash: `0x${string}`
+   *   metadata?: {
+   *     onSuccess?: string
+   *     successData?: object
+   *     retryData?: object
+   *   }
+   * }>} event
    * @param {WorkflowStep} step
    */
   async run({ payload }, step) {
-    const { transactionHash, metadata = {} } = payload
+    const { transactionHash, metadata } = payload
 
     try {
       // Wait for transaction receipt with timeout
@@ -32,6 +39,7 @@ export class TransactionMonitorWorkflow extends WorkflowEntrypoint {
         {
           timeout: `5 minutes`,
           retries: {
+            delay: '10 seconds',
             limit: 3,
           },
         },
@@ -44,7 +52,7 @@ export class TransactionMonitorWorkflow extends WorkflowEntrypoint {
       )
 
       // Handle success if onSuccess message type is provided
-      if (metadata.onSuccess) {
+      if (metadata?.onSuccess) {
         await step.do(
           'send confirmation to queue',
           { timeout: '30 seconds' },
@@ -70,7 +78,7 @@ export class TransactionMonitorWorkflow extends WorkflowEntrypoint {
           await this.env.TRANSACTION_QUEUE.send({
             type: 'transaction-retry',
             transactionHash,
-            ...metadata.retryData,
+            ...metadata?.retryData,
           })
 
           console.log(
@@ -81,3 +89,10 @@ export class TransactionMonitorWorkflow extends WorkflowEntrypoint {
     }
   }
 }
+
+// Suppress the following warning when running `wrangler types`:
+//
+// The entrypoint lib/transaction-monitor-workflow.js has exports like an ES Module,
+// but hasn't defined a default export like a module worker normally would.
+// Building the worker using "service-worker" format...
+export default {}
