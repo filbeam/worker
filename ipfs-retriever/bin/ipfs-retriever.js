@@ -105,14 +105,16 @@ export default {
           pieceId,
         )
 
-      // Now check Bad Bits with the ipfsRootCid we got from the database
-      const isBadBit = await findInBadBits(env, ipfsRootCid)
+      // FIXME - rework this code to use the new KV based Bad Bits implementation
+      //
+      // // Now check Bad Bits with the ipfsRootCid we got from the database
+      // const isBadBit = await findInBadBits(env, ipfsRootCid)
 
-      httpAssert(
-        !isBadBit,
-        404,
-        'The requested CID was flagged by the Bad Bits Denylist at https://badbits.dwebops.pub',
-      )
+      // httpAssert(
+      //   !isBadBit,
+      //   404,
+      //   'The requested CID was flagged by the Bad Bits Denylist at https://badbits.dwebops.pub',
+      // )
 
       httpAssert(
         serviceProviderId,
