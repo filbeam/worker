@@ -21,6 +21,8 @@ import { httpAssert } from './http-assert.js'
  *   request originated from
  * @param {string | null} params.dataSetId - The data set ID associated with the
  *   retrieval
+ * @param {string | undefined} params.botName - The name of the bot making the
+ *   request, or null for anonymous requests
  * @returns {Promise<void>} - A promise that resolves when the log is inserted.
  */
 export async function logRetrievalResult(env, params) {
@@ -33,6 +35,7 @@ export async function logRetrievalResult(env, params) {
     performanceStats,
     requestCountryCode,
     dataSetId,
+    botName,
   } = params
 
   try {
@@ -47,9 +50,10 @@ export async function logRetrievalResult(env, params) {
         fetch_ttlb,
         worker_ttfb,
         request_country_code,
-        data_set_id
+        data_set_id,
+        bot_name
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
     )
       .bind(
@@ -62,6 +66,7 @@ export async function logRetrievalResult(env, params) {
         performanceStats?.workerTtfb ?? null,
         requestCountryCode,
         dataSetId,
+        botName ?? null,
       )
       .run()
   } catch (error) {
