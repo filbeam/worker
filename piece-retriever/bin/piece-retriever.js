@@ -108,7 +108,7 @@ export default {
         ctx.waitUntil(
           logRetrievalResult(env, {
             cacheMiss,
-            responseStatus: originResponse.status,
+            responseStatus: 502,
             egressBytes: 0,
             requestCountryCode,
             timestamp: requestTimestamp,
