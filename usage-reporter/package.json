@@ -2,7 +2,7 @@
   "name": "@filbeam/usage-reporter",
   "version": "1.0.0",
   "private": true,
-  "description": "FilBeam Rollup Worker",
+  "description": "FilBeam Usage Reporter Worker",
   "author": "Space Meridian <filbeam@meridian.space>",
   "type": "module",
   "main": "bin/usage-reporter.js",
