@@ -74,7 +74,6 @@ export async function handleFWSSDataSetCreated(
  * @throws {Error}
  */
 export async function handleFWSSServiceTerminated(env, payload) {
-  // Convert block_number (epoch) to Unix timestamp (in milliseconds)
   const epochTimestampMs = epochToTimestampMs(
     payload.block_number,
     Number(env.FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS),
