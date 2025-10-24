@@ -11,22 +11,10 @@ import { handleTransactionRetryQueueMessage as defaultHandleTransactionRetryQueu
  * }} TransactionRetryMessage
  */
 
-/**
- * @typedef {{
- *   ENVIRONMENT: 'dev' | 'calibration' | 'mainnet'
- *   RPC_URL: string
- *   FILBEAM_CONTRACT_ADDRESS: `0x${string}`
- *   FILBEAM_CONTROLLER_ADDRESS_PRIVATE_KEY: `0x${string}`
- *   DB: D1Database
- *   TRANSACTION_MONITOR_WORKFLOW: Workflow
- *   TRANSACTION_QUEUE: Queue<TransactionRetryMessage>
- * }} RailSettlementEnv
- */
-
 export default {
   /**
    * @param {any} _controller
-   * @param {RailSettlementEnv} env
+   * @param {Env} env
    * @param {ExecutionContext} _ctx
    * @param {{ getChainClient?: Function }} [options]
    */
@@ -91,7 +79,7 @@ export default {
    * Queue consumer for transaction-related messages
    *
    * @param {MessageBatch<TransactionRetryMessage>} batch
-   * @param {RailSettlementEnv} env
+   * @param {Env} env
    * @param {ExecutionContext} ctx
    */
   async queue(
