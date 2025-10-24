@@ -41,9 +41,6 @@ export default {
       return new Response('Unauthorized', { status: 401 })
     }
 
-    assert(env.DEFAULT_LOCKUP_PERIOD_DAYS)
-    assert(env.FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS)
-
     if (request.method !== 'POST') {
       return new Response('Method Not Allowed', { status: 405 })
     }
