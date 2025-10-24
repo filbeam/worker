@@ -20,6 +20,7 @@ jobs:
           - 'p-'
           - '@graphprotocol/'
           - vite
+          - '@npmcli/'
     steps:
       - name: Dependabot metadata
         id: metadata
