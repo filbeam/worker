@@ -704,11 +704,10 @@ describe('piece-retriever.fetch', () => {
     expect(await res.text()).toContain('No approved service provider found')
 
     const result = await env.DB.prepare(
-      'SELECT * FROM retrieval_logs WHERE data_set_id = ? AND response_status = 404 and CACHE_MISS IS NULL and egress_bytes IS NULL',
+      'SELECT * FROM retrieval_logs WHERE data_set_id IS NULL AND response_status = 404 and CACHE_MISS IS NULL and egress_bytes IS NULL',
     )
-      .bind(dataSetId)
       .first()
-    expect(result).toBeDefined()
+    expect(result).toBeTruthy()
   })
   it('does not log to retrieval_logs when payer address is invalid (400)', async () => {
     const { count: countBefore } = await env.DB.prepare(
