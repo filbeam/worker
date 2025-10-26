@@ -22,11 +22,11 @@ function sleep(ms) {
 
 const DNS_ROOT = '.filbeam.io'
 env.DNS_ROOT = DNS_ROOT
-const BOT_TOKENS = 'testbot_secret'
-env.BOT_TOKENS = BOT_TOKENS
+const botTokens = { secret: 'testbot' }
+env.BOT_TOKENS = JSON.stringify(botTokens)
 
-const botName = BOT_TOKENS.split('_')[0]
-const botHeaders = { authorization: `Bearer ${BOT_TOKENS.split(',')[0]}` }
+const botName = Object.values(botTokens)[0]
+const botHeaders = { authorization: `Bearer ${Object.keys(botTokens)[0]}` }
 
 describe('piece-retriever.fetch', () => {
   const defaultPayerAddress = '0x1234567890abcdef1234567890abcdef12345678'

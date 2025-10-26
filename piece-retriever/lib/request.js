@@ -45,7 +45,7 @@ export function parseRequest(request, { DNS_ROOT, BOT_TOKENS }) {
  * @returns {string | undefined} Bot name or the access token
  */
 export function checkBotAuthorization(request, { BOT_TOKENS }) {
-  const allowedTokens = BOT_TOKENS.split(',').map((t) => t.trim())
+  const botTokens = JSON.parse(BOT_TOKENS)
 
   const auth = request.headers.get('authorization')
   if (!auth) return undefined
@@ -58,11 +58,7 @@ export function checkBotAuthorization(request, { BOT_TOKENS }) {
     'Unauthorized: Authorization header must use Bearer scheme',
   )
 
-  httpAssert(
-    allowedTokens.includes(token),
-    401,
-    'Unauthorized: Invalid Access Token',
-  )
+  httpAssert(token in botTokens, 401, 'Unauthorized: Invalid Access Token')
 
-  return token.split('_')[0]
+  return botTokens[token]
 }

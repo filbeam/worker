@@ -4,7 +4,7 @@ import { parseRequest, checkBotAuthorization } from '../lib/request.js'
 const DNS_ROOT = '.filbeam.io'
 const TEST_WALLET = 'abc123'
 const TEST_CID = 'baga123'
-const BOT_TOKENS = 'bot1_secret'
+const BOT_TOKENS = JSON.stringify({ secret: 'bot1' })
 
 describe('parseRequest', () => {
   it('should parse payerWalletAddress and pieceCid from a URL with both params', () => {
@@ -91,21 +91,14 @@ describe('checkBotAuthorization', () => {
 
   it('should return token prefix when valid token is provided', () => {
     const request = new Request('https://example.com', {
-      headers: { authorization: 'Bearer bot1_secret_token' },
+      headers: { authorization: 'Bearer secret' },
     })
     const result = checkBotAuthorization(request, {
-      BOT_TOKENS: 'bot1_secret_token,bot2_secret_token,singletoken',
+      BOT_TOKENS: JSON.stringify({
+        secret: 'bot1',
+        secret_2: 'bot2',
+      }),
     })
     expect(result).toBe('bot1')
-  })
-
-  it('should return entire token as prefix when token has no underscore', () => {
-    const request = new Request('https://example.com', {
-      headers: { authorization: 'Bearer singletoken' },
-    })
-    const result = checkBotAuthorization(request, {
-      BOT_TOKENS: 'bot1_secret_token,singletoken',
-    })
-    expect(result).toBe('singletoken')
   })
 })
