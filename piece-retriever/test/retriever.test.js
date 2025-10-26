@@ -730,7 +730,7 @@ describe('piece-retriever.fetch', () => {
 
     expect(countAfter).toEqual(countBefore)
   })
-  it('responds with 502 and a useful message when SP is unavailable', async () => {
+  it('responds with 502 and a useful message when SP responds with an error', async () => {
     const { pieceCid, dataSetId } = CONTENT_STORED_ON_CALIBRATION[0]
     const url = 'https://example.com/piece/123'
     const mockRetrieveFile = vi.fn().mockResolvedValue({
@@ -746,6 +746,19 @@ describe('piece-retriever.fetch', () => {
     await waitOnExecutionContext(ctx)
     expect(res.status).toBe(502)
     expect(await res.text()).toBe(`Service provider 2 is unavailable at ${url}`)
+    expect(res.headers.get('X-Data-Set-ID')).toBe(String(dataSetId))
+  })
+  it('responds with 502 and a useful message when SP is unavailable', async () => {
+    const { pieceCid, dataSetId } = CONTENT_STORED_ON_CALIBRATION[0]
+    const mockRetrieveFile = vi.fn().mockRejectedValue(new Error('oh no'))
+    const ctx = createExecutionContext()
+    const req = withRequest(defaultPayerAddress, pieceCid)
+    const res = await worker.fetch(req, env, ctx, {
+      retrieveFile: mockRetrieveFile,
+    })
+    await waitOnExecutionContext(ctx)
+    expect(res.status).toBe(502)
+    expect(await res.text()).toBe(`Service provider 2 is unavailable`)
     expect(res.headers.get('X-Data-Set-ID')).toBe(String(dataSetId))
   })
 })
