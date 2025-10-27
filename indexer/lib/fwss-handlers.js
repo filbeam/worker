@@ -4,7 +4,7 @@ import { BYTES_PER_TIB } from './constants.js'
 /**
  * Handle proof set rail creation
  *
- * @param {{ CHAINALYSIS_API_KEY: string; DB: D1Database }} env
+ * @param {Env} env
  * @param {any} payload
  * @param {object} opts
  * @param {typeof defaultCheckIfAddressIsSanctioned} opts.checkIfAddressIsSanctioned
@@ -85,11 +85,7 @@ export async function handleFWSSServiceTerminated(env, payload) {
  * Handle CDN Payment Rails Topped Up event Calculates and updates egress quotas
  * for a data set based on lockup amounts
  *
- * @param {{
- *   CDN_RATE_PER_TIB: string
- *   CACHE_MISS_RATE_PER_TIB: string
- *   DB: D1Database
- * }} env
+ * @param {Env} env
  * @param {object} payload
  * @param {string} payload.data_set_id
  * @param {string} payload.cdn_amount_added
