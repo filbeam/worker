@@ -843,11 +843,12 @@ describe('retriever.fetch', () => {
 
     await env.DB.batch([
       env.DB.prepare(
-        'INSERT INTO data_sets (id, service_provider_id, payer_address, with_cdn) VALUES (?, ?, ?, ?)',
+        'INSERT INTO data_sets (id, service_provider_id, payer_address, with_cdn, with_ipfs_indexing) VALUES (?, ?, ?, ?, ?)',
       ).bind(
         dataSetId,
         unsupportedServiceProviderId,
         defaultPayerAddress,
+        true,
         true,
       ),
       env.DB.prepare(
