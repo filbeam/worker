@@ -953,12 +953,11 @@ function withRequest(
 ) {
   let url = 'http://'
   if (dataSetId && pieceId) {
-    const slug = buildSlug(BigInt(dataSetId), BigInt(pieceId))
-    url += `${slug}.`
+    url += buildSlug(BigInt(dataSetId), BigInt(pieceId))
   } else if (dataSetId) {
-    url += `${dataSetId}.`
+    url += dataSetId
   }
-  url += DNS_ROOT.slice(1) // remove the leading '.'
+  url += `.${DNS_ROOT.slice(1)}` // remove the leading '.'
   if (subpath) url += `${subpath}`
   if (format) url += `?format=${format}`
 
