@@ -13,24 +13,12 @@ import {
 } from '../lib/store.js'
 import { httpAssert } from '../lib/http-assert.js'
 import { setContentSecurityPolicy } from '../lib/content-security-policy.js'
-import { findInBadBits } from '../lib/bad-bits-util.js'
+import { getBadBitsEntry } from '../lib/bad-bits-util.js'
 
-// We need to keep an explicit definition of RetrieverEnv because our monorepo has multiple
-// worker-configuration.d.ts files, each file (re)defining the global Env interface, causing the
-// final Env interface to contain only properties available to all workers.
-/**
- * @typedef {{
- *   ENVIRONMENT: 'dev' | 'calibration ' | 'mainnet'
- *   ORIGIN_CACHE_TTL: 86400
- *   CLIENT_CACHE_TTL: 31536000
- *   DNS_ROOT: '.localhost' | '.calibration.filbeam.io' | '.filbeam.io'
- *   DB: D1Database
- * }} RetrieverEnv
- */
 export default {
   /**
    * @param {Request} request
-   * @param {RetrieverEnv} env
+   * @param {Env} env
    * @param {ExecutionContext} ctx
    * @param {object} options
    * @param {typeof defaultRetrieveIpfsContent} [options.retrieveIpfsContent]
@@ -53,7 +41,7 @@ export default {
 
   /**
    * @param {Request} request
-   * @param {RetrieverEnv} env
+   * @param {Env} env
    * @param {ExecutionContext} ctx
    * @param {object} options
    * @param {typeof defaultRetrieveIpfsContent} [options.retrieveIpfsContent]
@@ -105,16 +93,19 @@ export default {
           pieceId,
         )
 
-      // FIXME - rework this code to use the new KV based Bad Bits implementation
-      //
-      // // Now check Bad Bits with the ipfsRootCid we got from the database
-      // const isBadBit = await findInBadBits(env, ipfsRootCid)
+      // Now check Bad Bits with the ipfsRootCid we got from the database
+      const isBadBit = env.BAD_BITS_KV.get(
+        `bad-bits:${getBadBitsEntry(ipfsRootCid)}`,
+        {
+          type: 'json',
+        },
+      )
 
-      // httpAssert(
-      //   !isBadBit,
-      //   404,
-      //   'The requested CID was flagged by the Bad Bits Denylist at https://badbits.dwebops.pub',
-      // )
+      httpAssert(
+        !isBadBit,
+        404,
+        'The requested CID was flagged by the Bad Bits Denylist at https://badbits.dwebops.pub',
+      )
 
       httpAssert(
         serviceProviderId,
@@ -279,7 +270,7 @@ function getErrorHttpStatusMessage(error) {
  *   redirects to the subdomain-based URL
  *
  * @param {Request} request - The incoming request
- * @param {RetrieverEnv} env - Worker environment
+ * @param {Env} env - Worker environment
  * @returns {Promise<Response>} Redirect response
  */
 async function handleDnsRootRequest(request, env) {

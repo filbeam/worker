@@ -71,11 +71,11 @@ export async function withApprovedProvider(
  * @param {...string} cids
  */
 export async function withBadBits(env, ...cids) {
-  const stmt = await env.DB.prepare(
-    'INSERT INTO bad_bits (hash, last_modified_at) VALUES (?, CURRENT_TIME)',
+  await Promise.all(
+    cids.map((cid) =>
+      env.BAD_BITS_KV.put(`bad-bits:${getBadBitsEntry(cid)}`, 'true'),
+    ),
   )
-  const entries = await Promise.all(cids.map(getBadBitsEntry))
-  await env.DB.batch(entries.map((it) => stmt.bind(it)))
 }
 
 /**
