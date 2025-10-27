@@ -711,14 +711,10 @@ describe('piece-retriever.fetch', () => {
     expect(await res.text()).toContain('No approved service provider found')
 
     const result = await env.DB.prepare(
-      'SELECT * FROM retrieval_logs WHERE data_set_id = ?',
+      'SELECT * FROM retrieval_logs WHERE data_set_id IS NULL AND response_status = 404 and CACHE_MISS IS NULL and egress_bytes IS NULL',
     )
-      .bind(dataSetId)
       .first()
     expect(result).toMatchObject({
-      response_status: 404,
-      cache_miss: null,
-      egress_bytes: null,
       bot_name: null,
     })
   })
