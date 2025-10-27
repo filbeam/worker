@@ -74,7 +74,7 @@ export default {
       const [{ serviceProviderId, serviceUrl, dataSetId }, isBadBit] =
         await Promise.all([
           getStorageProviderAndValidatePayer(env, payerWalletAddress, pieceCid),
-          env.BAD_BITS_KV.get(`bad-bits:${await getBadBitsEntry(pieceCid)}`, {
+          env.BAD_BITS_KV.get(`bad-bits:${getBadBitsEntry(pieceCid)}`, {
             type: 'json',
           }),
         ])
@@ -91,24 +91,24 @@ export default {
         `Unsupported Service Provider: ${serviceProviderId}`,
       )
 
-      let retrievalResult
+      const {
+        response: originResponse,
+        cacheMiss,
+        url,
+      } = await retrieveFile(
+        ctx,
+        serviceUrl,
+        pieceCid,
+        request,
+        env.ORIGIN_CACHE_TTL,
+        { signal: request.signal },
+      )
 
-      try {
-        retrievalResult = await retrieveFile(
-          ctx,
-          serviceUrl,
-          pieceCid,
-          request,
-          env.ORIGIN_CACHE_TTL,
-          { signal: request.signal },
-        )
-      } catch {}
-
-      if (!retrievalResult || retrievalResult.response.status >= 500) {
+      if (originResponse.status >= 500) {
         ctx.waitUntil(
           logRetrievalResult(env, {
-            cacheMiss: retrievalResult?.cacheMiss || null,
-            responseStatus: 502,
+            cacheMiss,
+            responseStatus: originResponse.status,
             egressBytes: 0,
             requestCountryCode,
             timestamp: requestTimestamp,
@@ -116,7 +116,7 @@ export default {
           }),
         )
         const response = new Response(
-          `Service provider ${serviceProviderId} is unavailable${retrievalResult ? ` at ${retrievalResult.url}` : ''}`,
+          `Service provider ${serviceProviderId} is unavailable at ${url}`,
           {
             status: 502,
             headers: new Headers({
@@ -128,24 +128,21 @@ export default {
         return response
       }
 
-      if (!retrievalResult.response.body) {
+      if (!originResponse.body) {
         // The upstream response does not have any readable body
         // There is no need to measure response body size, we can
         // return the original response object.
         ctx.waitUntil(
           logRetrievalResult(env, {
-            cacheMiss: retrievalResult.cacheMiss,
-            responseStatus: retrievalResult.response.status,
+            cacheMiss,
+            responseStatus: originResponse.status,
             egressBytes: 0,
             requestCountryCode,
             timestamp: requestTimestamp,
             dataSetId,
           }),
         )
-        const response = new Response(
-          retrievalResult.response.body,
-          retrievalResult.response,
-        )
+        const response = new Response(originResponse.body, originResponse)
         setContentSecurityPolicy(response)
         response.headers.set('X-Data-Set-ID', dataSetId)
         response.headers.set(
@@ -158,7 +155,7 @@ export default {
       // Stream and count bytes
       // We create two identical streams, one for the egress measurement and the other for returning the response as soon as possible
       const [returnedStream, egressMeasurementStream] =
-        retrievalResult.response.body.tee()
+        originResponse.body.tee()
       const reader = egressMeasurementStream.getReader()
       const firstByteAt = performance.now()
 
@@ -168,8 +165,8 @@ export default {
           const lastByteFetchedAt = performance.now()
 
           await logRetrievalResult(env, {
-            cacheMiss: retrievalResult.cacheMiss,
-            responseStatus: retrievalResult.response.status,
+            cacheMiss,
+            responseStatus: originResponse.status,
             egressBytes,
             requestCountryCode,
             timestamp: requestTimestamp,
@@ -187,9 +184,9 @@ export default {
 
       // Return immediately, proxying the transformed response
       const response = new Response(returnedStream, {
-        status: retrievalResult.response.status,
-        statusText: retrievalResult.response.statusText,
-        headers: retrievalResult.response.headers,
+        status: originResponse.status,
+        statusText: originResponse.statusText,
+        headers: originResponse.headers,
       })
       setContentSecurityPolicy(response)
       response.headers.set('X-Data-Set-ID', dataSetId)

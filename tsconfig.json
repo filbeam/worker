@@ -20,12 +20,6 @@
     },
     {
       "path": "workflows/tsconfig.json"
-    },
-    {
-      "path": "usage-reporter/tsconfig.json"
-    },
-    {
-      "path": "payment-settler/tsconfig.json"
     }
   ],
   "include": ["bin/*.js"]

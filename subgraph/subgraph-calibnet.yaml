@@ -40,7 +40,6 @@ dataSources:
         - PieceAdded
         - ServiceTerminated
         - CdnServiceTerminated
-        - CdnPaymentRailsToppedUp
       abis:
         - name: FilecoinWarmStorageService
           file: ./abis/FilecoinWarmStorageService.abi.json
@@ -53,6 +52,4 @@ dataSources:
           handler: handleServiceTerminated
         - event: CDNServiceTerminated(indexed address,indexed uint256,uint256,uint256)
           handler: handleCdnServiceTerminated
-        - event: CDNPaymentRailsToppedUp(indexed uint256,uint256,uint256,uint256,uint256)
-          handler: handleCdnPaymentRailsToppedUp
       file: ./src/FilecoinWarmStorageService.ts

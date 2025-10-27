@@ -58,15 +58,3 @@ type CdnServiceTerminated @entity(immutable: true) {
   timestamp: BigInt!
   transactionHash: String!
 }
-
-type CdnPaymentRailsToppedUp @entity(immutable: true) {
-  id: ID!
-  dataSetId: String! # uint256
-  cdnAmountAdded: String! # uint256
-  totalCdnLockup: String! # uint256
-  cacheMissAmountAdded: String! # uint256
-  totalCacheMissLockup: String! # uint256
-  blockNumber: BigInt!
-  blockTimestamp: BigInt!
-  transactionHash: String!
-}

@@ -69,8 +69,8 @@ export async function withApprovedProvider(
  */
 export async function withBadBits(env, ...cids) {
   await Promise.all(
-    cids.map(async (cid) =>
-      env.BAD_BITS_KV.put(`bad-bits:${await getBadBitsEntry(cid)}`, 'true'),
+    cids.map((cid) =>
+      env.BAD_BITS_KV.put(`bad-bits:${getBadBitsEntry(cid)}`, 'true'),
     ),
   )
 }
