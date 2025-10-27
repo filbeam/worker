@@ -270,7 +270,7 @@ export default {
    * @param {typeof globalThis.fetch} options.fetch
    */
   async checkGoldskyStatus(env, { fetch }) {
-    const [subgraph] = await Promise.all([
+    const [subgraph] = await Promise.allSettled([
       (async () => {
         const res = await fetch(env.GOLDSKY_SUBGRAPH_URL, {
           method: 'POST',
@@ -293,7 +293,11 @@ export default {
       // (placeholder for more data-fetching steps)
     ])
     const alerts = []
-    if (subgraph._meta.hasIndexingErrors) {
+    if (subgraph.status === 'rejected') {
+      alerts.push(
+        `Can't access subgraph: ${subgraph.reason.stack ?? subgraph.reason.message ?? subgraph.reason}`,
+      )
+    } else if (subgraph.value._meta.hasIndexingErrors) {
       alerts.push('Goldsky has indexing errors')
     }
     // (placeholder for more alerting conditions)
