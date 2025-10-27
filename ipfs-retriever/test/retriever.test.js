@@ -232,7 +232,9 @@ describe('retriever.fetch', () => {
   it('returns 400 if required fields are missing', async () => {
     const ctx = createExecutionContext()
     const mockRetrieveIpfsContent = vi.fn()
-    const req = withRequest(undefined, 'foo')
+    const req = new Request(
+      `http://${buildSlug(BigInt(realDataSetId), BigInt(realPieceId)).replace(/^http:\/\/(1-)/, '')}.${DNS_ROOT.slice(1)}`
+    )
     const res = await worker.fetch(req, env, ctx, {
       retrieveIpfsContent: mockRetrieveIpfsContent,
     })
@@ -254,7 +256,7 @@ describe('retriever.fetch', () => {
     })
     await waitOnExecutionContext(ctx)
     expect(res.status).toBe(400)
-    expect(await res.text()).toContain('Invalid dataSetId encoding in slug')
+    expect(await res.text()).toContain('Invalid pieceId encoding in slug')
   })
 
   it('returns the response from retrieveIpfsContent', async () => {
@@ -338,7 +340,7 @@ describe('retriever.fetch', () => {
     const expectedHash =
       'b9614f45cf8d401a0384eb58376b00cbcbb14f98fcba226d9fe1effe298af673'
     const ctx = createExecutionContext()
-    const req = withRequest(defaultPayerAddress, realIpfsRootCid)
+    const req = withRequest(realDataSetId, realPieceId)
     const res = await worker.fetch(req, env, ctx, { retrieveIpfsContent })
     await waitOnExecutionContext(ctx)
     expect(res.status).toBe(200)
@@ -532,7 +534,7 @@ describe('retriever.fetch', () => {
           return (async () => {
             try {
               const ctx = createExecutionContext()
-              const req = withRequest(defaultPayerAddress, pieceCid)
+              const req = withRequest(dataSetId, pieceCid)
               const res = await worker.fetch(req, env, ctx, {
                 retrieveIpfsContent,
               })
@@ -836,9 +838,10 @@ describe('retriever.fetch', () => {
   })
 
   it('logs to retrieval_logs on unsupported service provider (404)', async () => {
-    const invalidPieceCid = 'baga6ea4seaq3invalidpiececid'
+    const invalidPieceCid = 'bafiknvalidpieceid'
+    const pieceId = '9'
     const invalidIpfsRootCid = 'bafkinvalidrootcid'
-    const dataSetId = 'unsupported-serviceProvider-test'
+    const dataSetId = '13'
     const unsupportedServiceProviderId = 0
 
     await env.DB.batch([
@@ -853,7 +856,7 @@ describe('retriever.fetch', () => {
       env.DB.prepare(
         'INSERT INTO pieces (id, data_set_id, cid, ipfs_root_cid) VALUES (?, ?, ?, ?)',
       ).bind(
-        'piece-unsupported',
+        pieceId,
         dataSetId,
         invalidPieceCid,
         invalidIpfsRootCid,
@@ -861,7 +864,7 @@ describe('retriever.fetch', () => {
     ])
 
     const ctx = createExecutionContext()
-    const req = withRequest(defaultPayerAddress, invalidIpfsRootCid)
+    const req = withRequest(dataSetId, pieceId)
     const res = await worker.fetch(req, env, ctx)
     await waitOnExecutionContext(ctx)
 
@@ -951,13 +954,8 @@ function withRequest(
   headers = {},
   { subpath = '', format = 'car' } = {},
 ) {
-  let url = 'http://'
-  if (dataSetId && pieceId) {
-    url += buildSlug(BigInt(dataSetId), BigInt(pieceId))
-  } else if (dataSetId) {
-    url += dataSetId
-  }
-  url += `.${DNS_ROOT.slice(1)}` // remove the leading '.'
+  let url = `http://${buildSlug(BigInt(dataSetId), BigInt(pieceId))}.`
+  url += DNS_ROOT.slice(1) // remove the leading '.'
   if (subpath) url += `${subpath}`
   if (format) url += `?format=${format}`
 
