@@ -8,6 +8,7 @@ declare namespace Cloudflare {
 		ORIGIN_CACHE_TTL: 86400;
 		CLIENT_CACHE_TTL: 31536000;
 		DNS_ROOT: ".localhost" | ".calibration.filbeam.io" | ".filbeam.io";
+		ENFORCE_EGRESS_QUOTA: false;
 		DB: D1Database;
 	}
 }
@@ -16,7 +17,7 @@ type StringifyValues<EnvType extends Record<string, unknown>> = {
 	[Binding in keyof EnvType]: EnvType[Binding] extends string ? EnvType[Binding] : string;
 };
 declare namespace NodeJS {
-	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "ENVIRONMENT" | "ORIGIN_CACHE_TTL" | "CLIENT_CACHE_TTL" | "DNS_ROOT">> {}
+	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "ENVIRONMENT" | "ORIGIN_CACHE_TTL" | "CLIENT_CACHE_TTL" | "DNS_ROOT" | "ENFORCE_EGRESS_QUOTA">> {}
 }
 
 // Begin runtime types

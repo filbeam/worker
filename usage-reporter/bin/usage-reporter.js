@@ -27,25 +27,10 @@ import {
  * }} TransactionConfirmedMessage
  */
 
-/**
- * @typedef {{
- *   ENVIRONMENT: 'dev' | 'calibration' | 'mainnet'
- *   RPC_URL: string
- *   FILBEAM_CONTRACT_ADDRESS: `0x${string}`
- *   FILBEAM_CONTROLLER_PRIVATE_KEY: `0x${string}`
- *   FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS: string
- *   DB: D1Database
- *   TRANSACTION_MONITOR_WORKFLOW: Workflow
- *   TRANSACTION_QUEUE: Queue<
- *     TransactionRetryMessage | TransactionConfirmedMessage
- *   >
- * }} UsageReporterEnv
- */
-
 export default {
   /**
    * @param {any} _controller
-   * @param {UsageReporterEnv} env
+   * @param {Env} env
    * @param {ExecutionContext} _ctx
    * @param {{ getChainClient?: typeof defaultGetChainClient }} [options]
    */
@@ -154,7 +139,7 @@ export default {
    * @param {MessageBatch<
    *   TransactionRetryMessage | TransactionConfirmedMessage
    * >} batch
-   * @param {UsageReporterEnv} env
+   * @param {Env} env
    * @param {ExecutionContext} ctx
    */
   async queue(

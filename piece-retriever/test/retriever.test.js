@@ -7,20 +7,20 @@ import {
   createExecutionContext,
   waitOnExecutionContext,
 } from 'cloudflare:test'
-import assert from 'node:assert/strict'
 import {
   withDataSetPieces,
   withApprovedProvider,
   withBadBits,
   withWalletDetails,
-} from './test-data-builders.js'
+  withRequest,
+} from './test-helpers.js'
 import { CONTENT_STORED_ON_CALIBRATION } from './test-data.js'
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-const DNS_ROOT = '.filbeam.io'
+export const DNS_ROOT = '.filbeam.io'
 env.DNS_ROOT = DNS_ROOT
 
 describe('piece-retriever.fetch', () => {
@@ -54,12 +54,14 @@ describe('piece-retriever.fetch', () => {
     } of CONTENT_STORED_ON_CALIBRATION) {
       const pieceId = `root-${i}`
       await withDataSetPieces(env, {
-        serviceProviderId,
+        pieceId,
         pieceCid,
+        dataSetId,
+        serviceProviderId,
         payerAddress: defaultPayerAddress,
         withCDN: true,
-        dataSetId,
-        pieceId,
+        cdnEgressQuota: 100,
+        cacheMissEgressQuota: 100,
       })
       await withApprovedProvider(env, {
         id: serviceProviderId,
@@ -240,7 +242,7 @@ describe('piece-retriever.fetch', () => {
       retrieveFile: mockRetrieveFile,
     })
     await waitOnExecutionContext(ctx)
-    assert.strictEqual(res.status, 200)
+    expect(res.status).toBe(200)
     const readOutput = await env.DB.prepare(
       `SELECT id, response_status, egress_bytes, cache_miss
        FROM retrieval_logs
@@ -248,8 +250,7 @@ describe('piece-retriever.fetch', () => {
     )
       .bind(String(realDataSetId))
       .all()
-    const result = readOutput.results
-    assert.deepStrictEqual(result, [
+    expect(readOutput.results).toStrictEqual([
       {
         id: 1, // Assuming this is the first log entry
         response_status: 200,
@@ -277,7 +278,7 @@ describe('piece-retriever.fetch', () => {
       retrieveFile: mockRetrieveFile,
     })
     await waitOnExecutionContext(ctx)
-    assert.strictEqual(res.status, 200)
+    expect(res.status).toBe(200)
     const readOutput = await env.DB.prepare(
       `SELECT id, response_status, egress_bytes, cache_miss
        FROM retrieval_logs
@@ -285,8 +286,7 @@ describe('piece-retriever.fetch', () => {
     )
       .bind(String(realDataSetId))
       .all()
-    const result = readOutput.results
-    assert.deepStrictEqual(result, [
+    expect(readOutput.results).toStrictEqual([
       {
         id: 1, // Assuming this is the first log entry
         response_status: 200,
@@ -316,7 +316,7 @@ describe('piece-retriever.fetch', () => {
       retrieveFile: mockRetrieveFile,
     })
     await waitOnExecutionContext(ctx)
-    assert.strictEqual(res.status, 200)
+    expect(res.status).toBe(200)
     const readOutput = await env.DB.prepare(
       `SELECT
         response_status,
@@ -328,13 +328,13 @@ describe('piece-retriever.fetch', () => {
     )
       .bind(String(realDataSetId))
       .all()
-    assert.strictEqual(readOutput.results.length, 1)
+    expect(readOutput.results.length).toBe(1)
     const result = readOutput.results[0]
 
-    assert.strictEqual(result.response_status, 200)
-    assert.strictEqual(typeof result.fetch_ttfb, 'number')
-    assert.strictEqual(typeof result.fetch_ttlb, 'number')
-    assert.strictEqual(typeof result.worker_ttfb, 'number')
+    expect(result.response_status).toBe(200)
+    expect(typeof result.fetch_ttfb).toBe('number')
+    expect(typeof result.fetch_ttlb).toBe('number')
+    expect(typeof result.worker_ttfb).toBe('number')
   })
   it('stores request country code in D1', async () => {
     const body = 'file content'
@@ -354,7 +354,7 @@ describe('piece-retriever.fetch', () => {
       retrieveFile: mockRetrieveFile,
     })
     await waitOnExecutionContext(ctx)
-    assert.strictEqual(res.status, 200)
+    expect(res.status).toBe(200)
     const { results } = await env.DB.prepare(
       `SELECT request_country_code
        FROM retrieval_logs
@@ -362,7 +362,7 @@ describe('piece-retriever.fetch', () => {
     )
       .bind(String(realDataSetId))
       .all()
-    assert.deepStrictEqual(results, [
+    expect(results).toStrictEqual([
       {
         request_country_code: 'US',
       },
@@ -385,14 +385,17 @@ describe('piece-retriever.fetch', () => {
       retrieveFile: mockRetrieveFile,
     })
     await waitOnExecutionContext(ctx)
-    assert.strictEqual(res.status, 200)
+    expect(res.status).toBe(200)
     const readOutput = await env.DB.prepare(
       'SELECT egress_bytes FROM retrieval_logs WHERE data_set_id = ?',
     )
       .bind(String(realDataSetId))
       .all()
-    assert.strictEqual(readOutput.results.length, 1)
-    assert.strictEqual(readOutput.results[0].egress_bytes, 0)
+    expect(readOutput.results).toStrictEqual([
+      expect.objectContaining({
+        egress_bytes: 0,
+      }),
+    ])
   })
   it(
     'measures egress correctly from real service provider',
@@ -407,7 +410,7 @@ describe('piece-retriever.fetch', () => {
               const res = await worker.fetch(req, env, ctx, { retrieveFile })
               await waitOnExecutionContext(ctx)
 
-              assert.strictEqual(res.status, 200)
+              expect(res.status).toBe(200)
 
               const content = await res.arrayBuffer()
               const actualBytes = content.byteLength
@@ -418,8 +421,11 @@ describe('piece-retriever.fetch', () => {
                 .bind(String(dataSetId))
                 .all()
 
-              assert.strictEqual(results.length, 1)
-              assert.strictEqual(results[0].egress_bytes, actualBytes)
+              expect(results).toStrictEqual([
+                expect.objectContaining({
+                  egress_bytes: actualBytes,
+                }),
+              ])
 
               return { serviceProviderId, success: true }
             } catch (err) {
@@ -468,7 +474,7 @@ describe('piece-retriever.fetch', () => {
     const res = await worker.fetch(req, env, ctx)
     await waitOnExecutionContext(ctx)
 
-    assert.strictEqual(res.status, 402)
+    expect(res.status).toBe(402)
   })
   it('reads the provider URL from the database', async () => {
     const serviceProviderId = 'service-provider-id'
@@ -480,6 +486,8 @@ describe('piece-retriever.fetch', () => {
       serviceProviderId,
       pieceCid,
       payerAddress,
+      cdnEgressQuota: 100,
+      cacheMissEgressQuota: 100,
     })
 
     await withApprovedProvider(env, {
@@ -561,7 +569,7 @@ describe('piece-retriever.fetch', () => {
     await waitOnExecutionContext(ctx)
     expect(await res.text()).toBe('hello')
 
-    assert.strictEqual(res.status, 200)
+    expect(res.status).toBe(200)
     const { results } = await env.DB.prepare(
       `SELECT id, response_status, cache_miss
        FROM retrieval_logs
@@ -569,7 +577,7 @@ describe('piece-retriever.fetch', () => {
     )
       .bind(String(dataSetId))
       .all()
-    assert.deepStrictEqual(results, [
+    expect(results).toStrictEqual([
       {
         id: 1, // Assuming this is the first log entry
         response_status: 200,
@@ -642,9 +650,9 @@ describe('piece-retriever.fetch', () => {
     await withDataSetPieces(env, {
       serviceProviderId,
       payerAddress,
-      pieceCid,
       dataSetId,
       withCDN: true,
+      pieceCid,
       pieceId,
     })
 
@@ -658,7 +666,7 @@ describe('piece-retriever.fetch', () => {
     const res = await worker.fetch(req, env, ctx)
     await waitOnExecutionContext(ctx)
 
-    assert.strictEqual(res.status, 403)
+    expect(res.status).toBe(403)
   })
   it('does not log to retrieval_logs on method not allowed (405)', async () => {
     const ctx = createExecutionContext()
@@ -681,19 +689,16 @@ describe('piece-retriever.fetch', () => {
     const dataSetId = 'unsupported-serviceProvider-test'
     const unsupportedServiceProviderId = 0
 
-    await env.DB.batch([
-      env.DB.prepare(
-        'INSERT INTO data_sets (id, service_provider_id, payer_address, with_cdn) VALUES (?, ?, ?, ?)',
-      ).bind(
-        dataSetId,
-        unsupportedServiceProviderId,
-        defaultPayerAddress,
-        true,
-      ),
-      env.DB.prepare(
-        'INSERT INTO pieces (id, data_set_id, cid) VALUES (?, ?, ?)',
-      ).bind('piece-unsupported', dataSetId, invalidPieceCid),
-    ])
+    await withDataSetPieces(env, {
+      dataSetId,
+      serviceProviderId: unsupportedServiceProviderId,
+      payerAddress: defaultPayerAddress,
+      withCDN: true,
+      cdnEgressQuota: 100,
+      cacheMissEgressQuota: 100,
+      pieceCid: invalidPieceCid,
+      pieceId: 'piece-unsupported',
+    })
 
     const ctx = createExecutionContext()
     const req = withRequest(defaultPayerAddress, invalidPieceCid)
@@ -752,6 +757,158 @@ describe('piece-retriever.fetch', () => {
 
     expect(countAfter).toEqual(countBefore)
   })
+
+  it('allows full transfer even when exceeding quota (quota goes negative)', async () => {
+    const payerAddress = '0xaaaa567890abcdef1234567890abcdef12345678'
+    const pieceCid =
+      'bafkquotatestexceedquotatestexceedquotatestexceedquotatestexce'
+    const dataSetId = 'quota-test-dataset-exceed'
+    const serviceProviderId = 'quota-test-provider-exceed'
+
+    // Set up provider and data set with small quota (100 bytes)
+    await withApprovedProvider(env, {
+      id: serviceProviderId,
+      serviceUrl: 'https://test-provider.com',
+    })
+
+    await withDataSetPieces(env, {
+      dataSetId,
+      serviceProviderId,
+      payerAddress,
+      withCDN: true,
+      cdnEgressQuota: 100,
+      cacheMissEgressQuota: 100,
+      pieceCid,
+      pieceId: 'piece-quota-test',
+    })
+
+    // Mock a response with more data than quota allows (500 bytes)
+    const largeContent = new Uint8Array(500).fill(65) // 500 'A's
+    const fakeResponse = new Response(largeContent, {
+      status: 200,
+      headers: { 'CF-Cache-Status': 'MISS', 'Content-Length': '500' },
+    })
+
+    const ctx = createExecutionContext()
+    const res = await worker.fetch(
+      withRequest(payerAddress, pieceCid),
+      { ...env, ENFORCE_EGRESS_QUOTA: true },
+      ctx,
+      {
+        retrieveFile: async () => ({ response: fakeResponse, cacheMiss: true }),
+      },
+    )
+    await waitOnExecutionContext(ctx)
+
+    // Should get full content even when quota is exceeded
+    // Response should be successful with all 500 bytes
+    const body = await res.arrayBuffer()
+    expect(body.byteLength).toBe(500)
+
+    // Check logs after execution context completes
+    const { results } = await env.DB.prepare(
+      'SELECT egress_bytes, response_status FROM retrieval_logs WHERE data_set_id = ?',
+    )
+      .bind(dataSetId)
+      .all()
+
+    expect(results).toStrictEqual([
+      {
+        egress_bytes: 500,
+        response_status: 200,
+      },
+    ])
+
+    // Check that both quotas went negative (100 - 500 = -400)
+    const quotaResult = await env.DB.prepare(
+      'SELECT cdn_egress_quota, cache_miss_egress_quota FROM data_sets WHERE id = ?',
+    )
+      .bind(dataSetId)
+      .first()
+
+    expect(quotaResult).toStrictEqual({
+      cdn_egress_quota: -400,
+      cache_miss_egress_quota: -400,
+    })
+  })
+
+  it('allows full transfer when within quota', async () => {
+    const payerAddress = '0xbbbb567890abcdef1234567890abcdef12345678'
+    const pieceCid =
+      'bafkquotaokquotaokquotaokquotaokquotaokquotaokquotaokquotaok'
+    const dataSetId = 'quota-ok-dataset-unique'
+    const serviceProviderId = 'quota-ok-provider-unique'
+
+    // Set up provider and data set with sufficient quota (1000 bytes)
+    await withApprovedProvider(env, {
+      id: serviceProviderId,
+      serviceUrl: 'https://test-provider.com',
+    })
+
+    await withDataSetPieces(env, {
+      dataSetId,
+      serviceProviderId,
+      payerAddress,
+      withCDN: true,
+      cdnEgressQuota: 1000,
+      cacheMissEgressQuota: 1000,
+      pieceCid,
+      pieceId: 'piece-quota-ok',
+    })
+
+    // Mock a response that fits within quota (100 bytes)
+    const content = new Uint8Array(100).fill(65) // 100 'A's
+    const fakeResponse = new Response(content, {
+      status: 200,
+      headers: { 'CF-Cache-Status': 'HIT', 'Content-Length': '100' },
+    })
+
+    const ctx = createExecutionContext()
+    const res = await worker.fetch(
+      withRequest(payerAddress, pieceCid),
+      { ...env, ENFORCE_EGRESS_QUOTA: true },
+      ctx,
+      {
+        retrieveFile: async () => ({
+          response: fakeResponse,
+          cacheMiss: false,
+        }),
+      },
+    )
+    await waitOnExecutionContext(ctx)
+
+    // Should succeed
+    expect(res.status).toBe(200)
+    const body = await res.arrayBuffer()
+    expect(body.byteLength).toBe(100)
+
+    // Check that full content was logged
+    const { results } = await env.DB.prepare(
+      'SELECT egress_bytes, response_status FROM retrieval_logs WHERE data_set_id = ?',
+    )
+      .bind(dataSetId)
+      .all()
+
+    expect(results).toStrictEqual([
+      {
+        egress_bytes: 100,
+        response_status: 200,
+      },
+    ])
+
+    // Check that quotas were decremented correctly (cache hit)
+    const quotaResult = await env.DB.prepare(
+      'SELECT cdn_egress_quota, cache_miss_egress_quota FROM data_sets WHERE id = ?',
+    )
+      .bind(dataSetId)
+      .first()
+
+    expect(quotaResult).toStrictEqual({
+      cdn_egress_quota: 900,
+      cache_miss_egress_quota: 1000,
+    })
+  })
+
   it('responds with 502 and a useful message when SP responds with an error', async () => {
     const { pieceCid, dataSetId } = CONTENT_STORED_ON_CALIBRATION[0]
     const url = 'https://example.com/piece/123'
@@ -784,24 +941,3 @@ describe('piece-retriever.fetch', () => {
     expect(res.headers.get('X-Data-Set-ID')).toBe(String(dataSetId))
   })
 })
-
-/**
- * @param {string} payerWalletAddress
- * @param {string} pieceCid
- * @param {string} method
- * @param {Object} headers
- * @returns {Request}
- */
-function withRequest(
-  payerWalletAddress,
-  pieceCid,
-  method = 'GET',
-  headers = {},
-) {
-  let url = 'http://'
-  if (payerWalletAddress) url += `${payerWalletAddress}.`
-  url += DNS_ROOT.slice(1) // remove the leading '.'
-  if (pieceCid) url += `/${pieceCid}`
-
-  return new Request(url, { method, headers })
-}

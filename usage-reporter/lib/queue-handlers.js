@@ -19,20 +19,6 @@ import { getRecentSendMessage as defaultGetRecentSendMessage } from './filfox.js
  */
 
 /**
- * @typedef {{
- *   ENVIRONMENT: 'dev' | 'calibration' | 'mainnet'
- *   RPC_URL: string
- *   FILBEAM_CONTRACT_ADDRESS: `0x${string}`
- *   FILBEAM_CONTROLLER_PRIVATE_KEY: `0x${string}`
- *   DB: D1Database
- *   TRANSACTION_MONITOR_WORKFLOW: Workflow
- *   TRANSACTION_QUEUE: Queue<
- *     TransactionRetryMessage | TransactionConfirmedMessage
- *   >
- * }} Env
- */
-
-/**
  * Handles transaction confirmed queue messages
  *
  * @param {TransactionConfirmedMessage} message

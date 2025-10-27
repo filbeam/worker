@@ -73,7 +73,12 @@ export default {
 
       const [{ serviceProviderId, serviceUrl, dataSetId }, isBadBit] =
         await Promise.all([
-          getStorageProviderAndValidatePayer(env, payerWalletAddress, pieceCid),
+          getStorageProviderAndValidatePayer(
+            env,
+            payerWalletAddress,
+            pieceCid,
+            env.ENFORCE_EGRESS_QUOTA,
+          ),
           env.BAD_BITS_KV.get(`bad-bits:${await getBadBitsEntry(pieceCid)}`, {
             type: 'json',
           }),
@@ -181,7 +186,12 @@ export default {
             dataSetId,
           })
 
-          await updateDataSetStats(env, { dataSetId, egressBytes })
+          await updateDataSetStats(env, {
+            dataSetId,
+            egressBytes,
+            cacheMiss: retrievalResult.cacheMiss,
+            enforceEgressQuota: env.ENFORCE_EGRESS_QUOTA,
+          })
         })(),
       )
 
