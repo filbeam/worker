@@ -12,7 +12,9 @@ export function getChainClient(env) {
     transport,
   })
 
-  const account = privateKeyToAccount(env.FILBEAM_CONTROLLER_PRIVATE_KEY)
+  const account = privateKeyToAccount(
+    /** @type {`0x${string}`} ` */ (env.FILBEAM_CONTROLLER_PRIVATE_KEY),
+  )
 
   const walletClient = createWalletClient({
     chain,
