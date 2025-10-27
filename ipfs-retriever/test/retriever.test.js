@@ -246,7 +246,9 @@ describe('retriever.fetch', () => {
   it('returns 400 if slug has invalid base32 encoding', async () => {
     const ctx = createExecutionContext()
     const mockRetrieveIpfsContent = vi.fn()
-    const req = withRequest('notbase32', 'alsonotbase32')
+    const req = new Request(
+      `http://${buildSlug(BigInt(realDataSetId), BigInt(realPieceId))}1.${DNS_ROOT.slice(1)}`
+    )
     const res = await worker.fetch(req, env, ctx, {
       retrieveIpfsContent: mockRetrieveIpfsContent,
     })
@@ -833,8 +835,7 @@ describe('retriever.fetch', () => {
     expect(result).toBeNull()
   })
 
-  // TODO - find out why this test fails and fix the problem
-  it.skip('logs to retrieval_logs on unsupported service provider (404)', async () => {
+  it('logs to retrieval_logs on unsupported service provider (404)', async () => {
     const invalidPieceCid = 'baga6ea4seaq3invalidpiececid'
     const invalidIpfsRootCid = 'bafkinvalidrootcid'
     const dataSetId = 'unsupported-serviceProvider-test'
@@ -868,11 +869,10 @@ describe('retriever.fetch', () => {
     expect(await res.text()).toContain('No approved service provider found')
 
     const result = await env.DB.prepare(
-      'SELECT * FROM retrieval_logs WHERE data_set_id = ? AND response_status = 404 and CACHE_MISS IS NULL and egress_bytes IS NULL',
+      'SELECT * FROM retrieval_logs WHERE data_set_id IS NULL AND response_status = 404 and CACHE_MISS IS NULL and egress_bytes IS NULL',
     )
-      .bind(dataSetId)
       .first()
-    expect(result).toBeDefined()
+    expect(result).toBeTruthy()
   })
   it('does not log to retrieval_logs when slug encoding is invalid (400)', async () => {
     const ctx = createExecutionContext()
@@ -880,8 +880,9 @@ describe('retriever.fetch', () => {
       'SELECT COUNT(*) AS count FROM retrieval_logs',
     ).first()
 
-    // Use values without hyphens that will fail base32 decoding
-    const req = withRequest('notbase32', 'alsoinvalid')
+    const req = new Request(
+      `http://${buildSlug(BigInt(realDataSetId), BigInt(realPieceId))}1.${DNS_ROOT.slice(1)}`
+    )
     const res = await worker.fetch(req, env, ctx)
     await waitOnExecutionContext(ctx)
 
@@ -952,13 +953,8 @@ function withRequest(
 ) {
   let url = 'http://'
   if (dataSetId && pieceId) {
-    try {
-      const slug = buildSlug(BigInt(dataSetId), BigInt(pieceId))
-      url += `${slug}.`
-    } catch {
-      // If conversion fails, use raw values (for testing error cases)
-      url += `1-${dataSetId}-${pieceId}.`
-    }
+    const slug = buildSlug(BigInt(dataSetId), BigInt(pieceId))
+    url += `${slug}.`
   } else if (dataSetId) {
     url += `${dataSetId}.`
   }
