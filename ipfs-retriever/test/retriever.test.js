@@ -887,7 +887,7 @@ describe('retriever.fetch', () => {
     await waitOnExecutionContext(ctx)
 
     expect(res.status).toBe(400)
-    expect(await res.text()).toContain('Invalid dataSetId encoding in slug')
+    expect(await res.text()).toContain('Invalid pieceId encoding in slug')
 
     const { count: countAfter } = await env.DB.prepare(
       'SELECT COUNT(*) AS count FROM retrieval_logs',
