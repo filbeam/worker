@@ -710,6 +710,30 @@ describe('piece-retriever.fetch', () => {
       .first()
     expect(result).toBeDefined()
   })
+  it('logs to retrieval_logs on SP error', async () => {
+    const { pieceCid, dataSetId } = CONTENT_STORED_ON_CALIBRATION[0]
+    const url = 'https://example.com/piece/123'
+    const mockRetrieveFile = vi.fn().mockResolvedValue({
+      response: new Response(null, { status: 510 }),
+      cacheMiss: true,
+      url,
+    })
+    const ctx = createExecutionContext()
+    const req = withRequest(defaultPayerAddress, pieceCid)
+    const res = await worker.fetch(req, env, ctx, {
+      retrieveFile: mockRetrieveFile,
+    })
+    await waitOnExecutionContext(ctx)
+
+    expect(res.status).toBe(502)
+
+    const result = await env.DB.prepare(
+      'SELECT * FROM retrieval_logs WHERE data_set_id = ? AND response_status = 502 and CACHE_MISS IS NULL and egress_bytes IS NULL',
+    )
+      .bind(dataSetId)
+      .first()
+    expect(result).toBeDefined()
+  })
   it('does not log to retrieval_logs when payer address is invalid (400)', async () => {
     const { count: countBefore } = await env.DB.prepare(
       'SELECT COUNT(*) AS count FROM retrieval_logs',
