@@ -95,7 +95,7 @@ export default {
 
       // Now check Bad Bits with the ipfsRootCid we got from the database
       const isBadBit = env.BAD_BITS_KV.get(
-        `bad-bits:${getBadBitsEntry(ipfsRootCid)}`,
+        `bad-bits:${await getBadBitsEntry(ipfsRootCid)}`,
         {
           type: 'json',
         },
