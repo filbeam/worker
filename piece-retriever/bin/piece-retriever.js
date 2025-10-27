@@ -181,7 +181,11 @@ export default {
             dataSetId,
           })
 
-          await updateDataSetStats(env, { dataSetId, egressBytes, cacheMiss })
+          await updateDataSetStats(env, {
+            dataSetId,
+            egressBytes,
+            cacheMiss: retrievalResult.cacheMiss,
+          })
         })(),
       )
 
