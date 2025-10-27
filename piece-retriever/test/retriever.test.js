@@ -712,8 +712,7 @@ describe('piece-retriever.fetch', () => {
 
     const result = await env.DB.prepare(
       'SELECT * FROM retrieval_logs WHERE data_set_id IS NULL AND response_status = 404 and CACHE_MISS IS NULL and egress_bytes IS NULL',
-    )
-      .first()
+    ).first()
     expect(result).toMatchObject({
       bot_name: null,
     })
@@ -866,8 +865,7 @@ describe('piece-retriever.fetch', () => {
 
     const result = await env.DB.prepare(
       'SELECT * FROM retrieval_logs WHERE data_set_id IS NULL',
-    )
-      .first()
+    ).first()
     expect(result).toMatchObject({
       cache_miss: null,
       egress_bytes: null,
