@@ -139,7 +139,7 @@ export default {
    * @param {MessageBatch<
    *   TransactionRetryMessage | TransactionConfirmedMessage
    * >} batch
-   * @param {UsageReporterEnv} env
+   * @param {Env} env
    * @param {ExecutionContext} ctx
    */
   async queue(
