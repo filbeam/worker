@@ -865,9 +865,8 @@ describe('piece-retriever.fetch', () => {
     expect(res.status).toBe(404)
 
     const result = await env.DB.prepare(
-      'SELECT * FROM retrieval_logs WHERE data_set_id = ?',
+      'SELECT * FROM retrieval_logs WHERE data_set_id IS NULL',
     )
-      .bind(dataSetId)
       .first()
     expect(result).toMatchObject({
       cache_miss: null,
