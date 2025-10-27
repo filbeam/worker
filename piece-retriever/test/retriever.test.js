@@ -792,7 +792,7 @@ describe('piece-retriever.fetch', () => {
     const ctx = createExecutionContext()
     const res = await worker.fetch(
       withRequest(payerAddress, pieceCid),
-      env,
+      { ...env, ENFORCE_EGRESS_QUOTA: true },
       ctx,
       {
         retrieveFile: async () => ({ response: fakeResponse, cacheMiss: true }),
@@ -866,7 +866,7 @@ describe('piece-retriever.fetch', () => {
     const ctx = createExecutionContext()
     const res = await worker.fetch(
       withRequest(payerAddress, pieceCid),
-      env,
+      { ...env, ENFORCE_EGRESS_QUOTA: true },
       ctx,
       {
         retrieveFile: async () => ({

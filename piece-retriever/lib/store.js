@@ -233,11 +233,17 @@ export async function getStorageProviderAndValidatePayer(
  * @param {number} params.egressBytes - The egress bytes used for the response.
  * @param {boolean} params.cacheMiss - Whether this was a cache miss (true) or
  *   cache hit (false).
+ * @param {boolean} [params.enforceEgressQuota=false] - Whether to decrement
+ *   egress quotas. Default is `false`
  */
 export async function updateDataSetStats(
   env,
-  { dataSetId, egressBytes, cacheMiss },
+  { dataSetId, egressBytes, cacheMiss, enforceEgressQuota = false },
 ) {
+  const cdnEgressBytesToDeduct = enforceEgressQuota ? egressBytes : 0
+  const cacheMissEgressBytesToDeduct =
+    enforceEgressQuota && cacheMiss ? egressBytes : 0
+
   await env.DB.prepare(
     `
     UPDATE data_sets
@@ -247,6 +253,11 @@ export async function updateDataSetStats(
     WHERE id = ?
     `,
   )
-    .bind(egressBytes, egressBytes, cacheMiss ? egressBytes : 0, dataSetId)
+    .bind(
+      egressBytes,
+      cdnEgressBytesToDeduct,
+      cacheMissEgressBytesToDeduct,
+      dataSetId,
+    )
     .run()
 }

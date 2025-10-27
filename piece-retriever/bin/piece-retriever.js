@@ -190,6 +190,7 @@ export default {
             dataSetId,
             egressBytes,
             cacheMiss: retrievalResult.cacheMiss,
+            enforceEgressQuota: env.ENFORCE_EGRESS_QUOTA,
           })
         })(),
       )
