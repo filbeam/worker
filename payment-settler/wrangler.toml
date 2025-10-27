@@ -59,7 +59,7 @@ RPC_URL = "https://api.calibration.node.glif.io/"
 FILBEAM_CONTRACT_ADDRESS = "0x"
 DEFAULT_LOCKUP_PERIOD_DAYS = 30 # 30 days lockup period
 FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS = 1667326380000 # Calibration network genesis timestamp in milliseconds
-FILBEAM_CONTROLLER_PRIVATE_KEY = ""
+FILBEAM_CONTROLLER_PRIVATE_KEY = "0xabc"
 
 [[env.calibration.d1_databases]]
 binding = "DB"
