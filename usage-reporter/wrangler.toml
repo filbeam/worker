@@ -1,0 +1,106 @@
+name = "filbeam-usage-reporter"
+main = "bin/usage-reporter.js"
+compatibility_date = "2024-12-05"
+compatibility_flags = ["nodejs_compat"]
+logpush = true
+
+[observability]
+enabled = true
+head_sampling_rate = 1
+
+[[d1_databases]]
+binding = "DB"
+database_name = "test-db"
+database_id = "8cc92155-16f6-426a-b782-2965e0daf100"
+
+[env.dev.vars]
+ENVIRONMENT = "dev"
+RPC_URL = "https://api.calibration.node.glif.io/"
+FILBEAM_CONTRACT_ADDRESS = "0x96e13bC98fA0cdf01b07985c804960117EAB76E8"
+FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS = "1667326380000"
+
+[[env.dev.d1_databases]]
+binding = "DB"
+database_name = "dev-db"
+database_id = "8cc92155-16f6-426a-b782-2965e0daf101"
+
+[env.calibration.vars]
+ENVIRONMENT = "calibration"
+RPC_URL = "https://api.calibration.node.glif.io/"
+FILBEAM_CONTRACT_ADDRESS = "0x"
+FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS = "1667326380000"
+
+[[env.calibration.d1_databases]]
+binding = "DB"
+database_name = "filcdn-calibration-db"
+database_id = "78f15bbb-391f-4797-9016-a6cb86c0b9b8"
+
+# TODO: Enable once FilBeam contract has been deployed
+# [env.calibration.triggers]
+# crons = ["*/30 * * * *"]  # Run every 30 minutes
+
+[env.mainnet.vars]
+ENVIRONMENT = "mainnet"
+RPC_URL = "https://api.node.glif.io/"
+FILBEAM_CONTRACT_ADDRESS = "0x" # TODO
+FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS = "1598306400000"
+
+[[env.mainnet.d1_databases]]
+binding = "DB"
+database_name = "filcdn-mainnet-db"
+database_id = "e8de6418-2cb7-4413-9ba0-a9c8aacf9a66"
+
+# TODO: Enable once FilBeam contract has been deployed
+# [env.mainnet.triggers]
+# crons = ["0 */6 * * *"]  # Run every 6 hrs
+
+[[env.dev.queues.producers]]
+queue = "usage-report-transaction-queue-dev"
+binding = "TRANSACTION_QUEUE"
+
+# queue concurrency has to be set to 1 in order to send
+# transactions one at a time and avoid nonce tracking
+[[env.dev.queues.consumers]]
+queue = "usage-report-transaction-queue-dev"
+max_concurrency = 1
+max_retries = 3
+dead_letter_queue = "transaction-dlq"
+
+[[env.calibration.queues.producers]]
+queue = "usage-report-transaction-queue-calibration"
+binding = "TRANSACTION_QUEUE"
+
+# queue concurrency has to be set to 1 in order to send
+# transactions one at a time and avoid nonce tracking
+[[env.calibration.queues.consumers]]
+queue = "usage-report-transaction-queue-calibration"
+max_concurrency = 1
+max_retries = 3
+dead_letter_queue = "transaction-dlq"
+
+[[env.mainnet.queues.producers]]
+queue = "usage-report-transaction-queue-mainnet"
+binding = "TRANSACTION_QUEUE"
+
+# queue concurrency has to be set to 1 in order to send
+# transactions one at a time and avoid nonce tracking
+[[env.mainnet.queues.consumers]]
+queue = "usage-report-transaction-queue-mainnet"
+max_concurrency = 1
+max_retries = 3
+dead_letter_queue = "transaction-dlq"
+
+[[env.dev.workflows]]
+name = "usage-report-transaction-monitor-workflow-dev"
+binding = "TRANSACTION_MONITOR_WORKFLOW"
+class_name = "TransactionMonitorWorkflow"
+
+[[env.calibration.workflows]]
+name = "usage-report-transaction-monitor-workflow-calibration"
+binding = "TRANSACTION_MONITOR_WORKFLOW"
+class_name = "TransactionMonitorWorkflow"
+
+[[env.mainnet.workflows]]
+name = "usage-report-transaction-monitor-workflow-mainnet"
+binding = "TRANSACTION_MONITOR_WORKFLOW"
+class_name = "TransactionMonitorWorkflow"

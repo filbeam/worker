@@ -10,7 +10,8 @@
     "indexer",
     "piece-retriever",
     "terminator",
-    "workflows"
+    "workflows",
+    "usage-reporter"
   ],
   "scripts": {
     "build:types": "npm run build:types --workspaces --if-present",
