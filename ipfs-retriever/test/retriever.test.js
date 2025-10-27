@@ -233,16 +233,13 @@ describe('retriever.fetch', () => {
     const ctx = createExecutionContext()
     const mockRetrieveIpfsContent = vi.fn()
     const req = new Request(
-      `http://${buildSlug(BigInt(realDataSetId), BigInt(realPieceId)).replace(/^http:\/\/(1-)/, '')}.${DNS_ROOT.slice(1)}`
+      `http://${buildSlug(BigInt(realDataSetId), BigInt(realPieceId)).replace(/^(1-)/, '')}.${DNS_ROOT.slice(1)}`
     )
     const res = await worker.fetch(req, env, ctx, {
       retrieveIpfsContent: mockRetrieveIpfsContent,
     })
     await waitOnExecutionContext(ctx)
-    // When pieceId is provided but dataSetId is undefined, it creates just "foo." which
-    // becomes the root domain and redirects to filbeam.com
-    expect(res.status).toBe(302)
-    expect(res.headers.get('Location')).toBe('https://filbeam.com/')
+    expect(res.status).toBe(400)
   })
 
   it('returns 400 if slug has invalid base32 encoding', async () => {
