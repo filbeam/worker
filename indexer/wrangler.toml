@@ -13,11 +13,21 @@ binding = "DB"
 database_name = "test-db"
 database_id = "8cc92155-16f6-426a-b782-2965e0daf100"
 
+[vars]
+# Default rate: 7 USDFC per TiB (in 1e18 units)
+CDN_RATE_PER_TIB = "7000000000000000000"
+CACHE_MISS_RATE_PER_TIB = "7000000000000000000"
+
 [env.dev.vars]
 ENVIRONMENT = "dev"
 WALLET_SCREENING_BATCH_SIZE = 1
 WALLET_SCREENING_STALE_THRESHOLD_MS = 86400000 # one day
 GOLDSKY_SUBGRAPH_URL="https://api.goldsky.com/api/public/project_cmb91qc80slyu01wca6e2eupl/subgraphs/filbeam-alpha-calibnet/1.0.0/gn"
+DEFAULT_LOCKUP_PERIOD_DAYS = 30
+FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS = 1667326380000 # Calibration network genesis timestamp in milliseconds
+# 7 USDFC per TiB (in 1e18 units)
+CDN_RATE_PER_TIB = "7000000000000000000"
+CACHE_MISS_RATE_PER_TIB = "7000000000000000000"
 
 [[env.dev.d1_databases]]
 binding = "DB"
@@ -28,7 +38,12 @@ database_id = "8cc92155-16f6-426a-b782-2965e0daf101"
 ENVIRONMENT = "calibration"
 WALLET_SCREENING_BATCH_SIZE = 1
 WALLET_SCREENING_STALE_THRESHOLD_MS = 86400000 # one day
+DEFAULT_LOCKUP_PERIOD_DAYS = 30
+FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS = 1667326380000 # Calibration network genesis timestamp in milliseconds
 GOLDSKY_SUBGRAPH_URL="https://api.goldsky.com/api/public/project_cmb91qc80slyu01wca6e2eupl/subgraphs/filbeam-alpha-calibnet/1.0.0/gn"
+# 7 USDFC per TiB (in 1e18 units)
+CDN_RATE_PER_TIB = "7000000000000000000"
+CACHE_MISS_RATE_PER_TIB = "7000000000000000000"
 
 [[env.calibration.d1_databases]]
 binding = "DB"
@@ -52,6 +67,11 @@ ENVIRONMENT = "mainnet"
 WALLET_SCREENING_BATCH_SIZE = 10
 WALLET_SCREENING_STALE_THRESHOLD_MS = 21600000 # 6 hours
 GOLDSKY_SUBGRAPH_URL="https://api.goldsky.com/api/public/project_cmb91qc80slyu01wca6e2eupl/subgraphs/filbeam-alpha-mainnet/1.0.0/gn"
+DEFAULT_LOCKUP_PERIOD_DAYS = 30
+FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS = 1598306400000 # Mainnet genesis timestamp in milliseconds
+# 7 USDFC per TiB (in 1e18 units)
+CDN_RATE_PER_TIB = "7000000000000000000"
+CACHE_MISS_RATE_PER_TIB = "7000000000000000000"
 
 [[env.mainnet.d1_databases]]
 binding = "DB"

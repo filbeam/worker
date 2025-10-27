@@ -1,0 +1,24 @@
+{
+  "name": "@filbeam/usage-reporter",
+  "version": "1.0.0",
+  "private": true,
+  "description": "FilBeam Usage Reporter Worker",
+  "author": "Space Meridian <filbeam@meridian.space>",
+  "type": "module",
+  "main": "bin/usage-reporter.js",
+  "scripts": {
+    "build:types": "wrangler types",
+    "deploy:calibration": "wrangler deploy --env calibration",
+    "deploy:mainnet": "wrangler deploy --env mainnet",
+    "start": "wrangler d1 migrations apply dev-db --local --env dev --cwd ../db  && wrangler dev --env dev",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@filbeam/workflows": "^1.0.0",
+    "viem": "^2.37.9"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "^0.9.7",
+    "@types/validator": "^13.15.2"
+  }
+}
