@@ -1,9 +1,10 @@
 import { checkIfAddressIsSanctioned as defaultCheckIfAddressIsSanctioned } from './chainalysis.js'
+import { BYTES_PER_TIB } from './constants.js'
 
 /**
  * Handle proof set rail creation
  *
- * @param {{ CHAINALYSIS_API_KEY: string; DB: D1Database }} env
+ * @param {Env} env
  * @param {any} payload
  * @param {object} opts
  * @param {typeof defaultCheckIfAddressIsSanctioned} opts.checkIfAddressIsSanctioned
@@ -77,5 +78,43 @@ export async function handleFWSSServiceTerminated(env, payload) {
     `,
   )
     .bind(String(payload.data_set_id))
+    .run()
+}
+
+/**
+ * Handle CDN Payment Rails Topped Up event Calculates and updates egress quotas
+ * for a data set based on lockup amounts
+ *
+ * @param {Env} env
+ * @param {object} payload
+ * @param {string} payload.data_set_id
+ * @param {string} payload.cdn_amount_added
+ * @param {string} payload.cache_miss_amount_added
+ * @throws {Error} If there is an error during the database operation
+ */
+export async function handleFWSSCDNPaymentRailsToppedUp(env, payload) {
+  const { CDN_RATE_PER_TIB, CACHE_MISS_RATE_PER_TIB } = env
+
+  const cdnEgressQuotaAdded =
+    (BigInt(payload.cdn_amount_added) * BYTES_PER_TIB) /
+    BigInt(CDN_RATE_PER_TIB)
+
+  const cacheMissEgressQuotaAdded =
+    (BigInt(payload.cache_miss_amount_added) * BYTES_PER_TIB) /
+    BigInt(CACHE_MISS_RATE_PER_TIB)
+
+  await env.DB.prepare(
+    `
+    UPDATE data_sets
+    SET cdn_egress_quota = cdn_egress_quota + CAST(? AS INTEGER),
+        cache_miss_egress_quota = cache_miss_egress_quota + CAST(? AS INTEGER)
+    WHERE id = ?
+    `,
+  )
+    .bind(
+      cdnEgressQuotaAdded.toString(),
+      cacheMissEgressQuotaAdded.toString(),
+      payload.data_set_id,
+    )
     .run()
 }
