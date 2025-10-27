@@ -3,11 +3,7 @@ import { privateKeyToAccount } from 'viem/accounts'
 import { filecoinCalibration, filecoin } from 'viem/chains'
 
 /**
- * @param {{
- *   ENVIRONMENT: 'mainnet' | 'calibration' | 'dev'
- *   RPC_URL: string
- *   FILBEAM_CONTROLLER_PRIVATE_KEY: string
- * }} env
+ * @param {Env} env
  */
 export function getChainClient(env) {
   const chain = env.ENVIRONMENT === 'mainnet' ? filecoin : filecoinCalibration

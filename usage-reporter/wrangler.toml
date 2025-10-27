@@ -1,4 +1,4 @@
-name = "filcdn-usage-reporter"
+name = "filbeam-usage-reporter"
 main = "bin/usage-reporter.js"
 compatibility_date = "2024-12-05"
 compatibility_flags = ["nodejs_compat"]
@@ -17,7 +17,7 @@ database_id = "8cc92155-16f6-426a-b782-2965e0daf100"
 ENVIRONMENT = "dev"
 RPC_URL = "https://api.calibration.node.glif.io/"
 FILBEAM_CONTRACT_ADDRESS = "0x96e13bC98fA0cdf01b07985c804960117EAB76E8"
-GENESIS_BLOCK_TIMESTAMP = "1667326380"
+FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS = "1667326380000"
 
 [[env.dev.d1_databases]]
 binding = "DB"
@@ -28,29 +28,31 @@ database_id = "8cc92155-16f6-426a-b782-2965e0daf101"
 ENVIRONMENT = "calibration"
 RPC_URL = "https://api.calibration.node.glif.io/"
 FILBEAM_CONTRACT_ADDRESS = "0x"
-GENESIS_BLOCK_TIMESTAMP = "1667326380"
+FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS = "1667326380000"
 
 [[env.calibration.d1_databases]]
 binding = "DB"
 database_name = "filcdn-calibration-db"
 database_id = "78f15bbb-391f-4797-9016-a6cb86c0b9b8"
 
-[env.calibration.triggers]
-crons = ["*/30 * * * *"]  # Run every 30 minutes
+# TODO: Enable once FilBeam contract has been deployed
+# [env.calibration.triggers]
+# crons = ["*/30 * * * *"]  # Run every 30 minutes
 
 [env.mainnet.vars]
 ENVIRONMENT = "mainnet"
 RPC_URL = "https://api.node.glif.io/"
 FILBEAM_CONTRACT_ADDRESS = "0x" # TODO
-GENESIS_BLOCK_TIMESTAMP = "1598306400"
+FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS = "1598306400000"
 
 [[env.mainnet.d1_databases]]
 binding = "DB"
 database_name = "filcdn-mainnet-db"
 database_id = "e8de6418-2cb7-4413-9ba0-a9c8aacf9a66"
 
-[env.mainnet.triggers]
-crons = ["0 */6 * * *"]  # Run every 6 hrs
+# TODO: Enable once FilBeam contract has been deployed
+# [env.mainnet.triggers]
+# crons = ["0 */6 * * *"]  # Run every 6 hrs
 
 [[env.dev.queues.producers]]
 queue = "usage-report-transaction-queue-dev"
