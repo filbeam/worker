@@ -1,6 +1,13 @@
 /**
  * Fetches data sets that need CDN payment rail settlement
  *
+ * Only settle data sets with recently reported usage (within last 30 days).
+ * This prevents unnecessary settlement attempts for inactive or abandoned data
+ * sets that are no longer generating egress traffic. If a data set hasn't
+ * reported usage in 30 days, it's likely inactive and doesn't need settlement
+ * processing. Reference:
+ * https://github.com/filbeam/worker/pull/324#discussion_r2416210457
+ *
  * @param {D1Database} db - The database connection
  * @returns {Promise<string[]>} Array of data set IDs that need settlement
  */
