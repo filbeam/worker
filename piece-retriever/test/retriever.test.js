@@ -757,7 +757,7 @@ describe('piece-retriever.fetch', () => {
 
     expect(countAfter).toEqual(countBefore)
   })
-  
+
   it('allows full transfer even when exceeding quota (quota goes negative)', async () => {
     const payerAddress = '0xaaaa567890abcdef1234567890abcdef12345678'
     const pieceCid =
