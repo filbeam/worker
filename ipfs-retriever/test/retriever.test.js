@@ -142,6 +142,38 @@ describe('retriever.fetch', () => {
     expect(location).toBe('https://1-ga4q-aeete.ipfs.filbeam.io/')
   })
 
+  it('accepts mixed case addresses', async () => {
+    const testPayerAddress = '0xabcdef1234567890abcdef1234567890abcdef99'
+    const testIpfsRootCid = 'bafk4testslug2'
+    const testDataSetId = '12345'
+    const testPieceId = '67890'
+    const serviceProviderId = '100'
+
+    await withDataSetPiece(env, {
+      serviceProviderId,
+      payerAddress: testPayerAddress,
+      ipfsRootCid: testIpfsRootCid,
+      dataSetId: testDataSetId,
+      pieceId: testPieceId,
+      withCDN: true,
+      withIpfsIndexing: true,
+    })
+    await withApprovedProvider(env, {
+      id: serviceProviderId,
+      serviceUrl: 'https://test-provider.example.com',
+    })
+
+    const ctx = createExecutionContext()
+    const req = new Request(
+      `https://${DNS_ROOT.slice(1)}/${testPayerAddress.toUpperCase()}/${testIpfsRootCid}`,
+    )
+    const res = await worker.fetch(req, env, ctx)
+    await waitOnExecutionContext(ctx)
+    expect(res.status).toBe(302)
+    const location = res.headers.get('Location')
+    expect(location).toBe('https://1-ga4q-aeete.ipfs.filbeam.io/')
+  })
+
   it('redirects to slug subdomain with subpath when wallet, CID, and pathname are provided on DNS_ROOT path', async () => {
     // Set up test data with numeric pieceId and dataSetId for slug generation
     const testPayerAddress = '0xabcdef1234567890abcdef1234567890abcdef98'

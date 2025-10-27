@@ -294,7 +294,7 @@ async function handleDnsRootRequest(request, env) {
     )
   }
 
-  const wallet = pathParts[0]
+  const wallet = pathParts[0].toLowerCase()
   const cid = pathParts[1]
   const subpath = pathParts.slice(2).join('/')
 
