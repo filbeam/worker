@@ -91,24 +91,24 @@ export default {
         `Unsupported Service Provider: ${serviceProviderId}`,
       )
 
-      const {
-        response: originResponse,
-        cacheMiss,
-        url,
-      } = await retrieveFile(
-        ctx,
-        serviceUrl,
-        pieceCid,
-        request,
-        env.ORIGIN_CACHE_TTL,
-        { signal: request.signal },
-      )
+      let retrievalResult
 
-      if (originResponse.status >= 500) {
+      try {
+        retrievalResult = await retrieveFile(
+          ctx,
+          serviceUrl,
+          pieceCid,
+          request,
+          env.ORIGIN_CACHE_TTL,
+          { signal: request.signal },
+        )
+      } catch {}
+
+      if (!retrievalResult || retrievalResult.response.status >= 500) {
         ctx.waitUntil(
           logRetrievalResult(env, {
-            cacheMiss,
-            responseStatus: originResponse.status,
+            cacheMiss: retrievalResult?.cacheMiss || null,
+            responseStatus: 502,
             egressBytes: 0,
             requestCountryCode,
             timestamp: requestTimestamp,
@@ -116,7 +116,7 @@ export default {
           }),
         )
         const response = new Response(
-          `Service provider ${serviceProviderId} is unavailable at ${url}`,
+          `Service provider ${serviceProviderId} is unavailable${retrievalResult ? ` at ${retrievalResult.url}` : ''}`,
           {
             status: 502,
             headers: new Headers({
@@ -128,21 +128,24 @@ export default {
         return response
       }
 
-      if (!originResponse.body) {
+      if (!retrievalResult.response.body) {
         // The upstream response does not have any readable body
         // There is no need to measure response body size, we can
         // return the original response object.
         ctx.waitUntil(
           logRetrievalResult(env, {
-            cacheMiss,
-            responseStatus: originResponse.status,
+            cacheMiss: retrievalResult.cacheMiss,
+            responseStatus: retrievalResult.response.status,
             egressBytes: 0,
             requestCountryCode,
             timestamp: requestTimestamp,
             dataSetId,
           }),
         )
-        const response = new Response(originResponse.body, originResponse)
+        const response = new Response(
+          retrievalResult.response.body,
+          retrievalResult.response,
+        )
         setContentSecurityPolicy(response)
         response.headers.set('X-Data-Set-ID', dataSetId)
         response.headers.set(
@@ -155,7 +158,7 @@ export default {
       // Stream and count bytes
       // We create two identical streams, one for the egress measurement and the other for returning the response as soon as possible
       const [returnedStream, egressMeasurementStream] =
-        originResponse.body.tee()
+        retrievalResult.response.body.tee()
       const reader = egressMeasurementStream.getReader()
       const firstByteAt = performance.now()
 
@@ -165,8 +168,8 @@ export default {
           const lastByteFetchedAt = performance.now()
 
           await logRetrievalResult(env, {
-            cacheMiss,
-            responseStatus: originResponse.status,
+            cacheMiss: retrievalResult.cacheMiss,
+            responseStatus: retrievalResult.response.status,
             egressBytes,
             requestCountryCode,
             timestamp: requestTimestamp,
@@ -184,9 +187,9 @@ export default {
 
       // Return immediately, proxying the transformed response
       const response = new Response(returnedStream, {
-        status: originResponse.status,
-        statusText: originResponse.statusText,
-        headers: originResponse.headers,
+        status: retrievalResult.response.status,
+        statusText: retrievalResult.response.statusText,
+        headers: retrievalResult.response.headers,
       })
       setContentSecurityPolicy(response)
       response.headers.set('X-Data-Set-ID', dataSetId)
