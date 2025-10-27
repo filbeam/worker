@@ -77,6 +77,7 @@ describe('getStorageProviderAndValidatePayer', () => {
       env,
       payerAddress,
       pieceCid,
+      true,
     )
     expect(result.serviceProviderId).toBe(APPROVED_SERVICE_PROVIDER_ID)
   })
@@ -84,7 +85,12 @@ describe('getStorageProviderAndValidatePayer', () => {
   it('throws error if pieceCid not found', async () => {
     const payerAddress = '0x1234567890abcdef1234567890abcdef12345678'
     await expect(
-      getStorageProviderAndValidatePayer(env, payerAddress, 'nonexistent-cid'),
+      getStorageProviderAndValidatePayer(
+        env,
+        payerAddress,
+        'nonexistent-cid',
+        true,
+      ),
     ).rejects.toThrow(/does not exist/)
   })
 
@@ -96,7 +102,7 @@ describe('getStorageProviderAndValidatePayer', () => {
     await withPiece(env, { pieceId: 'piece-no-sp', dataSetId, pieceCid })
 
     await expect(
-      getStorageProviderAndValidatePayer(env, payerAddress, pieceCid),
+      getStorageProviderAndValidatePayer(env, payerAddress, pieceCid, true),
     ).rejects.toThrow(/no associated service provider/)
   })
 
@@ -118,7 +124,7 @@ describe('getStorageProviderAndValidatePayer', () => {
     })
 
     await expect(
-      getStorageProviderAndValidatePayer(env, payerAddress, pieceCid),
+      getStorageProviderAndValidatePayer(env, payerAddress, pieceCid, true),
     ).rejects.toThrow(
       /There is no Filecoin Warm Storage Service deal for payer/,
     )
@@ -142,7 +148,7 @@ describe('getStorageProviderAndValidatePayer', () => {
     })
 
     await expect(
-      getStorageProviderAndValidatePayer(env, payerAddress, pieceCid),
+      getStorageProviderAndValidatePayer(env, payerAddress, pieceCid, true),
     ).rejects.toThrow(/withCDN=false/)
   })
 
@@ -166,6 +172,7 @@ describe('getStorageProviderAndValidatePayer', () => {
       env,
       payerAddress,
       pieceCid,
+      true,
     )
     expect(result.serviceProviderId).toBe(APPROVED_SERVICE_PROVIDER_ID)
   })
@@ -213,6 +220,7 @@ describe('getStorageProviderAndValidatePayer', () => {
       env,
       payerAddress,
       pieceCid,
+      true,
     )
     expect(result.serviceProviderId).toBe(serviceProviderId1)
   })
@@ -258,6 +266,7 @@ describe('getStorageProviderAndValidatePayer', () => {
       env,
       payerAddress,
       pieceCid,
+      true,
     )
     expect(result).toEqual({
       dataSetId: dataSetId1,
@@ -296,7 +305,7 @@ describe('Egress Quota Management', () => {
     })
 
     await expect(
-      getStorageProviderAndValidatePayer(env, payerAddress, pieceCid),
+      getStorageProviderAndValidatePayer(env, payerAddress, pieceCid, true),
     ).rejects.toThrow(/CDN egress quota exhausted for payer/)
   })
 
@@ -317,7 +326,7 @@ describe('Egress Quota Management', () => {
     })
 
     await expect(
-      getStorageProviderAndValidatePayer(env, payerAddress, pieceCid),
+      getStorageProviderAndValidatePayer(env, payerAddress, pieceCid, true),
     ).rejects.toThrow(/Cache miss egress quota exhausted for payer/)
   })
 
@@ -341,6 +350,7 @@ describe('Egress Quota Management', () => {
       env,
       payerAddress,
       pieceCid,
+      true,
     )
     expect(result).toStrictEqual({
       dataSetId,
@@ -503,7 +513,7 @@ describe('Egress Quota Management', () => {
 
     // Should return 402 error when quotas are null
     await expect(
-      getStorageProviderAndValidatePayer(env, payerAddress, pieceCid),
+      getStorageProviderAndValidatePayer(env, payerAddress, pieceCid, true),
     ).rejects.toThrow(/CDN egress quota exhausted for payer/)
   })
 
@@ -529,6 +539,7 @@ describe('Egress Quota Management', () => {
       env,
       payerAddress,
       pieceCid,
+      true,
     )
     expect(result).toStrictEqual({
       dataSetId,
@@ -552,6 +563,99 @@ describe('Egress Quota Management', () => {
       .first()
     expect(afterDecrement).toStrictEqual({
       cdn_egress_quota: 0,
+    })
+  })
+
+  it('allows retrieval when quota enforcement is disabled and CDN quota is exhausted', async () => {
+    const dataSetId = 'test-no-enforce-cdn-exhausted'
+    const pieceCid = 'test-cid-no-enforce-cdn-exhausted'
+    const payerAddress = '0x1234567890abcdef1234567890abcdef12345678'
+
+    await withDataSetPieces(env, {
+      dataSetId,
+      serviceProviderId: APPROVED_SERVICE_PROVIDER_ID,
+      payerAddress,
+      withCDN: true,
+      cdnEgressQuota: 0,
+      cacheMissEgressQuota: 1,
+      pieceCid,
+      pieceId: 'piece-no-enforce-cdn-exhausted',
+    })
+
+    const result = await getStorageProviderAndValidatePayer(
+      env,
+      payerAddress,
+      pieceCid,
+      false,
+    )
+    expect(result).toStrictEqual({
+      dataSetId,
+      serviceProviderId: APPROVED_SERVICE_PROVIDER_ID,
+      serviceUrl: 'https://quota-test-provider.xyz',
+      cdnEgressQuota: 0n,
+      cacheMissEgressQuota: 1n,
+    })
+  })
+
+  it('allows retrieval when quota enforcement is disabled and cache-miss quota is exhausted', async () => {
+    const dataSetId = 'test-no-enforce-cache-miss-exhausted'
+    const pieceCid = 'test-cid-no-enforce-cache-miss-exhausted'
+    const payerAddress = '0x1234567890abcdef1234567890abcdef12345678'
+
+    await withDataSetPieces(env, {
+      dataSetId,
+      serviceProviderId: APPROVED_SERVICE_PROVIDER_ID,
+      payerAddress,
+      withCDN: true,
+      cdnEgressQuota: 1,
+      cacheMissEgressQuota: 0,
+      pieceCid,
+      pieceId: 'piece-no-enforce-cache-miss-exhausted',
+    })
+
+    const result = await getStorageProviderAndValidatePayer(
+      env,
+      payerAddress,
+      pieceCid,
+      false,
+    )
+    expect(result).toStrictEqual({
+      dataSetId,
+      serviceProviderId: APPROVED_SERVICE_PROVIDER_ID,
+      serviceUrl: 'https://quota-test-provider.xyz',
+      cdnEgressQuota: 1n,
+      cacheMissEgressQuota: 0n,
+    })
+  })
+
+  it('allows retrieval when quota enforcement is disabled and both quotas are exhausted', async () => {
+    const dataSetId = 'test-no-enforce-both-exhausted'
+    const pieceCid = 'test-cid-no-enforce-both-exhausted'
+    const payerAddress = '0x1234567890abcdef1234567890abcdef12345678'
+
+    await withDataSetPieces(env, {
+      dataSetId,
+      serviceProviderId: APPROVED_SERVICE_PROVIDER_ID,
+      payerAddress,
+      withCDN: true,
+      cdnEgressQuota: 0,
+      cacheMissEgressQuota: 0,
+      pieceCid,
+      pieceId: 'piece-no-enforce-both-exhausted',
+    })
+
+    const result = await getStorageProviderAndValidatePayer(
+      env,
+      payerAddress,
+      pieceCid,
+      false,
+    )
+    expect(result).toStrictEqual({
+      dataSetId,
+      serviceProviderId: APPROVED_SERVICE_PROVIDER_ID,
+      serviceUrl: 'https://quota-test-provider.xyz',
+      cdnEgressQuota: 0n,
+      cacheMissEgressQuota: 0n,
     })
   })
 })

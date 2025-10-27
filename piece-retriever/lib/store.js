@@ -79,6 +79,8 @@ export async function logRetrievalResult(env, params) {
  * @param {string} payerAddress - The address of the client paying for the
  *   request
  * @param {string} pieceCid - The piece CID to look up
+ * @param {boolean} [enforceEgressQuota=false] - Whether to enforce egress quota
+ *   limits. Default is `false`
  * @returns {Promise<{
  *   serviceProviderId: string
  *   serviceUrl: string
@@ -91,6 +93,7 @@ export async function getStorageProviderAndValidatePayer(
   env,
   payerAddress,
   pieceCid,
+  enforceEgressQuota = false,
 ) {
   const query = `
    SELECT pieces.data_set_id, data_sets.service_provider_id, data_sets.payer_address, data_sets.with_cdn,
@@ -173,9 +176,12 @@ export async function getStorageProviderAndValidatePayer(
   )
 
   // Check CDN quota first
-  const withSufficientCDNQuota = withApprovedProvider.filter((row) => {
-    return BigInt(row.cdn_egress_quota ?? '0') > 0n
-  })
+  const withSufficientCDNQuota = enforceEgressQuota
+    ? withApprovedProvider.filter((row) => {
+        return BigInt(row.cdn_egress_quota ?? '0') > 0n
+      })
+    : withApprovedProvider
+
   httpAssert(
     withSufficientCDNQuota.length > 0,
     402,
@@ -183,9 +189,12 @@ export async function getStorageProviderAndValidatePayer(
   )
 
   // Check cache-miss quota
-  const withSufficientCacheMissQuota = withSufficientCDNQuota.filter((row) => {
-    return BigInt(row.cache_miss_egress_quota ?? '0') > 0n
-  })
+  const withSufficientCacheMissQuota = enforceEgressQuota
+    ? withSufficientCDNQuota.filter((row) => {
+        return BigInt(row.cache_miss_egress_quota ?? '0') > 0n
+      })
+    : withSufficientCDNQuota
+
   httpAssert(
     withSufficientCacheMissQuota.length > 0,
     402,
