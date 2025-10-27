@@ -238,8 +238,8 @@ describe('retriever.fetch', () => {
       retrieveIpfsContent: mockRetrieveIpfsContent,
     })
     await waitOnExecutionContext(ctx)
-    expect(res.status).toBe(201)
     expect(await res.text()).toBe('hello')
+    expect(res.status).toBe(201)
     expect(res.headers.get('X-Test')).toBe('yes')
   })
 
