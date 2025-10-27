@@ -1,29 +1,29 @@
 {
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "extends": "./tsconfig.base.json",
   "compilerOptions": {
-    "allowJs": true,
-    "checkJs": true,
-    "skipLibCheck": true,
-    "lib": ["es2022"],
-    "target": "es2022",
-    "module": "preserve",
-    "moduleResolution": "bundler",
-
-    "strict": true,
-    "forceConsistentCasingInFileNames": true,
-
-    "declaration": true,
-    "emitDeclarationOnly": true,
     "outDir": "dist",
-    "declarationMap": true,
-    "resolveJsonModule": true
+    "composite": true
   },
-  "include": [
-    "bad-bits",
-    "ipfs-retriever",
-    "piece-retriever",
-    "indexer",
-    "eslint.config.js",
-    "worker-configuration.d.ts"
+  "references": [
+    {
+      "path": "bad-bits/tsconfig.json"
+    },
+    {
+      "path": "indexer/tsconfig.json"
+    },
+    {
+      "path": "ipfs-retriever/tsconfig.json"
+    },
+    {
+      "path": "piece-retriever/tsconfig.json"
+    },
+    {
+      "path": "terminator/tsconfig.json"
+    },
+    {
+      "path": "workflows/tsconfig.json"
+    }
   ],
-  "exclude": ["dist/**/*", "*/test", "subgraph"]
+  "include": ["bin/*.js"]
 }

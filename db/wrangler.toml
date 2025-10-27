@@ -1,5 +1,5 @@
 name = "filcdn-db"
-compatibility_date = "2024-12-05"
+compatibility_date = "2025-09-08"
 
 [[d1_databases]]
 binding = "DB"

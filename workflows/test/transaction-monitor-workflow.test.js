@@ -59,7 +59,7 @@ describe('TransactionMonitorWorkflow', () => {
         `wait for transaction receipt ${transactionHash}`,
         {
           timeout: '5 minutes',
-          retries: { limit: 3 },
+          retries: { delay: '10 seconds', limit: 3 },
         },
         expect.any(Function),
       )
@@ -261,7 +261,7 @@ describe('TransactionMonitorWorkflow', () => {
       const firstCall = mockStep.do.mock.calls[0]
       expect(firstCall[1]).toEqual({
         timeout: '5 minutes',
-        retries: { limit: 3 },
+        retries: { delay: '10 seconds', limit: 3 },
       })
     })
 

@@ -1,5 +1,5 @@
 /**
- * @param {Env} env
+ * @param {{ DB: D1Database }} env
  * @param {string} dataSetId
  * @param {string} pieceId
  * @param {string} pieceCid
@@ -27,7 +27,7 @@ export async function insertDataSetPiece(
 }
 
 /**
- * @param {Env} env
+ * @param {{ DB: D1Database }} env
  * @param {number | string} dataSetId
  * @param {(number | string)[]} pieceIds
  */
