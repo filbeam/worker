@@ -1,4 +1,5 @@
 import { checkIfAddressIsSanctioned as defaultCheckIfAddressIsSanctioned } from './chainalysis.js'
+import { epochToTimestampMs } from './epoch.js'
 import { BYTES_PER_TIB } from './constants.js'
 
 /**
@@ -65,19 +66,32 @@ export async function handleFWSSDataSetCreated(
 /**
  * Handle Filecoin Warm Storage Service service termination
  *
- * @param {{ DB: D1Database }} env
+ * @param {Env} env
  * @param {any} payload
  * @throws {Error}
  */
 export async function handleFWSSServiceTerminated(env, payload) {
+  const epochTimestampMs = epochToTimestampMs(
+    payload.block_number,
+    Number(env.FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS),
+  )
+
+  // Calculate lockup unlock timestamp based on the epoch timestamp (in milliseconds)
+  const lockupUnlocksAtMs =
+    epochTimestampMs +
+    Number(env.DEFAULT_LOCKUP_PERIOD_DAYS) * 24 * 60 * 60 * 1000
+  const lockupUnlocksAt = new Date(lockupUnlocksAtMs)
+  const lockupUnlocksAtISO = lockupUnlocksAt.toISOString()
+
   await env.DB.prepare(
     `
       UPDATE data_sets
-      SET with_cdn = false
+      SET with_cdn = false,
+          lockup_unlocks_at = datetime(?)
       WHERE id = ?
     `,
   )
-    .bind(String(payload.data_set_id))
+    .bind(lockupUnlocksAtISO, payload.data_set_id)
     .run()
 }
 
