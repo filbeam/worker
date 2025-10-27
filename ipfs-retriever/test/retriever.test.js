@@ -903,8 +903,8 @@ describe('retriever.fetch', () => {
 })
 
 /**
- * @param {string} payerWalletAddress
- * @param {string} ipfsRootCid
+ * @param {string} dataSetId
+ * @param {string} pieceId
  * @param {string} method
  * @param {Object} headers
  * @param {Object} options
