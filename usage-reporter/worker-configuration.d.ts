@@ -8,7 +8,7 @@ declare namespace Cloudflare {
 	interface Env {
 		ENVIRONMENT: "dev" | "calibration" | "mainnet";
 		RPC_URL: "https://api.calibration.node.glif.io/" | "https://api.node.glif.io/";
-		FILBEAM_CONTRACT_ADDRESS: "0x96e13bC98fA0cdf01b07985c804960117EAB76E8" | "0x";
+		FILBEAM_CONTRACT_ADDRESS: "0x0000000000000000000000000000000000000000" | "0x010ca67040e80c8FdBF679680D09b94e2A9ac6B8" | "0x";
 		FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS: "1667326380000" | "1598306400000";
 		DB: D1Database;
 		TRANSACTION_QUEUE: Queue;
