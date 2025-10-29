@@ -91,7 +91,12 @@ export function getRetrievalUrl(serviceUrl, rootCid, subpath) {
   if (!serviceUrl.endsWith('/')) {
     serviceUrl += '/'
   }
-  return `${serviceUrl}ipfs/${rootCid}${subpath}`
+  let url = `${serviceUrl}ipfs/${rootCid}`
+  // Curio 404s with trailing slash
+  if (subpath !== '/') {
+    url += subpath
+  }
+  return url
 }
 
 /**

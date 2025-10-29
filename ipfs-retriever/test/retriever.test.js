@@ -331,9 +331,7 @@ describe('retriever.fetch', () => {
     expect(csp).toContain('https://*.filbeam.io')
   })
 
-  // FIXME - update the test to retrieve real IPFS content
-  // This is blocked by Curio not indexing CAR files inside PDP deals yet
-  it.skip('fetches the file from calibration service provider', async () => {
+  it('fetches the file from calibration service provider', async () => {
     const expectedHash =
       'b9614f45cf8d401a0384eb58376b00cbcbb14f98fcba226d9fe1effe298af673'
     const ctx = createExecutionContext()

@@ -109,7 +109,7 @@ describe('retrieveIpfsContent', () => {
 describe('getRetrievalUrl', () => {
   it('constructs URL with root path', () => {
     const url = getRetrievalUrl('https://example.com', 'bafy123abc', '/')
-    expect(url).toBe('https://example.com/ipfs/bafy123abc/')
+    expect(url).toBe('https://example.com/ipfs/bafy123abc')
   })
 
   it('constructs URL with subpath', () => {
