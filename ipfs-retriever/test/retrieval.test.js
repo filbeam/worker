@@ -18,7 +18,7 @@ describe('retrieveIpfsContent', () => {
   it('constructs the correct URL with root path', async () => {
     await retrieveIpfsContent(baseUrl, ipfsRootCid, '/')
     expect(fetchMock).toHaveBeenCalledWith(
-      `${baseUrl}/ipfs/${ipfsRootCid}/?format=car`,
+      `${baseUrl}/ipfs/${ipfsRootCid}?format=car`,
       expect.any(Object),
     )
   })

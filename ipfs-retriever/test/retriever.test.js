@@ -333,7 +333,7 @@ describe('retriever.fetch', () => {
 
   it('fetches the file from calibration service provider', async () => {
     const expectedHash =
-      'b9614f45cf8d401a0384eb58376b00cbcbb14f98fcba226d9fe1effe298af673'
+      '804edafec384735102b5e9bd99a0bc57922381bdc8685221f7e30ab865176f13'
     const ctx = createExecutionContext()
     const req = withRequest(realDataSetId, realPieceId)
     const res = await worker.fetch(req, env, ctx, { retrieveIpfsContent })
