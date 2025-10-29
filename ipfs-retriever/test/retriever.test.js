@@ -233,7 +233,7 @@ describe('retriever.fetch', () => {
     const ctx = createExecutionContext()
     const mockRetrieveIpfsContent = vi.fn()
     const req = new Request(
-      `http://${buildSlug(BigInt(realDataSetId), BigInt(realPieceId)).replace(/^(1-)/, '')}.${DNS_ROOT.slice(1)}`
+      `http://${buildSlug(BigInt(realDataSetId), BigInt(realPieceId)).replace(/^(1-)/, '')}.${DNS_ROOT.slice(1)}`,
     )
     const res = await worker.fetch(req, env, ctx, {
       retrieveIpfsContent: mockRetrieveIpfsContent,
@@ -246,7 +246,7 @@ describe('retriever.fetch', () => {
     const ctx = createExecutionContext()
     const mockRetrieveIpfsContent = vi.fn()
     const req = new Request(
-      `http://${buildSlug(BigInt(realDataSetId), BigInt(realPieceId))}1.${DNS_ROOT.slice(1)}`
+      `http://${buildSlug(BigInt(realDataSetId), BigInt(realPieceId))}1.${DNS_ROOT.slice(1)}`,
     )
     const res = await worker.fetch(req, env, ctx, {
       retrieveIpfsContent: mockRetrieveIpfsContent,
@@ -851,12 +851,7 @@ describe('retriever.fetch', () => {
       ),
       env.DB.prepare(
         'INSERT INTO pieces (id, data_set_id, cid, ipfs_root_cid) VALUES (?, ?, ?, ?)',
-      ).bind(
-        pieceId,
-        dataSetId,
-        invalidPieceCid,
-        invalidIpfsRootCid,
-      ),
+      ).bind(pieceId, dataSetId, invalidPieceCid, invalidIpfsRootCid),
     ])
 
     const ctx = createExecutionContext()
@@ -869,8 +864,7 @@ describe('retriever.fetch', () => {
 
     const result = await env.DB.prepare(
       'SELECT * FROM retrieval_logs WHERE data_set_id IS NULL AND response_status = 404 and CACHE_MISS IS NULL and egress_bytes IS NULL',
-    )
-      .first()
+    ).first()
     expect(result).toBeTruthy()
   })
   it('does not log to retrieval_logs when slug encoding is invalid (400)', async () => {
@@ -880,7 +874,7 @@ describe('retriever.fetch', () => {
     ).first()
 
     const req = new Request(
-      `http://${buildSlug(BigInt(realDataSetId), BigInt(realPieceId))}1.${DNS_ROOT.slice(1)}`
+      `http://${buildSlug(BigInt(realDataSetId), BigInt(realPieceId))}1.${DNS_ROOT.slice(1)}`,
     )
     const res = await worker.fetch(req, env, ctx)
     await waitOnExecutionContext(ctx)
