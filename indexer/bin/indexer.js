@@ -8,6 +8,7 @@ import { checkIfAddressIsSanctioned as defaultCheckIfAddressIsSanctioned } from 
 import {
   handleFWSSDataSetCreated,
   handleFWSSServiceTerminated,
+  handleFWSSCDNPaymentRailsToppedUp,
 } from '../lib/fwss-handlers.js'
 import {
   removeDataSetPieces,
@@ -150,7 +151,8 @@ export default {
         !(
           typeof payload.data_set_id === 'number' ||
           typeof payload.data_set_id === 'string'
-        )
+        ) ||
+        typeof payload.block_number !== 'string'
       ) {
         console.error(
           'FilecoinWarmStorageService.(ServiceTerminated | CDNServiceTerminated): Invalid payload',
@@ -190,6 +192,29 @@ export default {
     } else if (pathname === '/service-provider-registry/provider-removed') {
       const { provider_id: providerId } = payload
       return await handleProviderRemoved(env, providerId)
+    } else if (pathname === '/fwss/cdn-payment-rails-topped-up') {
+      if (
+        typeof payload.data_set_id !== 'string' ||
+        typeof payload.cdn_amount_added !== 'string' ||
+        typeof payload.cache_miss_amount_added !== 'string'
+      ) {
+        console.error('FWSS.CDNPaymentRailsToppedUp: Invalid payload', payload)
+        return new Response('Bad Request', { status: 400 })
+      }
+
+      console.log(
+        `CDN Payment Rails topped up (data_set_id=${payload.data_set_id}, ` +
+          `cdn_amount_added=${payload.cdn_amount_added}, cache_miss_amount_added=${payload.cache_miss_amount_added})`,
+      )
+
+      try {
+        await handleFWSSCDNPaymentRailsToppedUp(env, payload)
+      } catch (err) {
+        console.error('Error handling CDN Payment Rails top-up:', err)
+        return new Response('Internal Server Error', { status: 500 })
+      }
+
+      return new Response('OK', { status: 200 })
     } else {
       return new Response('Not Found', { status: 404 })
     }
