@@ -22,6 +22,11 @@ function sleep(ms) {
 
 export const DNS_ROOT = '.filbeam.io'
 env.DNS_ROOT = DNS_ROOT
+const botTokens = { secret: 'testbot' }
+env.BOT_TOKENS = JSON.stringify(botTokens)
+
+const botName = Object.values(botTokens)[0]
+const botHeaders = { authorization: `Bearer ${Object.keys(botTokens)[0]}` }
 
 describe('piece-retriever.fetch', () => {
   const defaultPayerAddress = '0x1234567890abcdef1234567890abcdef12345678'
@@ -244,7 +249,7 @@ describe('piece-retriever.fetch', () => {
     await waitOnExecutionContext(ctx)
     expect(res.status).toBe(200)
     const readOutput = await env.DB.prepare(
-      `SELECT id, response_status, egress_bytes, cache_miss
+      `SELECT id, response_status, egress_bytes, cache_miss, bot_name
        FROM retrieval_logs
        WHERE data_set_id = ?`,
     )
@@ -256,6 +261,7 @@ describe('piece-retriever.fetch', () => {
         response_status: 200,
         egress_bytes: expectedEgressBytes,
         cache_miss: 1, // 1 for true, 0 for false
+        bot_name: null, // No authorization header provided
       },
     ])
   })
@@ -280,7 +286,7 @@ describe('piece-retriever.fetch', () => {
     await waitOnExecutionContext(ctx)
     expect(res.status).toBe(200)
     const readOutput = await env.DB.prepare(
-      `SELECT id, response_status, egress_bytes, cache_miss
+      `SELECT id, response_status, egress_bytes, cache_miss, bot_name
        FROM retrieval_logs
        WHERE data_set_id = ?`,
     )
@@ -292,6 +298,7 @@ describe('piece-retriever.fetch', () => {
         response_status: 200,
         egress_bytes: expectedEgressBytes,
         cache_miss: 0, // 1 for true, 0 for false
+        bot_name: null, // No authorization header provided
       },
     ])
   })
@@ -711,7 +718,9 @@ describe('piece-retriever.fetch', () => {
     const result = await env.DB.prepare(
       'SELECT * FROM retrieval_logs WHERE data_set_id IS NULL AND response_status = 404 and CACHE_MISS IS NULL and egress_bytes IS NULL',
     ).first()
-    expect(result).toBeTruthy()
+    expect(result).toMatchObject({
+      bot_name: null,
+    })
   })
   it('logs to retrieval_logs on SP error', async () => {
     const { pieceCid, dataSetId } = CONTENT_STORED_ON_CALIBRATION[0]
@@ -926,6 +935,123 @@ describe('piece-retriever.fetch', () => {
     expect(res.status).toBe(502)
     expect(await res.text()).toBe(`Service provider 2 is unavailable at ${url}`)
     expect(res.headers.get('X-Data-Set-ID')).toBe(String(dataSetId))
+
+    const result = await env.DB.prepare(
+      'SELECT * FROM retrieval_logs WHERE data_set_id = ?',
+    )
+      .bind(String(dataSetId))
+      .first()
+    expect(result).toMatchObject({ bot_name: null })
+  })
+
+  it('stores bot name in retrieval logs when valid authorization header is provided', async () => {
+    const body = 'file content'
+    const fakeResponse = new Response(body, {
+      status: 200,
+    })
+    const mockRetrieveFile = vi.fn().mockResolvedValue({
+      response: fakeResponse,
+      cacheMiss: true,
+    })
+    const ctx = createExecutionContext()
+    const req = withRequest(defaultPayerAddress, realPieceCid, 'GET', {
+      ...botHeaders,
+    })
+    const res = await worker.fetch(req, env, ctx, {
+      retrieveFile: mockRetrieveFile,
+    })
+    await waitOnExecutionContext(ctx)
+    expect(res.status).toBe(200)
+
+    const result = await env.DB.prepare(
+      'SELECT * FROM retrieval_logs WHERE data_set_id = ?',
+    )
+      .bind(String(realDataSetId))
+      .first()
+
+    expect(result).toMatchObject({ bot_name: botName })
+  })
+
+  it('stores bot name in retrieval logs for empty response body', async () => {
+    const mockRetrieveFile = vi.fn().mockResolvedValue({
+      response: new Response(null, { status: 404 }),
+      cacheMiss: false,
+    })
+    const ctx = createExecutionContext()
+    const req = withRequest(defaultPayerAddress, realPieceCid, 'GET', {
+      ...botHeaders,
+    })
+    const res = await worker.fetch(req, env, ctx, {
+      retrieveFile: mockRetrieveFile,
+    })
+    await waitOnExecutionContext(ctx)
+    expect(res.status).toBe(404)
+
+    const result = await env.DB.prepare(
+      'SELECT * FROM retrieval_logs WHERE data_set_id = ?',
+    )
+      .bind(String(realDataSetId))
+      .first()
+    expect(result).toMatchObject({ egress_bytes: 0, bot_name: botName })
+  })
+
+  it('stores bot name in retrieval logs when SP returns 502', async () => {
+    const { pieceCid, dataSetId } = CONTENT_STORED_ON_CALIBRATION[0]
+    const url = 'https://example.com/piece/502test'
+    const mockRetrieveFile = vi.fn().mockResolvedValue({
+      response: new Response(null, { status: 503 }),
+      cacheMiss: true,
+      url,
+    })
+    const ctx = createExecutionContext()
+    const req = withRequest(defaultPayerAddress, pieceCid, 'GET', {
+      ...botHeaders,
+    })
+    const res = await worker.fetch(req, env, ctx, {
+      retrieveFile: mockRetrieveFile,
+    })
+    await waitOnExecutionContext(ctx)
+    expect(res.status).toBe(502)
+
+    const result = await env.DB.prepare(
+      'SELECT * FROM retrieval_logs WHERE data_set_id = ?',
+    )
+      .bind(String(dataSetId))
+      .first()
+    expect(result).toMatchObject({ egress_bytes: 0, bot_name: botName })
+  })
+
+  it('stores bot name in retrieval logs on error (404 unsupported SP)', async () => {
+    const invalidPieceCid = 'baga6ea4seaq3invalidbotnameerrortest'
+    const dataSetId = 'bot-name-error-test'
+    const unsupportedServiceProviderId = 0
+
+    await withDataSetPieces(env, {
+      serviceProviderId: unsupportedServiceProviderId,
+      pieceCid: invalidPieceCid,
+      payerAddress: defaultPayerAddress,
+      dataSetId,
+      withCDN: true,
+      pieceId: 'piece-bot-error',
+    })
+
+    const ctx = createExecutionContext()
+    const req = withRequest(defaultPayerAddress, invalidPieceCid, 'GET', {
+      ...botHeaders,
+    })
+    const res = await worker.fetch(req, env, ctx)
+    await waitOnExecutionContext(ctx)
+
+    expect(res.status).toBe(404)
+
+    const result = await env.DB.prepare(
+      'SELECT * FROM retrieval_logs WHERE data_set_id IS NULL',
+    ).first()
+    expect(result).toMatchObject({
+      cache_miss: null,
+      egress_bytes: null,
+      bot_name: botName,
+    })
   })
   it('responds with 502 and a useful message when SP is unavailable', async () => {
     const { pieceCid, dataSetId } = CONTENT_STORED_ON_CALIBRATION[0]
