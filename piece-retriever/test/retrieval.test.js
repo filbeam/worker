@@ -104,6 +104,53 @@ describe('retrieveFile', () => {
     expect(result.response.headers.get('foo')).toBe('bar')
     expect(cachesMock.put.mock.calls[0][0]).toBe(`${baseUrl}/piece/${pieceCid}`)
   })
+
+  it('supports range requests (uncached)', async () => {
+    cachesMock.match.mockResolvedValueOnce(null)
+    const response = {
+      ok: true,
+      status: 206,
+      headers: new Headers({ 'content-range': 'bytes 0-1/100' }),
+    }
+    fetchMock.mockResolvedValueOnce(response)
+    const ctx = createExecutionContext()
+    const result = await retrieveFile(
+      ctx,
+      baseUrl,
+      pieceCid,
+      new Request(baseUrl, {
+        headers: new Headers({
+          Range: 'bytes=0-1',
+        }),
+      }),
+    )
+    await waitOnExecutionContext(ctx)
+    expect(result.response.status).toBe(206)
+    expect(result.response.headers.get('content-range')).toBe('bytes 0-1/100')
+  })
+
+  it('supports range requests (cached)', async () => {
+    const response = {
+      ok: true,
+      status: 206,
+      headers: new Headers({ 'content-range': 'bytes 0-1/100' }),
+    }
+    cachesMock.match.mockResolvedValueOnce(response)
+    const ctx = createExecutionContext()
+    const result = await retrieveFile(
+      ctx,
+      baseUrl,
+      pieceCid,
+      new Request(baseUrl, {
+        headers: new Headers({
+          Range: 'bytes=0-1',
+        }),
+      }),
+    )
+    await waitOnExecutionContext(ctx)
+    expect(result.response.status).toBe(206)
+    expect(result.response.headers.get('content-range')).toBe('bytes 0-1/100')
+  })
 })
 
 describe('getRetrievalUrl', () => {
