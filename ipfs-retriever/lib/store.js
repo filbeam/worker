@@ -201,20 +201,6 @@ export async function getStorageProviderAndValidatePayerByWalletAndCid(
   payerAddress,
   ipfsRootCid,
 ) {
-  if (
-    payerAddress === '0x000000000000000000000000000000000000dead' &&
-    ipfsRootCid ===
-      'bafybeiagrjpf2rwth5oylc64czsrz2jm7a4fgo67b2luygqjrivjbswuku'
-  ) {
-    // Special case for testing purposes only
-    return {
-      serviceProviderId: '9999',
-      serviceUrl: 'https://frisbii.fly.dev/',
-      dataSetId: '9999',
-      pieceId: '9999',
-    }
-  }
-
   const query = `
    SELECT
      pieces.id as piece_id,
