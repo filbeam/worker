@@ -1,5 +1,4 @@
 import validator from 'validator'
-import { decodeAbiParameters, fromHex } from 'viem'
 
 const PRODUCT_TYPE_PDP = 0
 
@@ -8,7 +7,7 @@ const PRODUCT_TYPE_PDP = 0
  * @param {string | number} providerId
  * @param {string | number} productType
  * @param {string} capabilityKeys
- * @param {`0x${string}`} capabilityValues
+ * @param {string} capabilityValues
  * @returns {Promise<Response>}
  */
 export async function handleProductAdded(
@@ -22,8 +21,7 @@ export async function handleProductAdded(
     (typeof providerId !== 'string' && typeof providerId !== 'number') ||
     (typeof productType !== 'string' && typeof productType !== 'number') ||
     typeof capabilityKeys !== 'string' ||
-    typeof capabilityValues !== 'string' ||
-    !capabilityValues.startsWith('0x')
+    typeof capabilityValues !== 'string'
   ) {
     console.error('ServiceProviderRegistry.ProductAdded: Invalid payload', {
       providerId,
@@ -48,7 +46,7 @@ export async function handleProductAdded(
  * @param {string | number} providerId
  * @param {string | number} productType
  * @param {string} capabilityKeys
- * @param {`0x${string}`} capabilityValues
+ * @param {string} capabilityValues
  * @returns {Promise<Response>}
  */
 export async function handleProductUpdated(
@@ -62,8 +60,7 @@ export async function handleProductUpdated(
     (typeof providerId !== 'string' && typeof providerId !== 'number') ||
     (typeof productType !== 'string' && typeof productType !== 'number') ||
     typeof capabilityKeys !== 'string' ||
-    typeof capabilityValues !== 'string' ||
-    !capabilityValues.startsWith('0x')
+    typeof capabilityValues !== 'string'
   ) {
     console.error('ServiceProviderRegistry.ProductUpdated: Invalid payload', {
       providerId,
@@ -147,7 +144,7 @@ export async function handleProviderRemoved(env, providerId) {
  * @param {{ DB: D1Database }} env
  * @param {string | number} providerId
  * @param {string} capabilityKeys
- * @param {`0x${string}`} capabilityValues
+ * @param {string} capabilityValues
  * @returns {Promise<Response>}
  */
 async function handleProviderServiceUrlUpdate(
@@ -158,23 +155,33 @@ async function handleProviderServiceUrlUpdate(
 ) {
   const serviceUrlIndex = capabilityKeys.split(',').indexOf('serviceURL')
   if (serviceUrlIndex === -1) {
-    console.error('Missing serviceURL in capabilities', {
+    console.error('Missing serviceURL in capability keys', {
+      capabilityKeys,
+    })
+    return new Response('OK', { status: 200 })
+  }
+
+  const serviceUrlHex = capabilityValues.split(',')[serviceUrlIndex]
+  if (!serviceUrlHex) {
+    console.error('Missing serviceURL in capability values', {
       capabilityKeys,
       capabilityValues,
     })
     return new Response('OK', { status: 200 })
   }
-  const [parsedCapabilityValues] = decodeAbiParameters(
-    [{ type: 'bytes[]' }],
-    capabilityValues,
-  )
+
+  if (!serviceUrlHex.startsWith('0x')) {
+    console.error('Invalid serviceURL encoding', { serviceUrlHex })
+    return new Response('OK', { status: 200 })
+  }
 
   let serviceUrl
   try {
-    serviceUrl = fromHex(parsedCapabilityValues[serviceUrlIndex], 'string')
+    serviceUrl = Buffer.from(serviceUrlHex.slice(2), 'hex').toString()
   } catch (err) {
-    console.error('Invalid Service URL', {
-      hex: parsedCapabilityValues[serviceUrlIndex],
+    console.error('Invalid serviceURL encoding', {
+      serviceUrlHex,
+      err,
     })
     return new Response('OK', { status: 200 })
   }

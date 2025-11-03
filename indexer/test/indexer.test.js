@@ -12,7 +12,6 @@ import {
   waitOnExecutionContext,
 } from 'cloudflare:test'
 import { BYTES_PER_TIB } from '../lib/constants.js'
-import { encodeAbiParameters, toHex } from 'viem'
 
 env.SECRET_HEADER_KEY = 'secret-header-key'
 env.SECRET_HEADER_VALUE = 'secret-header-value'
@@ -669,16 +668,9 @@ describe('piece-retriever.indexer', () => {
             provider_id: providerId,
             product_type: 0,
             capability_keys: 'someKey,serviceURL,anotherKey',
-            capability_values: encodeAbiParameters(
-              [{ type: 'bytes[]' }],
-              [
-                [
-                  toHex('some value'),
-                  toHex(serviceUrl),
-                  toHex('another value'),
-                ],
-              ],
-            ),
+            capability_values: ['some value', serviceUrl, 'another value']
+              .map((s) => `0x${Buffer.from(s).toString('hex')}`)
+              .join(','),
           }),
         },
       )
@@ -717,16 +709,9 @@ describe('piece-retriever.indexer', () => {
             provider_id: providerId,
             product_type: 0,
             capability_keys: 'someKey,serviceURL,anotherKey',
-            capability_values: encodeAbiParameters(
-              [{ type: 'bytes[]' }],
-              [
-                [
-                  toHex('some value'),
-                  toHex(serviceUrl),
-                  toHex('another value'),
-                ],
-              ],
-            ),
+            capability_values: ['some value', serviceUrl, 'another value']
+              .map((s) => `0x${Buffer.from(s).toString('hex')}`)
+              .join(','),
           }),
         },
       )
@@ -748,16 +733,9 @@ describe('piece-retriever.indexer', () => {
             provider_id: providerId,
             product_type: 0,
             capability_keys: 'someKey,serviceURL,anotherKey',
-            capability_values: encodeAbiParameters(
-              [{ type: 'bytes[]' }],
-              [
-                [
-                  toHex('some value'),
-                  toHex(newServiceUrl),
-                  toHex('another value'),
-                ],
-              ],
-            ),
+            capability_values: ['some value', newServiceUrl, 'another value']
+              .map((s) => `0x${Buffer.from(s).toString('hex')}`)
+              .join(','),
           }),
         },
       )
@@ -810,16 +788,9 @@ describe('piece-retriever.indexer', () => {
             provider_id: providerId,
             product_type: productType,
             capability_keys: 'someKey,serviceURL,anotherKey',
-            capability_values: encodeAbiParameters(
-              [{ type: 'bytes[]' }],
-              [
-                [
-                  toHex('some value'),
-                  toHex(serviceUrl),
-                  toHex('another value'),
-                ],
-              ],
-            ),
+            capability_values: ['some value', serviceUrl, 'another value']
+              .map((s) => `0x${Buffer.from(s).toString('hex')}`)
+              .join(','),
           }),
         },
       )
@@ -911,10 +882,9 @@ describe('POST /service-provider-registry/provider-removed', () => {
           product_type: 0,
           block_number: blockNumber,
           capability_keys: 'someKey,serviceURL,anotherKey',
-          capability_values: encodeAbiParameters(
-            [{ type: 'bytes[]' }],
-            [[toHex('some value'), toHex(serviceUrl), toHex('another value')]],
-          ),
+          capability_values: ['some value', serviceUrl, 'another value']
+            .map((s) => `0x${Buffer.from(s).toString('hex')}`)
+            .join(','),
         }),
       },
     )
