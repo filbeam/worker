@@ -671,12 +671,14 @@ describe('piece-retriever.indexer', () => {
             capability_keys: 'someKey,serviceURL,anotherKey',
             capability_values: encodeAbiParameters(
               [{ type: 'bytes[]' }],
-              [[
-                toHex('some value'),
-                toHex(serviceUrl),
-                toHex('another value')
-              ]]
-            )
+              [
+                [
+                  toHex('some value'),
+                  toHex(serviceUrl),
+                  toHex('another value'),
+                ],
+              ],
+            ),
           }),
         },
       )
@@ -717,12 +719,14 @@ describe('piece-retriever.indexer', () => {
             capability_keys: 'someKey,serviceURL,anotherKey',
             capability_values: encodeAbiParameters(
               [{ type: 'bytes[]' }],
-              [[
-                toHex('some value'),
-                toHex(serviceUrl),
-                toHex('another value')
-              ]]
-            )
+              [
+                [
+                  toHex('some value'),
+                  toHex(serviceUrl),
+                  toHex('another value'),
+                ],
+              ],
+            ),
           }),
         },
       )
@@ -746,12 +750,14 @@ describe('piece-retriever.indexer', () => {
             capability_keys: 'someKey,serviceURL,anotherKey',
             capability_values: encodeAbiParameters(
               [{ type: 'bytes[]' }],
-              [[
-                toHex('some value'),
-                toHex(newServiceUrl),
-                toHex('another value')
-              ]]
-            )
+              [
+                [
+                  toHex('some value'),
+                  toHex(newServiceUrl),
+                  toHex('another value'),
+                ],
+              ],
+            ),
           }),
         },
       )
@@ -806,12 +812,14 @@ describe('piece-retriever.indexer', () => {
             capability_keys: 'someKey,serviceURL,anotherKey',
             capability_values: encodeAbiParameters(
               [{ type: 'bytes[]' }],
-              [[
-                toHex('some value'),
-                toHex(serviceUrl),
-                toHex('another value')
-              ]]
-            )
+              [
+                [
+                  toHex('some value'),
+                  toHex(serviceUrl),
+                  toHex('another value'),
+                ],
+              ],
+            ),
           }),
         },
       )
@@ -903,14 +911,10 @@ describe('POST /service-provider-registry/provider-removed', () => {
           product_type: 0,
           block_number: blockNumber,
           capability_keys: 'someKey,serviceURL,anotherKey',
-            capability_values: encodeAbiParameters(
-              [{ type: 'bytes[]' }],
-              [[
-                toHex('some value'),
-                toHex(serviceUrl),
-                toHex('another value')
-              ]]
-            )
+          capability_values: encodeAbiParameters(
+            [{ type: 'bytes[]' }],
+            [[toHex('some value'), toHex(serviceUrl), toHex('another value')]],
+          ),
         }),
       },
     )

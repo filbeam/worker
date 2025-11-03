@@ -174,7 +174,13 @@ export default {
         capability_keys: capabilityKeys,
         capability_values: capabilityValues,
       } = payload
-      return await handleProductAdded(env, providerId, productType, capabilityKeys, capabilityValues)
+      return await handleProductAdded(
+        env,
+        providerId,
+        productType,
+        capabilityKeys,
+        capabilityValues,
+      )
     } else if (pathname === '/service-provider-registry/product-updated') {
       const {
         provider_id: providerId,

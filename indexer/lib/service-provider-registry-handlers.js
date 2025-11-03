@@ -16,13 +16,14 @@ export async function handleProductAdded(
   providerId,
   productType,
   capabilityKeys,
-  capabilityValues
+  capabilityValues,
 ) {
   if (
     (typeof providerId !== 'string' && typeof providerId !== 'number') ||
     (typeof productType !== 'string' && typeof productType !== 'number') ||
     typeof capabilityKeys !== 'string' ||
-    typeof capabilityValues !== 'string' || !capabilityValues.startsWith('0x')
+    typeof capabilityValues !== 'string' ||
+    !capabilityValues.startsWith('0x')
   ) {
     console.error('ServiceProviderRegistry.ProductAdded: Invalid payload', {
       providerId,
@@ -34,7 +35,12 @@ export async function handleProductAdded(
     return new Response('OK', { status: 200 })
   }
 
-  return await handleProviderServiceUrlUpdate(env, providerId, capabilityKeys, capabilityValues)
+  return await handleProviderServiceUrlUpdate(
+    env,
+    providerId,
+    capabilityKeys,
+    capabilityValues,
+  )
 }
 
 /**
@@ -50,14 +56,14 @@ export async function handleProductUpdated(
   providerId,
   productType,
   capabilityKeys,
-  capabilityValues
+  capabilityValues,
 ) {
   if (
     (typeof providerId !== 'string' && typeof providerId !== 'number') ||
     (typeof productType !== 'string' && typeof productType !== 'number') ||
     typeof capabilityKeys !== 'string' ||
-    typeof capabilityValues !== 'string' || !capabilityValues.startsWith('0x')
-    
+    typeof capabilityValues !== 'string' ||
+    !capabilityValues.startsWith('0x')
   ) {
     console.error('ServiceProviderRegistry.ProductUpdated: Invalid payload', {
       providerId,
@@ -69,7 +75,12 @@ export async function handleProductUpdated(
     return new Response('OK', { status: 200 })
   }
 
-  return await handleProviderServiceUrlUpdate(env, providerId, capabilityKeys, capabilityValues)
+  return await handleProviderServiceUrlUpdate(
+    env,
+    providerId,
+    capabilityKeys,
+    capabilityValues,
+  )
 }
 
 /**
@@ -139,7 +150,12 @@ export async function handleProviderRemoved(env, providerId) {
  * @param {`0x${string}`} capabilityValues
  * @returns {Promise<Response>}
  */
-async function handleProviderServiceUrlUpdate(env, providerId, capabilityKeys, capabilityValues) {
+async function handleProviderServiceUrlUpdate(
+  env,
+  providerId,
+  capabilityKeys,
+  capabilityValues,
+) {
   const serviceUrlIndex = capabilityKeys.split(',').indexOf('serviceURL')
   if (serviceUrlIndex === -1) {
     console.error('Missing serviceURL in capabilities', {
@@ -150,7 +166,7 @@ async function handleProviderServiceUrlUpdate(env, providerId, capabilityKeys, c
   }
   const [parsedCapabilityValues] = decodeAbiParameters(
     [{ type: 'bytes[]' }],
-    capabilityValues
+    capabilityValues,
   )
 
   let serviceUrl
