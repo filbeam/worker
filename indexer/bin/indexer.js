@@ -171,20 +171,23 @@ export default {
       const {
         provider_id: providerId,
         product_type: productType,
-        service_url: serviceUrl,
+        capability_keys: capabilityKeys,
+        capability_values: capabilityValues,
       } = payload
-      return await handleProductAdded(env, providerId, productType, serviceUrl)
+      return await handleProductAdded(env, providerId, productType, capabilityKeys, capabilityValues)
     } else if (pathname === '/service-provider-registry/product-updated') {
       const {
         provider_id: providerId,
         product_type: productType,
-        service_url: serviceUrl,
+        capability_keys: capabilityKeys,
+        capability_values: capabilityValues,
       } = payload
       return await handleProductUpdated(
         env,
         providerId,
         productType,
-        serviceUrl,
+        capabilityKeys,
+        capabilityValues,
       )
     } else if (pathname === '/service-provider-registry/product-removed') {
       const { provider_id: providerId, product_type: productType } = payload

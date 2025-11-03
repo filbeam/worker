@@ -12,6 +12,7 @@ import {
   waitOnExecutionContext,
 } from 'cloudflare:test'
 import { BYTES_PER_TIB } from '../lib/constants.js'
+import { encodeAbiParameters, toHex } from 'viem'
 
 env.SECRET_HEADER_KEY = 'secret-header-key'
 env.SECRET_HEADER_VALUE = 'secret-header-value'
@@ -667,7 +668,15 @@ describe('piece-retriever.indexer', () => {
           body: JSON.stringify({
             provider_id: providerId,
             product_type: 0,
-            service_url: serviceUrl,
+            capability_keys: 'someKey,serviceURL,anotherKey',
+            capability_values: encodeAbiParameters(
+              [{ type: 'bytes[]' }],
+              [[
+                toHex('some value'),
+                toHex(serviceUrl),
+                toHex('another value')
+              ]]
+            )
           }),
         },
       )
@@ -705,7 +714,15 @@ describe('piece-retriever.indexer', () => {
           body: JSON.stringify({
             provider_id: providerId,
             product_type: 0,
-            service_url: serviceUrl,
+            capability_keys: 'someKey,serviceURL,anotherKey',
+            capability_values: encodeAbiParameters(
+              [{ type: 'bytes[]' }],
+              [[
+                toHex('some value'),
+                toHex(serviceUrl),
+                toHex('another value')
+              ]]
+            )
           }),
         },
       )
@@ -726,7 +743,15 @@ describe('piece-retriever.indexer', () => {
           body: JSON.stringify({
             provider_id: providerId,
             product_type: 0,
-            service_url: newServiceUrl,
+            capability_keys: 'someKey,serviceURL,anotherKey',
+            capability_values: encodeAbiParameters(
+              [{ type: 'bytes[]' }],
+              [[
+                toHex('some value'),
+                toHex(newServiceUrl),
+                toHex('another value')
+              ]]
+            )
           }),
         },
       )
@@ -778,7 +803,15 @@ describe('piece-retriever.indexer', () => {
           body: JSON.stringify({
             provider_id: providerId,
             product_type: productType,
-            service_url: serviceUrl,
+            capability_keys: 'someKey,serviceURL,anotherKey',
+            capability_values: encodeAbiParameters(
+              [{ type: 'bytes[]' }],
+              [[
+                toHex('some value'),
+                toHex(serviceUrl),
+                toHex('another value')
+              ]]
+            )
           }),
         },
       )
@@ -869,7 +902,15 @@ describe('POST /service-provider-registry/provider-removed', () => {
           provider_id: providerId,
           product_type: 0,
           block_number: blockNumber,
-          service_url: serviceUrl,
+          capability_keys: 'someKey,serviceURL,anotherKey',
+            capability_values: encodeAbiParameters(
+              [{ type: 'bytes[]' }],
+              [[
+                toHex('some value'),
+                toHex(serviceUrl),
+                toHex('another value')
+              ]]
+            )
         }),
       },
     )

@@ -16,7 +16,8 @@
   "dependencies": {
     "assert-ok-response": "^1.0.0",
     "multiformats": "^13.4.1",
-    "validator": "^13.15.15"
+    "validator": "^13.15.15",
+    "viem": "^2.38.6"
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "^0.10.3",
