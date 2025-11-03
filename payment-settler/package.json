@@ -15,7 +15,7 @@
   },
   "dependencies": {
     "@filbeam/workflows": "^1.0.0",
-    "viem": "^2.38.5"
+    "viem": "^2.38.6"
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "^0.10.3"
