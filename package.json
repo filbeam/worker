@@ -12,7 +12,8 @@
     "terminator",
     "workflows",
     "usage-reporter",
-    "payment-settler"
+    "payment-settler",
+    "stats-api"
   ],
   "scripts": {
     "build:types": "npm run build:types --workspaces --if-present",
