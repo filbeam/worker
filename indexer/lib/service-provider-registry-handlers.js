@@ -135,6 +135,12 @@ export async function handleProviderRemoved(env, providerId) {
     .bind(String(providerId))
     .run()
   if (result.meta.changes === 0) {
+    console.error(
+      'ServiceProviderRegistry.ProviderRemoved: Provider not found',
+      {
+        providerId,
+      },
+    )
     return new Response('Provider Not Found', { status: 404 })
   }
   return new Response('OK', { status: 200 })
