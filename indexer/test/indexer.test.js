@@ -667,7 +667,10 @@ describe('piece-retriever.indexer', () => {
           body: JSON.stringify({
             provider_id: providerId,
             product_type: 0,
-            service_url: serviceUrl,
+            capability_keys: 'someKey,serviceURL,anotherKey',
+            capability_values: ['some value', serviceUrl, 'another value']
+              .map((s) => `0x${Buffer.from(s).toString('hex')}`)
+              .join(','),
           }),
         },
       )
@@ -705,7 +708,10 @@ describe('piece-retriever.indexer', () => {
           body: JSON.stringify({
             provider_id: providerId,
             product_type: 0,
-            service_url: serviceUrl,
+            capability_keys: 'someKey,serviceURL,anotherKey',
+            capability_values: ['some value', serviceUrl, 'another value']
+              .map((s) => `0x${Buffer.from(s).toString('hex')}`)
+              .join(','),
           }),
         },
       )
@@ -726,7 +732,10 @@ describe('piece-retriever.indexer', () => {
           body: JSON.stringify({
             provider_id: providerId,
             product_type: 0,
-            service_url: newServiceUrl,
+            capability_keys: 'someKey,serviceURL,anotherKey',
+            capability_values: ['some value', newServiceUrl, 'another value']
+              .map((s) => `0x${Buffer.from(s).toString('hex')}`)
+              .join(','),
           }),
         },
       )
@@ -778,7 +787,10 @@ describe('piece-retriever.indexer', () => {
           body: JSON.stringify({
             provider_id: providerId,
             product_type: productType,
-            service_url: serviceUrl,
+            capability_keys: 'someKey,serviceURL,anotherKey',
+            capability_values: ['some value', serviceUrl, 'another value']
+              .map((s) => `0x${Buffer.from(s).toString('hex')}`)
+              .join(','),
           }),
         },
       )
@@ -869,7 +881,10 @@ describe('POST /service-provider-registry/provider-removed', () => {
           provider_id: providerId,
           product_type: 0,
           block_number: blockNumber,
-          service_url: serviceUrl,
+          capability_keys: 'someKey,serviceURL,anotherKey',
+          capability_values: ['some value', serviceUrl, 'another value']
+            .map((s) => `0x${Buffer.from(s).toString('hex')}`)
+            .join(','),
         }),
       },
     )
