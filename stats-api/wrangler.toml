@@ -1,5 +1,5 @@
 name = "filbeam-stats-api"
-main = "bin/stats-api.js"
+main = "bin/api.js"
 compatibility_date = "2025-09-08"
 compatibility_flags = ["nodejs_compat"]
 logpush = true

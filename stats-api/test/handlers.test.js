@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { handleGetDataSetStats } from '../lib/stats-handlers.js'
+import { handleGetDataSetStats } from '../lib/handlers.js'
 import { env } from 'cloudflare:test'
 import { withDataSet } from './test-helpers.js'
 

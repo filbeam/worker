@@ -1,4 +1,4 @@
-import { handleGetDataSetStats } from '../lib/stats-handlers.js'
+import { handleGetDataSetStats } from '../lib/handlers.js'
 
 export default {
   /**

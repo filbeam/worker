@@ -5,7 +5,7 @@
   "description": "FilBeam Stats API Worker",
   "author": "Space Meridian <filbeam@meridian.space>",
   "type": "module",
-  "main": "bin/stats-api.js",
+  "main": "bin/api.js",
   "scripts": {
     "build:types": "wrangler types --env dev",
     "deploy:calibration": "wrangler deploy --env calibration",

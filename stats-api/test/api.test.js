@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import worker from '../bin/stats-api.js'
+import worker from '../bin/api.js'
 import { env } from 'cloudflare:test'
 import { withDataSet } from './test-helpers.js'
 
