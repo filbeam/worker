@@ -42,7 +42,7 @@ database_id = "78f15bbb-391f-4797-9016-a6cb86c0b9b8"
 [env.mainnet.vars]
 ENVIRONMENT = "mainnet"
 RPC_URL = "https://api.node.glif.io/"
-FILBEAM_CONTRACT_ADDRESS = "0x" # TODO
+FILBEAM_CONTRACT_ADDRESS = "0x6b217c6501D436450B300C3F2Cb25e822aafcFEa"
 FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS = "1598306400000"
 
 [[env.mainnet.d1_databases]]

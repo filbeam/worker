@@ -87,7 +87,7 @@ class_name = "TransactionMonitorWorkflow"
 [env.mainnet.vars]
 ENVIRONMENT = "mainnet"
 RPC_URL = "https://api.node.glif.io/"
-FILBEAM_CONTRACT_ADDRESS = "0x" # TODO
+FILBEAM_CONTRACT_ADDRESS = "0x6b217c6501D436450B300C3F2Cb25e822aafcFEa"
 DEFAULT_LOCKUP_PERIOD_DAYS = 30 # 30 days lockup period
 FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS = 1598306400000 # Mainnet genesis timestamp in milliseconds
 
