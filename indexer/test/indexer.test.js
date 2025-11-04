@@ -970,7 +970,7 @@ describe('POST /fwss/cdn-service-terminated', () => {
       },
       body: JSON.stringify({
         data_set_id: dataSetId,
-        block_number: '1000000', // Add block_number for epoch-based timestamp calculation
+        block_number: 1000000, // Add block_number for epoch-based timestamp calculation
       }),
     })
     const res = await workerImpl.fetch(req, env)
@@ -1017,7 +1017,7 @@ describe('POST /fwss/service-terminated', () => {
       },
       body: JSON.stringify({
         data_set_id: dataSetId,
-        block_number: '1000000', // Add block_number for epoch-based timestamp calculation
+        block_number: 1000000, // Add block_number for epoch-based timestamp calculation
       }),
     })
     const res = await workerImpl.fetch(req, env)
