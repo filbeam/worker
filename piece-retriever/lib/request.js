@@ -6,12 +6,14 @@ import { httpAssert } from './http-assert.js'
  * @param {Request} request
  * @param {object} options
  * @param {string} options.DNS_ROOT
+ * @param {string} options.BOT_TOKENS
  * @returns {{
  *   payerWalletAddress?: string
  *   pieceCid?: string
+ *   botName?: string
  * }}
  */
-export function parseRequest(request, { DNS_ROOT }) {
+export function parseRequest(request, { DNS_ROOT, BOT_TOKENS }) {
   const url = new URL(request.url)
   console.log('retrieval request', { DNS_ROOT, url })
 
@@ -31,5 +33,32 @@ export function parseRequest(request, { DNS_ROOT }) {
     `Invalid CID: ${pieceCid}. It is not a valid CommP (v1 or v2).`,
   )
 
-  return { payerWalletAddress, pieceCid }
+  const botName = checkBotAuthorization(request, { BOT_TOKENS })
+
+  return { payerWalletAddress, pieceCid, botName }
+}
+
+/**
+ * @param {Request} request
+ * @param {object} args
+ * @param {string} args.BOT_TOKENS
+ * @returns {string | undefined} Bot name or the access token
+ */
+export function checkBotAuthorization(request, { BOT_TOKENS }) {
+  const botTokens = JSON.parse(BOT_TOKENS)
+
+  const auth = request.headers.get('authorization')
+  if (!auth) return undefined
+
+  const [prefix, token, ...rest] = auth.split(' ')
+
+  httpAssert(
+    prefix === 'Bearer' && token && rest.length === 0,
+    401,
+    'Unauthorized: Authorization header must use Bearer scheme',
+  )
+
+  httpAssert(token in botTokens, 401, 'Unauthorized: Invalid Access Token')
+
+  return botTokens[token]
 }
