@@ -12,7 +12,7 @@ sources:
     type: subgraph_entity
     subgraphs:
       - name: service-provider-registry-mainnet
-        version: 0.0.0
+        version: 1.0.0
     name: product_added
   filbeam__piece_added:
     type: subgraph_entity
@@ -30,7 +30,7 @@ sources:
     type: subgraph_entity
     subgraphs:
       - name: service-provider-registry-mainnet
-        version: 0.0.0
+        version: 1.0.0
     name: product_updated
   filbeam__pieces_removed:
     type: subgraph_entity
@@ -44,17 +44,23 @@ sources:
       - name: filbeam-mainnet
         version: 1.0.0
     name: cdn_service_terminated
+  filbeam__cdn_payment_rails_topped_up:
+    type: subgraph_entity
+    subgraphs:
+      - name: filbeam-mainnet
+        version: 1.0.0
+    name: cdn_payment_rails_topped_up
   source__service_provider_registry__product_removed:
     type: subgraph_entity
     subgraphs:
       - name: service-provider-registry-mainnet
-        version: 0.0.0
+        version: 1.0.0
     name: product_removed
   source__service_provider_registry__provider_removed:
     type: subgraph_entity
     subgraphs:
       - name: service-provider-registry-mainnet
-        version: 0.0.0
+        version: 1.0.0
     name: provider_removed
 transforms: {}
 sinks:
@@ -100,6 +106,12 @@ sinks:
     secret_name: WEBHOOK_SECRET_CMBHIZHPO0
     one_row_per_request: true
     from: filbeam__cdn_service_terminated
+  sink__fwss__cdn_payment_rails_topped_up:
+    url: https://index.filcdn.io/fwss/cdn-payment-rails-topped-up
+    type: webhook
+    secret_name: WEBHOOK_SECRET_CMBHIZHPO0
+    one_row_per_request: true
+    from: filbeam__cdn_payment_rails_topped_up
   sink__service_provider_registry__product_removed:
     url: https://index.filcdn.io/service-provider-registry/product-removed
     type: webhook
