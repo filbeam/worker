@@ -1,59 +1,59 @@
-name: alpha-mainnet
+name: mainnet
 resource_size: s
 apiVersion: 3
 sources:
   filbeam__data_set_created:
     type: subgraph_entity
     subgraphs:
-      - name: filbeam-alpha-mainnet
+      - name: filbeam-mainnet
         version: 1.0.0
     name: data_set_created
   source__service_provider_registry__product_added:
     type: subgraph_entity
     subgraphs:
-      - name: service-provider-registry-alpha-mainnet
+      - name: service-provider-registry-mainnet
         version: 0.0.0
     name: product_added
   filbeam__piece_added:
     type: subgraph_entity
     subgraphs:
-      - name: filbeam-alpha-mainnet
+      - name: filbeam-mainnet
         version: 1.0.0
     name: piece_added
   filbeam__service_terminated:
     type: subgraph_entity
     subgraphs:
-      - name: filbeam-alpha-mainnet
+      - name: filbeam-mainnet
         version: 1.0.0
     name: service_terminated
   source__service_provider_registry__product_updated:
     type: subgraph_entity
     subgraphs:
-      - name: service-provider-registry-alpha-mainnet
+      - name: service-provider-registry-mainnet
         version: 0.0.0
     name: product_updated
   filbeam__pieces_removed:
     type: subgraph_entity
     subgraphs:
-      - name: filbeam-alpha-mainnet
+      - name: filbeam-mainnet
         version: 1.0.0
     name: pieces_removed
   filbeam__cdn_service_terminated:
     type: subgraph_entity
     subgraphs:
-      - name: filbeam-alpha-mainnet
+      - name: filbeam-mainnet
         version: 1.0.0
     name: cdn_service_terminated
   source__service_provider_registry__product_removed:
     type: subgraph_entity
     subgraphs:
-      - name: service-provider-registry-alpha-mainnet
+      - name: service-provider-registry-mainnet
         version: 0.0.0
     name: product_removed
   source__service_provider_registry__provider_removed:
     type: subgraph_entity
     subgraphs:
-      - name: service-provider-registry-alpha-mainnet
+      - name: service-provider-registry-mainnet
         version: 0.0.0
     name: provider_removed
 transforms: {}
