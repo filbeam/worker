@@ -1,27 +1,27 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { handleGetDataSetStats } from '../lib/stats-handlers.js'
 import { env } from 'cloudflare:test'
+import { withDataSet } from './test-helpers.js'
 
 describe('stats-handlers', () => {
   beforeEach(async () => {
-    // Clean up database before each test
-    await env.DB.batch([env.DB.prepare('DELETE FROM data_sets')])
+    await env.DB.exec('DELETE FROM data_sets')
   })
 
   describe('handleGetDataSetStats', () => {
     it('returns quotas for valid data set', async () => {
-      // Setup test data
       const dataSetId = '1'
-      await env.DB.prepare(
-        'INSERT INTO data_sets (id, service_provider_id, payer_address, with_cdn, cdn_egress_quota, cache_miss_egress_quota) VALUES (?, ?, ?, ?, ?, ?)',
-      )
-        .bind(dataSetId, '1', '0xPayerAddress', true, 3000, 6000)
-        .run()
+      await withDataSet(env, {
+        dataSetId,
+        serviceProviderId: '1',
+        payerAddress: '0xPayerAddress',
+        withCDN: true,
+        cdnEgressQuota: 3000,
+        cacheMissEgressQuota: 6000,
+      })
 
-      // Get stats
       const res = await handleGetDataSetStats(env, dataSetId)
 
-      // Assert response
       expect(res.status).toBe(200)
       expect(res.headers.get('Content-Type')).toBe('application/json')
 
@@ -41,18 +41,18 @@ describe('stats-handlers', () => {
     })
 
     it('handles null quota values', async () => {
-      // Setup test data with null quotas
       const dataSetId = '2'
-      await env.DB.prepare(
-        'INSERT INTO data_sets (id, service_provider_id, payer_address, with_cdn, cdn_egress_quota, cache_miss_egress_quota) VALUES (?, ?, ?, ?, ?, ?)',
-      )
-        .bind(dataSetId, '2', '0xPayerAddress2', false, null, null)
-        .run()
+      await withDataSet(env, {
+        dataSetId,
+        serviceProviderId: '2',
+        payerAddress: '0xPayerAddress2',
+        withCDN: false,
+        cdnEgressQuota: null,
+        cacheMissEgressQuota: null,
+      })
 
-      // Get stats
       const res = await handleGetDataSetStats(env, dataSetId)
 
-      // Assert response
       expect(res.status).toBe(200)
 
       const data = await res.json()

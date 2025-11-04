@@ -1,19 +1,23 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import worker from '../bin/stats-api.js'
 import { env } from 'cloudflare:test'
+import { withDataSet } from './test-helpers.js'
 
 describe('stats-api.fetch', () => {
   beforeEach(async () => {
-    await env.DB.batch([env.DB.prepare('DELETE FROM data_sets')])
+    await env.DB.exec('DELETE FROM data_sets')
   })
 
   it('returns cdn and cache miss egress quota for existing data set', async () => {
     const dataSetId = '1'
-    await env.DB.prepare(
-      'INSERT INTO data_sets (id, service_provider_id, payer_address, with_cdn, cdn_egress_quota, cache_miss_egress_quota) VALUES (?, ?, ?, ?, ?, ?)',
-    )
-      .bind(dataSetId, '1', '0xPayerAddress', true, 1000000, 2000000)
-      .run()
+    await withDataSet(env, {
+      dataSetId,
+      serviceProviderId: '1',
+      payerAddress: '0xPayerAddress',
+      withCDN: true,
+      cdnEgressQuota: 1000000,
+      cacheMissEgressQuota: 2000000,
+    })
 
     const req = new Request(`https://example.com/stats/${dataSetId}`)
     const res = await worker.fetch(req, env)
@@ -97,11 +101,14 @@ describe('stats-api.fetch', () => {
 
   it('handles null egress quota values as zero', async () => {
     const dataSetId = '2'
-    await env.DB.prepare(
-      'INSERT INTO data_sets (id, service_provider_id, payer_address, with_cdn, cdn_egress_quota, cache_miss_egress_quota) VALUES (?, ?, ?, ?, ?, ?)',
-    )
-      .bind(dataSetId, '2', '0xPayerAddress2', false, null, null)
-      .run()
+    await withDataSet(env, {
+      dataSetId,
+      serviceProviderId: '2',
+      payerAddress: '0xPayerAddress2',
+      withCDN: false,
+      cdnEgressQuota: null,
+      cacheMissEgressQuota: null,
+    })
 
     const req = new Request(`https://example.com/stats/${dataSetId}`)
     const res = await worker.fetch(req, env)
@@ -117,11 +124,14 @@ describe('stats-api.fetch', () => {
 
   it('handles zero egress quota values correctly', async () => {
     const dataSetId = '3'
-    await env.DB.prepare(
-      'INSERT INTO data_sets (id, service_provider_id, payer_address, with_cdn, cdn_egress_quota, cache_miss_egress_quota) VALUES (?, ?, ?, ?, ?, ?)',
-    )
-      .bind(dataSetId, '3', '0xPayerAddress3', true, 0, 0)
-      .run()
+    await withDataSet(env, {
+      dataSetId,
+      serviceProviderId: '3',
+      payerAddress: '0xPayerAddress3',
+      withCDN: true,
+      cdnEgressQuota: 0,
+      cacheMissEgressQuota: 0,
+    })
 
     const req = new Request(`https://example.com/stats/${dataSetId}`)
     const res = await worker.fetch(req, env)
@@ -140,18 +150,14 @@ describe('stats-api.fetch', () => {
     const largeCdnQuota = 999999999999
     const largeCacheMissQuota = 888888888888
 
-    await env.DB.prepare(
-      'INSERT INTO data_sets (id, service_provider_id, payer_address, with_cdn, cdn_egress_quota, cache_miss_egress_quota) VALUES (?, ?, ?, ?, ?, ?)',
-    )
-      .bind(
-        dataSetId,
-        '4',
-        '0xPayerAddress4',
-        true,
-        largeCdnQuota,
-        largeCacheMissQuota,
-      )
-      .run()
+    await withDataSet(env, {
+      dataSetId,
+      serviceProviderId: '4',
+      payerAddress: '0xPayerAddress4',
+      withCDN: true,
+      cdnEgressQuota: largeCdnQuota,
+      cacheMissEgressQuota: largeCacheMissQuota,
+    })
 
     const req = new Request(`https://example.com/stats/${dataSetId}`)
     const res = await worker.fetch(req, env)

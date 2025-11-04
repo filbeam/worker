@@ -1,5 +1,3 @@
-/** Test helpers for stats-api worker tests */
-
 /**
  * Creates a data set with egress quotas in the database
  *
@@ -16,8 +14,8 @@
 export async function withDataSet(
   env,
   {
-    dataSetId = 'test-dataset',
-    serviceProviderId = 'sp-001',
+    dataSetId = '1',
+    serviceProviderId = '1',
     payerAddress = '0x1234567890abcdef1234567890abcdef12345608',
     withCDN = true,
     cdnEgressQuota = 0,
@@ -37,24 +35,4 @@ export async function withDataSet(
       cacheMissEgressQuota,
     )
     .run()
-}
-
-/**
- * Generates a random ID for testing
- *
- * @returns {string} Random ID string
- */
-export function randomId() {
-  return `test-${Math.random().toString(36).substring(2, 15)}`
-}
-
-/**
- * Creates a stats API request
- *
- * @param {string} dataSetId - The data set ID to query
- * @param {string} [method='GET'] - HTTP method. Default is `'GET'`
- * @returns {Request} Request object for testing
- */
-export function createStatsRequest(dataSetId, method = 'GET') {
-  return new Request(`https://example.com/stats/${dataSetId}`, { method })
 }
