@@ -920,7 +920,7 @@ describe('POST /service-provider-registry/provider-removed', () => {
     expect(providers.length).toBe(0) // The provider should be removed
   })
 
-  it('returns 404 if the provider does not exist', async () => {
+  it('returns 200 if the provider does not exist', async () => {
     const req = new Request(
       'https://host/service-provider-registry/provider-removed',
       {
@@ -934,8 +934,8 @@ describe('POST /service-provider-registry/provider-removed', () => {
       },
     )
     const res = await workerImpl.fetch(req, env)
-    expect(res.status).toBe(404)
-    expect(await res.text()).toBe('Provider Not Found')
+    expect(res.status).toBe(200)
+    expect(await res.text()).toBe('OK')
   })
 })
 
