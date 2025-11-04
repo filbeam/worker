@@ -152,7 +152,7 @@ export default {
           typeof payload.data_set_id === 'number' ||
           typeof payload.data_set_id === 'string'
         ) ||
-        typeof payload.block_number !== 'string'
+        typeof payload.block_number !== 'number'
       ) {
         console.error(
           'FilecoinWarmStorageService.(ServiceTerminated | CDNServiceTerminated): Invalid payload',
