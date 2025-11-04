@@ -156,10 +156,6 @@ export default {
         setContentSecurityPolicy(response)
         response.headers.set('X-Data-Set-ID', dataSetId)
         response.headers.set(
-          'X-Cache',
-          retrievalResult.cacheMiss ? 'MISS' : 'HIT',
-        )
-        response.headers.set(
           'Cache-Control',
           `public, max-age=${env.CLIENT_CACHE_TTL}`,
         )
@@ -210,10 +206,6 @@ export default {
       })
       setContentSecurityPolicy(response)
       response.headers.set('X-Data-Set-ID', dataSetId)
-      response.headers.set(
-        'X-Cache',
-        retrievalResult.cacheMiss ? 'MISS' : 'HIT',
-      )
       response.headers.set(
         'Cache-Control',
         `public, max-age=${env.CLIENT_CACHE_TTL}`,
