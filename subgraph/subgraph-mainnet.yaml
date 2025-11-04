@@ -8,9 +8,9 @@ dataSources:
     name: PDPVerifier
     network: filecoin
     source:
-      address: '0x1790d465d1FABE85b530B116f385091d52a12a3b'
+      address: '0xBADd0B92C1c71d02E7d520f64c0876538fa2557F'
       abi: PDPVerifier
-      startBlock: 5320510
+      startBlock: 5459000
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.9
@@ -28,9 +28,9 @@ dataSources:
     name: FilecoinWarmStorageService
     network: filecoin
     source:
-      address: '0x81DFD9813aDd354f03704F31419b0c6268d46232'
+      address: '0x8408502033C418E1bbC97cE9ac48E5528F371A9f'
       abi: FilecoinWarmStorageService
-      startBlock: 5320510
+      startBlock: 5459000
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.9
