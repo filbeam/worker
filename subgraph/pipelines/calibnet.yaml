@@ -1,113 +1,125 @@
-name: alpha-mainnet
+name: calibnet
 resource_size: s
 apiVersion: 3
 sources:
   filbeam__data_set_created:
     type: subgraph_entity
     subgraphs:
-      - name: filbeam-alpha-mainnet
+      - name: filbeam-calibnet
         version: 1.0.0
     name: data_set_created
   source__service_provider_registry__product_added:
     type: subgraph_entity
     subgraphs:
-      - name: service-provider-registry-alpha-mainnet
-        version: 0.0.0
+      - name: service-provider-registry-calibnet
+        version: 1.0.0
     name: product_added
   filbeam__piece_added:
     type: subgraph_entity
     subgraphs:
-      - name: filbeam-alpha-mainnet
+      - name: filbeam-calibnet
         version: 1.0.0
     name: piece_added
   filbeam__service_terminated:
     type: subgraph_entity
     subgraphs:
-      - name: filbeam-alpha-mainnet
+      - name: filbeam-calibnet
         version: 1.0.0
     name: service_terminated
   source__service_provider_registry__product_updated:
     type: subgraph_entity
     subgraphs:
-      - name: service-provider-registry-alpha-mainnet
-        version: 0.0.0
+      - name: service-provider-registry-calibnet
+        version: 1.0.0
     name: product_updated
   filbeam__pieces_removed:
     type: subgraph_entity
     subgraphs:
-      - name: filbeam-alpha-mainnet
+      - name: filbeam-calibnet
         version: 1.0.0
     name: pieces_removed
   filbeam__cdn_service_terminated:
     type: subgraph_entity
     subgraphs:
-      - name: filbeam-alpha-mainnet
+      - name: filbeam-calibnet
         version: 1.0.0
     name: cdn_service_terminated
+  filbeam__cdn_payment_rails_topped_up:
+    type: subgraph_entity
+    subgraphs:
+      - name: filbeam-calibnet
+        version: 1.0.0
+    name: cdn_payment_rails_topped_up
   source__service_provider_registry__product_removed:
     type: subgraph_entity
     subgraphs:
-      - name: service-provider-registry-alpha-mainnet
-        version: 0.0.0
+      - name: service-provider-registry-calibnet
+        version: 1.0.0
     name: product_removed
   source__service_provider_registry__provider_removed:
     type: subgraph_entity
     subgraphs:
-      - name: service-provider-registry-alpha-mainnet
-        version: 0.0.0
+      - name: service-provider-registry-calibnet
+        version: 1.0.0
     name: provider_removed
 transforms: {}
 sinks:
   sink__fwss__data_set_created:
-    url: https://index.filcdn.io/fwss/data-set-created
+    url: https://index.calibration.filcdn.io/fwss/data-set-created
     type: webhook
     secret_name: WEBHOOK_SECRET_CMBHIZHPO0
     one_row_per_request: true
     from: filbeam__data_set_created
   sink__service_provider_registry__product_added:
-    url: https://index.filcdn.io/service-provider-registry/product-added
+    url: https://index.calibration.filcdn.io/service-provider-registry/product-added
     type: webhook
     secret_name: WEBHOOK_SECRET_CMBHIZHPO0
     one_row_per_request: true
     from: source__service_provider_registry__product_added
   sink__fwss__piece_added:
-    url: https://index.filcdn.io/fwss/piece-added
+    url: https://index.calibration.filcdn.io/fwss/piece-added
     type: webhook
     secret_name: WEBHOOK_SECRET_CMBHIZHPO0
     one_row_per_request: true
     from: filbeam__piece_added
   sink__fwss__service_terminated:
-    url: https://index.filcdn.io/fwss/service-terminated
+    url: https://index.calibration.filcdn.io/fwss/service-terminated
     type: webhook
     secret_name: WEBHOOK_SECRET_CMBHIZHPO0
     one_row_per_request: true
     from: filbeam__service_terminated
   sink__service_provider_registry__product_updated:
-    url: https://index.filcdn.io/service-provider-registry/product-updated
+    url: https://index.calibration.filcdn.io/service-provider-registry/product-updated
     type: webhook
     secret_name: WEBHOOK_SECRET_CMBHIZHPO0
     one_row_per_request: true
     from: source__service_provider_registry__product_updated
   sink__pdp__pieces_removed:
-    url: https://index.filcdn.io/pdp-verifier/pieces-removed
+    url: https://index.calibration.filcdn.io/pdp-verifier/pieces-removed
     type: webhook
     secret_name: WEBHOOK_SECRET_CMBHIZHPO0
     one_row_per_request: true
     from: filbeam__pieces_removed
   sink_fwss_cdn_service_terminated:
-    url: https://index.filcdn.io/fwss/cdn-service-terminated
+    url: https://index.calibration.filcdn.io/fwss/cdn-service-terminated
     type: webhook
     secret_name: WEBHOOK_SECRET_CMBHIZHPO0
     one_row_per_request: true
     from: filbeam__cdn_service_terminated
+  sink__fwss__cdn_payment_rails_topped_up:
+    url: https://index.calibration.filcdn.io/fwss/cdn-payment-rails-topped-up
+    type: webhook
+    secret_name: WEBHOOK_SECRET_CMBHIZHPO0
+    one_row_per_request: true
+    from: filbeam__cdn_payment_rails_topped_up
   sink__service_provider_registry__product_removed:
-    url: https://index.filcdn.io/service-provider-registry/product-removed
+    url: https://index.calibration.filcdn.io/service-provider-registry/product-removed
     type: webhook
     secret_name: WEBHOOK_SECRET_CMBHIZHPO0
     one_row_per_request: true
     from: source__service_provider_registry__product_removed
   sink_service_provider_registry__provider_removed:
-    url: https://index.filcdn.io/service-provider-registry/provider-removed
+    url: https://index.calibration.filcdn.io/service-provider-registry/provider-removed
     type: webhook
     secret_name: WEBHOOK_SECRET_CMBHIZHPO0
     one_row_per_request: true

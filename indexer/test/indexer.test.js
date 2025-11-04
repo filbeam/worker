@@ -1,17 +1,23 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { assertCloseToNow } from './test-helpers.js'
+import {
+  assertCloseToNow,
+  withDataSet,
+  randomId,
+  withPieces,
+} from './test-helpers.js'
 import workerImpl from '../bin/indexer.js'
 import {
   env,
   createExecutionContext,
   waitOnExecutionContext,
 } from 'cloudflare:test'
-
-const randomId = () => String(Math.ceil(Math.random() * 1e10))
+import { BYTES_PER_TIB } from '../lib/constants.js'
 
 env.SECRET_HEADER_KEY = 'secret-header-key'
 env.SECRET_HEADER_VALUE = 'secret-header-value'
 env.CHAINALYSIS_API_KEY = 'mock-chainalysis-api-key'
+env.DEFAULT_LOCKUP_PERIOD_DAYS = 30
+env.FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS = 1667326380000 // Calibration network genesis timestamp in milliseconds for tests
 
 describe('piece-retriever.indexer', () => {
   beforeEach(async () => {
@@ -661,7 +667,10 @@ describe('piece-retriever.indexer', () => {
           body: JSON.stringify({
             provider_id: providerId,
             product_type: 0,
-            service_url: serviceUrl,
+            capability_keys: 'someKey,serviceURL,anotherKey',
+            capability_values: ['some value', serviceUrl, 'another value']
+              .map((s) => `0x${Buffer.from(s).toString('hex')}`)
+              .join(','),
           }),
         },
       )
@@ -699,7 +708,10 @@ describe('piece-retriever.indexer', () => {
           body: JSON.stringify({
             provider_id: providerId,
             product_type: 0,
-            service_url: serviceUrl,
+            capability_keys: 'someKey,serviceURL,anotherKey',
+            capability_values: ['some value', serviceUrl, 'another value']
+              .map((s) => `0x${Buffer.from(s).toString('hex')}`)
+              .join(','),
           }),
         },
       )
@@ -720,7 +732,10 @@ describe('piece-retriever.indexer', () => {
           body: JSON.stringify({
             provider_id: providerId,
             product_type: 0,
-            service_url: newServiceUrl,
+            capability_keys: 'someKey,serviceURL,anotherKey',
+            capability_values: ['some value', newServiceUrl, 'another value']
+              .map((s) => `0x${Buffer.from(s).toString('hex')}`)
+              .join(','),
           }),
         },
       )
@@ -772,7 +787,10 @@ describe('piece-retriever.indexer', () => {
           body: JSON.stringify({
             provider_id: providerId,
             product_type: productType,
-            service_url: serviceUrl,
+            capability_keys: 'someKey,serviceURL,anotherKey',
+            capability_values: ['some value', serviceUrl, 'another value']
+              .map((s) => `0x${Buffer.from(s).toString('hex')}`)
+              .join(','),
           }),
         },
       )
@@ -863,7 +881,10 @@ describe('POST /service-provider-registry/provider-removed', () => {
           provider_id: providerId,
           product_type: 0,
           block_number: blockNumber,
-          service_url: serviceUrl,
+          capability_keys: 'someKey,serviceURL,anotherKey',
+          capability_values: ['some value', serviceUrl, 'another value']
+            .map((s) => `0x${Buffer.from(s).toString('hex')}`)
+            .join(','),
         }),
       },
     )
@@ -899,7 +920,7 @@ describe('POST /service-provider-registry/provider-removed', () => {
     expect(providers.length).toBe(0) // The provider should be removed
   })
 
-  it('returns 404 if the provider does not exist', async () => {
+  it('returns 200 if the provider does not exist', async () => {
     const req = new Request(
       'https://host/service-provider-registry/provider-removed',
       {
@@ -913,43 +934,10 @@ describe('POST /service-provider-registry/provider-removed', () => {
       },
     )
     const res = await workerImpl.fetch(req, env)
-    expect(res.status).toBe(404)
-    expect(await res.text()).toBe('Provider Not Found')
+    expect(res.status).toBe(200)
+    expect(await res.text()).toBe('OK')
   })
 })
-
-async function withPieces(
-  env,
-  dataSetId,
-  pieceIds,
-  pieceCids,
-  ipfsRootCids = [],
-) {
-  await env.DB.prepare(
-    `
-    INSERT INTO pieces (
-      id,
-      data_set_id,
-      cid,
-      ipfs_root_cid
-    )
-    VALUES ${new Array(pieceIds.length)
-      .fill(null)
-      .map(() => '(?, ?, ?, ?)')
-      .join(', ')}
-    ON CONFLICT DO NOTHING
-  `,
-  )
-    .bind(
-      ...pieceIds.flatMap((pieceId, i) => [
-        String(pieceId),
-        String(dataSetId),
-        pieceCids[i],
-        ipfsRootCids[i] || null,
-      ]),
-    )
-    .run()
-}
 
 describe('POST /fwss/cdn-service-terminated', () => {
   beforeEach(async () => {
@@ -982,6 +970,7 @@ describe('POST /fwss/cdn-service-terminated', () => {
       },
       body: JSON.stringify({
         data_set_id: dataSetId,
+        block_number: 1000000, // Add block_number for epoch-based timestamp calculation
       }),
     })
     const res = await workerImpl.fetch(req, env)
@@ -1028,6 +1017,7 @@ describe('POST /fwss/service-terminated', () => {
       },
       body: JSON.stringify({
         data_set_id: dataSetId,
+        block_number: 1000000, // Add block_number for epoch-based timestamp calculation
       }),
     })
     const res = await workerImpl.fetch(req, env)
@@ -1043,35 +1033,257 @@ describe('POST /fwss/service-terminated', () => {
   })
 })
 
-async function withDataSet(
-  env,
-  {
-    dataSetId = randomId(),
-    withCDN = true,
-    withIPFSIndexing = false,
-    serviceProviderId,
-    payerAddress,
-  },
-) {
-  await env.DB.prepare(
-    `
-    INSERT INTO data_sets (
-      id,
-      with_cdn,
-      with_ipfs_indexing,
-      service_provider_id,
-      payer_address
-    )
-    VALUES (?, ?, ?, ?, ?)`,
-  )
-    .bind(
-      String(dataSetId),
-      withCDN,
-      withIPFSIndexing,
-      serviceProviderId,
-      payerAddress,
-    )
-    .run()
+describe('POST /fwss/cdn-payment-rails-topped-up', () => {
+  beforeEach(async () => {
+    await env.DB.exec('DELETE FROM data_sets')
+  })
 
-  return dataSetId
-}
+  it('returns 400 if data_set_id is missing', async () => {
+    const req = new Request('https://host/fwss/cdn-payment-rails-topped-up', {
+      method: 'POST',
+      headers: {
+        [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+      },
+      body: JSON.stringify({
+        cdn_amount_added: '1000000000000000000',
+        cache_miss_amount_added: '2000000000000000000',
+      }),
+    })
+    const res = await workerImpl.fetch(req, env)
+    expect(res.status).toBe(400)
+    expect(await res.text()).toBe('Bad Request')
+  })
+
+  it('returns 400 if cdn_amount_added is missing', async () => {
+    const req = new Request('https://host/fwss/cdn-payment-rails-topped-up', {
+      method: 'POST',
+      headers: {
+        [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+      },
+      body: JSON.stringify({
+        data_set_id: 'test-data-set-1',
+        cache_miss_amount_added: '5000000000000000000',
+      }),
+    })
+    const res = await workerImpl.fetch(req, env)
+    expect(res.status).toBe(400)
+    expect(await res.text()).toBe('Bad Request')
+  })
+
+  it('returns 400 if cache_miss_amount_added is missing', async () => {
+    const req = new Request('https://host/fwss/cdn-payment-rails-topped-up', {
+      method: 'POST',
+      headers: {
+        [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+      },
+      body: JSON.stringify({
+        data_set_id: 'test-data-set-1',
+        cdn_amount_added: '5000000000000000000',
+      }),
+    })
+    const res = await workerImpl.fetch(req, env)
+    expect(res.status).toBe(400)
+    expect(await res.text()).toBe('Bad Request')
+  })
+
+  it('returns 400 if cdn_amount_added has invalid type', async () => {
+    const req = new Request('https://host/fwss/cdn-payment-rails-topped-up', {
+      method: 'POST',
+      headers: {
+        [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+      },
+      body: JSON.stringify({
+        data_set_id: 'test-data-set-1',
+        cdn_amount_added: { invalid: 'object' },
+        cache_miss_amount_added: '2000000000000000000',
+      }),
+    })
+    const res = await workerImpl.fetch(req, env)
+    expect(res.status).toBe(400)
+    expect(await res.text()).toBe('Bad Request')
+  })
+
+  it('returns 400 if cache_miss_amount_added is null', async () => {
+    const req = new Request('https://host/fwss/cdn-payment-rails-topped-up', {
+      method: 'POST',
+      headers: {
+        [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+      },
+      body: JSON.stringify({
+        data_set_id: 'test-data-set-1',
+        cdn_amount_added: '5000000000000000000',
+        cache_miss_amount_added: null,
+      }),
+    })
+    const res = await workerImpl.fetch(req, env)
+    expect(res.status).toBe(400)
+    expect(await res.text()).toBe('Bad Request')
+  })
+
+  it('calculates and stores egress quotas', async () => {
+    const dataSetId = await withDataSet(env, {
+      withCDN: true,
+      serviceProviderId: '1',
+      payerAddress: '0xPayerAddress',
+    })
+
+    // Set environment rates
+    env.CDN_RATE_PER_TIB = '5000000000000000000' // 5 USDFC per TiB
+    env.CACHE_MISS_RATE_PER_TIB = '5000000000000000000' // 5 USDFC per TiB
+
+    const req = new Request('https://host/fwss/cdn-payment-rails-topped-up', {
+      method: 'POST',
+      headers: {
+        [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+      },
+      body: JSON.stringify({
+        data_set_id: dataSetId,
+        cdn_amount_added: '5000000000000000000', // 5 USDFC
+        cache_miss_amount_added: '10000000000000000000', // 10 USDFC
+      }),
+    })
+
+    const res = await workerImpl.fetch(req, env)
+    expect(res.status).toBe(200)
+    expect(await res.text()).toBe('OK')
+
+    // Verify quotas were stored
+    const result = await env.DB.prepare(
+      'SELECT cdn_egress_quota, cache_miss_egress_quota FROM data_sets WHERE id = ?',
+    )
+      .bind(dataSetId)
+      .first()
+
+    expect(result).toStrictEqual({
+      cdn_egress_quota: Number(BYTES_PER_TIB),
+      cache_miss_egress_quota: Number(BYTES_PER_TIB * 2n),
+    })
+  })
+
+  it('handles zero lockup amounts', async () => {
+    const dataSetId = await withDataSet(env, {
+      withCDN: true,
+      serviceProviderId: '1',
+      payerAddress: '0xPayerAddress',
+    })
+
+    env.CDN_RATE_PER_TIB = '5000000000000000000' // 5 USDFC per TiB
+    env.CACHE_MISS_RATE_PER_TIB = '5000000000000000000' // 5 USDFC per TiB
+
+    const req = new Request('https://host/fwss/cdn-payment-rails-topped-up', {
+      method: 'POST',
+      headers: {
+        [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+      },
+      body: JSON.stringify({
+        data_set_id: dataSetId,
+        cdn_amount_added: '0',
+        cache_miss_amount_added: '0',
+      }),
+    })
+
+    const res = await workerImpl.fetch(req, env)
+    expect(res.status).toBe(200)
+    expect(await res.text()).toBe('OK')
+
+    const result = await env.DB.prepare(
+      'SELECT cdn_egress_quota, cache_miss_egress_quota FROM data_sets WHERE id = ?',
+    )
+      .bind(dataSetId)
+      .first()
+
+    expect(result).toStrictEqual({
+      cdn_egress_quota: 0,
+      cache_miss_egress_quota: 0,
+    })
+  })
+
+  it('accumulates quotas for existing data set', async () => {
+    const dataSetId = await withDataSet(env, {
+      withCDN: true,
+      serviceProviderId: '1',
+      payerAddress: '0xPayerAddress',
+    })
+
+    env.CDN_RATE_DOLLARS_PER_TIB = '5'
+    env.CACHE_MISS_RATE_DOLLARS_PER_TIB = '5'
+
+    // First top-up
+    await workerImpl.fetch(
+      new Request('https://host/fwss/cdn-payment-rails-topped-up', {
+        method: 'POST',
+        headers: {
+          [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+        },
+        body: JSON.stringify({
+          data_set_id: dataSetId,
+          cdn_amount_added: '5000000000000000000',
+          cache_miss_amount_added: '10000000000000000000',
+        }),
+      }),
+      env,
+    )
+
+    // Second top-up with additional amounts
+    const req = new Request('https://host/fwss/cdn-payment-rails-topped-up', {
+      method: 'POST',
+      headers: {
+        [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+      },
+      body: JSON.stringify({
+        data_set_id: dataSetId,
+        cdn_amount_added: '5000000000000000000', // 5 USDFC more
+        cache_miss_amount_added: '10000000000000000000', // 10 USDFC more
+      }),
+    })
+
+    const res = await workerImpl.fetch(req, env)
+    expect(res.status).toBe(200)
+
+    const result = await env.DB.prepare(
+      'SELECT cdn_egress_quota, cache_miss_egress_quota FROM data_sets WHERE id = ?',
+    )
+      .bind(dataSetId)
+      .first()
+
+    // Accumulated values: 5+5 USDFC = 2 TiB, 10+10 USDFC = 4 TiB
+    expect(result).toStrictEqual({
+      cdn_egress_quota: Number(BYTES_PER_TIB * 2n),
+      cache_miss_egress_quota: Number(BYTES_PER_TIB * 4n),
+    })
+  })
+
+  it('handles missing data set gracefully', async () => {
+    // Test that the handler doesn't fail when the data set doesn't exist
+    const dataSetId = '999'
+
+    env.CDN_RATE_DOLLARS_PER_TIB = '5'
+    env.CACHE_MISS_RATE_DOLLARS_PER_TIB = '5'
+
+    const req = new Request('https://host/fwss/cdn-payment-rails-topped-up', {
+      method: 'POST',
+      headers: {
+        [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+      },
+      body: JSON.stringify({
+        data_set_id: dataSetId,
+        cdn_amount_added: '5000000000000000000',
+        cache_miss_amount_added: '10000000000000000000',
+      }),
+    })
+
+    const res = await workerImpl.fetch(req, env)
+    expect(res.status).toBe(200)
+    expect(await res.text()).toBe('OK')
+
+    // Since the data set doesn't exist, the quotas won't be stored
+    // This is expected behavior - the handler updates existing data sets only
+    const result = await env.DB.prepare(
+      'SELECT cdn_egress_quota, cache_miss_egress_quota FROM data_sets WHERE id = ?',
+    )
+      .bind(dataSetId)
+      .first()
+
+    expect(result).toBe(null)
+  })
+})

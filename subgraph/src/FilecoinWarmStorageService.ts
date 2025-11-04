@@ -3,12 +3,14 @@ import {
   ServiceTerminated as ServiceTerminatedEvent,
   CDNServiceTerminated as CDNServiceTerminatedEvent,
   DataSetCreated as DataSetCreatedEvent,
+  CDNPaymentRailsToppedUp as CDNPaymentRailsToppedUpEvent,
 } from '../generated/FilecoinWarmStorageService/FilecoinWarmStorageService'
 import {
   PieceAdded,
   ServiceTerminated,
   CdnServiceTerminated,
   DataSetCreated,
+  CdnPaymentRailsToppedUp,
 } from '../generated/schema'
 import { getEventEntityId } from './utils'
 
@@ -70,6 +72,23 @@ export function handleDataSetCreated(event: DataSetCreatedEvent): void {
   entity.payee = event.params.payee.toHexString()
   entity.metadataKeys = event.params.metadataKeys
   entity.metadataValues = event.params.metadataValues
+
+  entity.blockNumber = event.block.number
+  entity.blockTimestamp = event.block.timestamp
+  entity.transactionHash = event.transaction.hash.toHexString()
+
+  entity.save()
+}
+
+export function handleCdnPaymentRailsToppedUp(
+  event: CDNPaymentRailsToppedUpEvent,
+): void {
+  const entity = new CdnPaymentRailsToppedUp(getEventEntityId(event))
+  entity.dataSetId = event.params.dataSetId.toString()
+  entity.cdnAmountAdded = event.params.cdnAmountAdded.toString()
+  entity.totalCdnLockup = event.params.totalCdnLockup.toString()
+  entity.cacheMissAmountAdded = event.params.cacheMissAmountAdded.toString()
+  entity.totalCacheMissLockup = event.params.totalCacheMissLockup.toString()
 
   entity.blockNumber = event.block.number
   entity.blockTimestamp = event.block.timestamp

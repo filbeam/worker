@@ -58,7 +58,7 @@ export default {
     const workerStartedAt = performance.now()
     const requestCountryCode = request.headers.get('CF-IPCountry')
 
-    const { payerWalletAddress, pieceCid } = parseRequest(request, env)
+    const { payerWalletAddress, pieceCid, botName } = parseRequest(request, env)
 
     httpAssert(payerWalletAddress && pieceCid, 400, 'Missing required fields')
     httpAssert(
@@ -73,7 +73,12 @@ export default {
 
       const [{ serviceProviderId, serviceUrl, dataSetId }, isBadBit] =
         await Promise.all([
-          getStorageProviderAndValidatePayer(env, payerWalletAddress, pieceCid),
+          getStorageProviderAndValidatePayer(
+            env,
+            payerWalletAddress,
+            pieceCid,
+            env.ENFORCE_EGRESS_QUOTA,
+          ),
           env.BAD_BITS_KV.get(`bad-bits:${await getBadBitsEntry(pieceCid)}`, {
             type: 'json',
           }),
@@ -113,6 +118,7 @@ export default {
             requestCountryCode,
             timestamp: requestTimestamp,
             dataSetId,
+            botName,
           }),
         )
         const response = new Response(
@@ -140,6 +146,7 @@ export default {
             requestCountryCode,
             timestamp: requestTimestamp,
             dataSetId,
+            botName,
           }),
         )
         const response = new Response(
@@ -179,9 +186,15 @@ export default {
               workerTtfb: firstByteAt - workerStartedAt,
             },
             dataSetId,
+            botName,
           })
 
-          await updateDataSetStats(env, { dataSetId, egressBytes })
+          await updateDataSetStats(env, {
+            dataSetId,
+            egressBytes,
+            cacheMiss: retrievalResult.cacheMiss,
+            enforceEgressQuota: env.ENFORCE_EGRESS_QUOTA,
+          })
         })(),
       )
 
@@ -209,6 +222,7 @@ export default {
           requestCountryCode,
           timestamp: requestTimestamp,
           dataSetId: null,
+          botName,
         }),
       )
 

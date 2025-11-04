@@ -11,7 +11,9 @@
     "ipfs-retriever",
     "piece-retriever",
     "terminator",
-    "workflows"
+    "workflows",
+    "usage-reporter",
+    "payment-settler"
   ],
   "scripts": {
     "build:types": "npm run build:types --workspaces --if-present",
@@ -25,13 +27,13 @@
   "prettier": "@checkernetwork/prettier-config",
   "devDependencies": {
     "@checkernetwork/prettier-config": "^1.0.1",
-    "@cloudflare/vitest-pool-workers": "^0.10.0",
+    "@cloudflare/vitest-pool-workers": "^0.10.3",
     "@npmcli/map-workspaces": "^5.0.1",
-    "@types/node": "^22.18.12",
+    "@types/node": "^22.19.0",
     "neostandard": "^0.12.1",
     "prettier": "^3.6.2",
     "typescript": "^5.9.3",
     "vitest": "3.1.4",
-    "wrangler": "^4.45.0"
+    "wrangler": "^4.45.3"
   }
 }

@@ -1,18 +1,30 @@
-import { createExecutionContext, waitOnExecutionContext } from 'cloudflare:test'
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import {
+  createExecutionContext,
+  waitOnExecutionContext,
+  fetchMock,
+} from 'cloudflare:test'
+import {
+  describe,
+  it,
+  expect,
+  vi,
+  beforeEach,
+  beforeAll,
+  afterEach,
+} from 'vitest'
 import { retrieveFile, getRetrievalUrl } from '../lib/retrieval.js'
 
 describe('retrieveFile', () => {
   const baseUrl = 'https://example.com'
   const pieceCid = 'bafy123abc'
-  let fetchMock
   let cachesMock
 
+  beforeAll(() => {
+    fetchMock.activate()
+    fetchMock.disableNetConnect()
+  })
+
   beforeEach(() => {
-    fetchMock = vi
-      .fn()
-      .mockResolvedValue({ ok: true, status: 200, headers: new Headers({}) })
-    global.fetch = fetchMock
     cachesMock = {
       match: vi.fn(),
       put: vi.fn().mockResolvedValueOnce(),
@@ -20,8 +32,14 @@ describe('retrieveFile', () => {
     global.caches = { default: cachesMock }
   })
 
+  afterEach(() => {
+    fetchMock.assertNoPendingInterceptors()
+  })
+
   it('constructs the correct URL', async () => {
     cachesMock.match.mockResolvedValueOnce(null)
+    const expectedUrl = `${baseUrl}/piece/${pieceCid}`
+    fetchMock.get(baseUrl).intercept({ path: expectedUrl }).reply(200)
     const ctx = createExecutionContext()
     const { url } = await retrieveFile(
       ctx,
@@ -30,13 +48,15 @@ describe('retrieveFile', () => {
       new Request(baseUrl),
     )
     await waitOnExecutionContext(ctx)
-    const expectedUrl = `${baseUrl}/piece/${pieceCid}`
-    expect(fetchMock).toHaveBeenCalledWith(expectedUrl, expect.any(Object))
     expect(url).toBe(expectedUrl)
   })
 
   it('uses the default cacheTtl if not provided', async () => {
     cachesMock.match.mockResolvedValueOnce(null)
+    fetchMock
+      .get(baseUrl)
+      .intercept({ path: `/piece/${pieceCid}` })
+      .reply(200)
     const ctx = createExecutionContext()
     await retrieveFile(ctx, baseUrl, pieceCid, new Request(baseUrl))
     await waitOnExecutionContext(ctx)
@@ -47,6 +67,10 @@ describe('retrieveFile', () => {
 
   it('uses the provided cacheTtl', async () => {
     cachesMock.match.mockResolvedValueOnce(null)
+    fetchMock
+      .get(baseUrl)
+      .intercept({ path: `/piece/${pieceCid}` })
+      .reply(200)
     const ctx = createExecutionContext()
     await retrieveFile(ctx, baseUrl, pieceCid, new Request(baseUrl), 1234)
     await waitOnExecutionContext(ctx)
@@ -71,8 +95,11 @@ describe('retrieveFile', () => {
 
   it('returns the not ok fetch response', async () => {
     cachesMock.match.mockResolvedValueOnce(null)
+    fetchMock
+      .get(baseUrl)
+      .intercept({ path: `/piece/${pieceCid}` })
+      .reply(500)
     const response = { ok: false, status: 500, headers: new Headers({}) }
-    fetchMock.mockResolvedValueOnce(response)
     const ctx = createExecutionContext()
     const result = await retrieveFile(
       ctx,
@@ -81,17 +108,19 @@ describe('retrieveFile', () => {
       new Request(baseUrl),
     )
     await waitOnExecutionContext(ctx)
-    expect(result.response).toBe(response)
+    expect(result.response).toMatchObject(response)
   })
 
   it('caches and returns a newly cached response', async () => {
     cachesMock.match.mockResolvedValueOnce(null)
-    const response = {
-      ok: true,
-      status: 201,
-      headers: new Headers({ foo: 'bar' }),
-    }
-    fetchMock.mockResolvedValueOnce(response)
+    fetchMock
+      .get(baseUrl)
+      .intercept({ path: `/piece/${pieceCid}` })
+      .reply(201, null, {
+        headers: {
+          foo: 'bar',
+        },
+      })
     const ctx = createExecutionContext()
     const result = await retrieveFile(
       ctx,
@@ -103,6 +132,53 @@ describe('retrieveFile', () => {
     expect(result.response.status).toBe(201)
     expect(result.response.headers.get('foo')).toBe('bar')
     expect(cachesMock.put.mock.calls[0][0]).toBe(`${baseUrl}/piece/${pieceCid}`)
+  })
+
+  it('supports range requests (uncached)', async () => {
+    cachesMock.match.mockResolvedValueOnce(null)
+    fetchMock
+      .get(baseUrl)
+      .intercept({ path: `/piece/${pieceCid}` })
+      .reply(206, '', {
+        headers: { 'content-range': 'bytes 0-1/100' },
+      })
+    const ctx = createExecutionContext()
+    const result = await retrieveFile(
+      ctx,
+      baseUrl,
+      pieceCid,
+      new Request(baseUrl, {
+        headers: new Headers({
+          Range: 'bytes=0-1',
+        }),
+      }),
+    )
+    await waitOnExecutionContext(ctx)
+    expect(result.response.status).toBe(206)
+    expect(result.response.headers.get('content-range')).toBe('bytes 0-1/100')
+  })
+
+  it('supports range requests (cached)', async () => {
+    const response = {
+      ok: true,
+      status: 206,
+      headers: new Headers({ 'content-range': 'bytes 0-1/100' }),
+    }
+    cachesMock.match.mockResolvedValueOnce(response)
+    const ctx = createExecutionContext()
+    const result = await retrieveFile(
+      ctx,
+      baseUrl,
+      pieceCid,
+      new Request(baseUrl, {
+        headers: new Headers({
+          Range: 'bytes=0-1',
+        }),
+      }),
+    )
+    await waitOnExecutionContext(ctx)
+    expect(result.response.status).toBe(206)
+    expect(result.response.headers.get('content-range')).toBe('bytes 0-1/100')
   })
 })
 
