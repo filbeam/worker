@@ -85,7 +85,7 @@ describe('checkBotAuthorization', () => {
       headers: { authorization: 'Bearer invalid_token' },
     })
     expect(() => checkBotAuthorization(request, { BOT_TOKENS })).toThrowError(
-      'Unauthorized: Invalid Access Token',
+      'Unauthorized: Invalid Access Token i...n',
     )
   })
 
