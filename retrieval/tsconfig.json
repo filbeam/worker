@@ -7,9 +7,5 @@
   },
   "include": ["**/*.ts", "**/*.js", "src/**/*.json"],
   "exclude": ["dist", "test"],
-  "references": [
-    {
-      "path": "../retrieval/tsconfig.json"
-    }
-  ]
+  "references": []
 }
