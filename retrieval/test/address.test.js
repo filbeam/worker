@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { isValidEthereumAddress } from '../lib/address.js'
 
 describe('isValidEthereumAddress', () => {
+  /** @type {{ name: string; input: string; expected: boolean }[]} */
   const cases = [
     {
       name: 'valid lowercase address',
