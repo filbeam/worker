@@ -27,8 +27,8 @@ describe('stats-handlers', () => {
 
       const data = await res.json()
       expect(data).toStrictEqual({
-        cdn_egress_quota: '3000',
-        cache_miss_egress_quota: '6000',
+        cdnEgressQuota: '3000',
+        cacheMissEgressQuota: '6000',
       })
     })
 
@@ -57,8 +57,8 @@ describe('stats-handlers', () => {
 
       const data = await res.json()
       expect(data).toStrictEqual({
-        cdn_egress_quota: '0',
-        cache_miss_egress_quota: '0',
+        cdnEgressQuota: '0',
+        cacheMissEgressQuota: '0',
       })
     })
   })

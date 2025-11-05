@@ -21,7 +21,7 @@ export default {
       const url = new URL(request.url)
       const pathSegments = url.pathname.split('/').filter(Boolean)
 
-      if (pathSegments.length === 2 && pathSegments[0] === 'stats') {
+      if (pathSegments.length === 2 && pathSegments[0] === 'data-set') {
         const dataSetId = pathSegments[1]
         return await handleGetDataSetStats(env, dataSetId)
       }

@@ -19,7 +19,7 @@ describe('stats-api.fetch', () => {
       cacheMissEgressQuota: 2000000,
     })
 
-    const req = new Request(`https://example.com/stats/${dataSetId}`)
+    const req = new Request(`https://example.com/data-set/${dataSetId}`)
     const res = await worker.fetch(req, env)
 
     expect(res.status).toBe(200)
@@ -27,13 +27,13 @@ describe('stats-api.fetch', () => {
 
     const data = await res.json()
     expect(data).toStrictEqual({
-      cdn_egress_quota: '1000000',
-      cache_miss_egress_quota: '2000000',
+      cdnEgressQuota: '1000000',
+      cacheMissEgressQuota: '2000000',
     })
   })
 
   it('returns 404 for non-existent data set', async () => {
-    const req = new Request('https://example.com/stats/1337')
+    const req = new Request('https://example.com/data-set/1337')
     const res = await worker.fetch(req, env)
 
     expect(res.status).toBe(404)
@@ -42,7 +42,7 @@ describe('stats-api.fetch', () => {
   })
 
   it('returns 405 for POST method', async () => {
-    const req = new Request('https://example.com/stats/1337', {
+    const req = new Request('https://example.com/data-set/1337', {
       method: 'POST',
       body: JSON.stringify({ test: 'data' }),
       headers: { 'Content-Type': 'application/json' },
@@ -56,7 +56,7 @@ describe('stats-api.fetch', () => {
   })
 
   it('returns 405 for PUT method', async () => {
-    const req = new Request('https://example.com/stats/1337', {
+    const req = new Request('https://example.com/data-set/1337', {
       method: 'PUT',
       body: JSON.stringify({ test: 'data' }),
       headers: { 'Content-Type': 'application/json' },
@@ -70,7 +70,7 @@ describe('stats-api.fetch', () => {
   })
 
   it('returns 405 for DELETE method', async () => {
-    const req = new Request('https://example.com/stats/1337', {
+    const req = new Request('https://example.com/data-set/1337', {
       method: 'DELETE',
     })
     const res = await worker.fetch(req, env)
@@ -110,15 +110,15 @@ describe('stats-api.fetch', () => {
       cacheMissEgressQuota: null,
     })
 
-    const req = new Request(`https://example.com/stats/${dataSetId}`)
+    const req = new Request(`https://example.com/data-set/${dataSetId}`)
     const res = await worker.fetch(req, env)
 
     expect(res.status).toBe(200)
 
     const data = await res.json()
     expect(data).toStrictEqual({
-      cdn_egress_quota: '0',
-      cache_miss_egress_quota: '0',
+      cdnEgressQuota: '0',
+      cacheMissEgressQuota: '0',
     })
   })
 
@@ -133,15 +133,15 @@ describe('stats-api.fetch', () => {
       cacheMissEgressQuota: 0,
     })
 
-    const req = new Request(`https://example.com/stats/${dataSetId}`)
+    const req = new Request(`https://example.com/data-set/${dataSetId}`)
     const res = await worker.fetch(req, env)
 
     expect(res.status).toBe(200)
 
     const data = await res.json()
     expect(data).toStrictEqual({
-      cdn_egress_quota: '0',
-      cache_miss_egress_quota: '0',
+      cdnEgressQuota: '0',
+      cacheMissEgressQuota: '0',
     })
   })
 
@@ -159,15 +159,15 @@ describe('stats-api.fetch', () => {
       cacheMissEgressQuota: largeCacheMissQuota,
     })
 
-    const req = new Request(`https://example.com/stats/${dataSetId}`)
+    const req = new Request(`https://example.com/data-set/${dataSetId}`)
     const res = await worker.fetch(req, env)
 
     expect(res.status).toBe(200)
 
     const data = await res.json()
     expect(data).toStrictEqual({
-      cdn_egress_quota: '999999999999',
-      cache_miss_egress_quota: '888888888888',
+      cdnEgressQuota: '999999999999',
+      cacheMissEgressQuota: '888888888888',
     })
   })
 })

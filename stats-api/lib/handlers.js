@@ -19,8 +19,8 @@ export async function handleGetDataSetStats(env, dataSetId) {
   }
 
   const response = {
-    cdn_egress_quota: String(result.cdn_egress_quota ?? 0),
-    cache_miss_egress_quota: String(result.cache_miss_egress_quota ?? 0),
+    cdnEgressQuota: String(result.cdn_egress_quota ?? 0),
+    cacheMissEgressQuota: String(result.cache_miss_egress_quota ?? 0),
   }
 
   return new Response(JSON.stringify(response), {
