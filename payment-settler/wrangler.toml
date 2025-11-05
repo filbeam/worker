@@ -80,9 +80,8 @@ binding = "TRANSACTION_MONITOR_WORKFLOW"
 name = "calibration-transaction-monitor-workflow"
 class_name = "TransactionMonitorWorkflow"
 
-# TODO: Enable once FilBeam contract has been deployed
-# [env.calibration.triggers]
-# crons = ["*/1 * * * *"]  # Run every minute
+[env.calibration.triggers]
+crons = ["*/45 * * * *"]  # Run every 45 minutes
 
 [env.mainnet.vars]
 ENVIRONMENT = "mainnet"
@@ -110,6 +109,5 @@ binding = "TRANSACTION_MONITOR_WORKFLOW"
 name = "mainnet-transaction-monitor-workflow"
 class_name = "TransactionMonitorWorkflow"
 
-# TODO: Enable once FilBeam contract has been deployed
-# [env.mainnet.triggers]
-# crons = ["*/1 * * * *"]  # Run every minute
+[env.mainnet.triggers]
+crons = ["0 */6 * * *"]  # Run every 6 hrs
