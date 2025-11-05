@@ -58,14 +58,6 @@ export function checkBotAuthorization(request, { BOT_TOKENS }) {
     'Unauthorized: Authorization header must use Bearer scheme',
   )
 
-  if (!(token in botTokens)) {
-    console.error('DEBUG', {
-      token,
-      botTokens,
-      BOT_TOKENS,
-    })
-  }
-
   httpAssert(
     token in botTokens,
     401,
