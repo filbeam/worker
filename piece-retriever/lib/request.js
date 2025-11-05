@@ -58,7 +58,11 @@ export function checkBotAuthorization(request, { BOT_TOKENS }) {
     'Unauthorized: Authorization header must use Bearer scheme',
   )
 
-  httpAssert(token in botTokens, 401, 'Unauthorized: Invalid Access Token')
+  httpAssert(
+    token in botTokens,
+    401,
+    `Unauthorized: Invalid Access Token ${token.slice(0, 1)}...${token.slice(-1)}`,
+  )
 
   return botTokens[token]
 }
