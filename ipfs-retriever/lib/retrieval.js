@@ -169,7 +169,7 @@ export async function processIpfsResponse(
       )
     }
 
-    if (entry.type !== 'file') {
+    if (entry.type !== 'file' && entry.type !== 'raw') {
       console.log(`Unexpected entry - wrong type: ${describeEntry(entry)}`)
       httpAssert(false, 404, 'Not Found')
     }
