@@ -8,4 +8,5 @@ export default defineWorkspace([
   'workflows',
   'usage-reporter',
   'payment-settler',
+  'stats-api',
 ])
