@@ -14,6 +14,7 @@ describe('handleFWSSCDNPaymentRailsToppedUp', () => {
   beforeEach(async () => {
     // Clean up test data
     await env.DB.exec('DELETE FROM data_sets')
+    await env.DB.exec('DELETE FROM data_set_egress_quotas')
     await env.DB.exec('DELETE FROM service_providers')
 
     // Create test service provider and data set using helpers
@@ -32,6 +33,7 @@ describe('handleFWSSCDNPaymentRailsToppedUp', () => {
   afterEach(async () => {
     // Clean up test data
     await env.DB.exec('DELETE FROM data_sets')
+    await env.DB.exec('DELETE FROM data_set_egress_quotas')
     await env.DB.exec('DELETE FROM service_providers')
   })
 
@@ -51,7 +53,7 @@ describe('handleFWSSCDNPaymentRailsToppedUp', () => {
     await handleFWSSCDNPaymentRailsToppedUp(testEnv, payload)
 
     const result = await env.DB.prepare(
-      'SELECT cdn_egress_quota, cache_miss_egress_quota FROM data_sets WHERE id = ?',
+      'SELECT cdn_egress_quota, cache_miss_egress_quota FROM data_set_egress_quotas WHERE data_set_id = ?',
     )
       .bind(testDataSetId)
       .first()
@@ -78,7 +80,7 @@ describe('handleFWSSCDNPaymentRailsToppedUp', () => {
     await handleFWSSCDNPaymentRailsToppedUp(testEnv, payload)
 
     const result = await env.DB.prepare(
-      'SELECT cdn_egress_quota, cache_miss_egress_quota FROM data_sets WHERE id = ?',
+      'SELECT cdn_egress_quota, cache_miss_egress_quota FROM data_set_egress_quotas WHERE data_set_id = ?',
     )
       .bind(testDataSetId)
       .first()
@@ -105,7 +107,7 @@ describe('handleFWSSCDNPaymentRailsToppedUp', () => {
     await handleFWSSCDNPaymentRailsToppedUp(testEnv, payload1)
 
     let result = await env.DB.prepare(
-      'SELECT cdn_egress_quota, cache_miss_egress_quota FROM data_sets WHERE id = ?',
+      'SELECT cdn_egress_quota, cache_miss_egress_quota FROM data_set_egress_quotas WHERE data_set_id = ?',
     )
       .bind(testDataSetId)
       .first()
@@ -125,7 +127,7 @@ describe('handleFWSSCDNPaymentRailsToppedUp', () => {
     await handleFWSSCDNPaymentRailsToppedUp(testEnv, payload2)
 
     result = await env.DB.prepare(
-      'SELECT cdn_egress_quota, cache_miss_egress_quota FROM data_sets WHERE id = ?',
+      'SELECT cdn_egress_quota, cache_miss_egress_quota FROM data_set_egress_quotas WHERE data_set_id = ?',
     )
       .bind(testDataSetId)
       .first()
@@ -136,7 +138,7 @@ describe('handleFWSSCDNPaymentRailsToppedUp', () => {
     })
   })
 
-  it('creates data set if it does not exist', async () => {
+  it('creates quotas in egress table when data set does not exist', async () => {
     const testEnv = {
       ...env,
       CDN_RATE_PER_TIB: '1',
@@ -151,31 +153,33 @@ describe('handleFWSSCDNPaymentRailsToppedUp', () => {
 
     await handleFWSSCDNPaymentRailsToppedUp(testEnv, payload)
 
-    // Verify data set was created with correct quotas
-    const result = await env.DB.prepare('SELECT * FROM data_sets WHERE id = ?')
+    // Verify quotas were created in the egress quotas table
+    const quotaResult = await env.DB.prepare(
+      'SELECT * FROM data_set_egress_quotas WHERE data_set_id = ?',
+    )
       .bind('non-existent-data-set')
       .first()
 
-    expect(result).toStrictEqual({
-      id: 'non-existent-data-set',
-      service_provider_id: '',
-      payer_address: '',
-      with_cdn: 0,
-      with_ipfs_indexing: 0,
+    expect(quotaResult).toStrictEqual({
+      data_set_id: 'non-existent-data-set',
       cdn_egress_quota: Number(BYTES_PER_TIB),
       cache_miss_egress_quota: Number(BYTES_PER_TIB),
-      lockup_unlocks_at: null,
-      total_egress_bytes_used: 0,
-      terminate_service_tx_hash: null,
-      usage_reported_until: '1970-01-01T00:00:00.000Z',
-      pending_usage_report_tx_hash: null,
     })
+
+    const dataSetResult = await env.DB.prepare(
+      'SELECT * FROM data_sets WHERE id = ?',
+    )
+      .bind('non-existent-data-set')
+      .first()
+
+    expect(dataSetResult).toBeNull()
   })
 })
 
 describe('webhook ordering scenarios', () => {
   beforeEach(async () => {
     await env.DB.prepare('DELETE FROM data_sets').run()
+    await env.DB.prepare('DELETE FROM data_set_egress_quotas').run()
     await env.DB.prepare('DELETE FROM service_providers').run()
     await env.DB.prepare('DELETE FROM wallet_details').run()
   })
@@ -201,25 +205,27 @@ describe('webhook ordering scenarios', () => {
 
     await handleFWSSCDNPaymentRailsToppedUp(topUpEnv, topUpPayload)
 
-    // Verify data set was created with quotas
-    let result = await env.DB.prepare('SELECT * FROM data_sets WHERE id = ?')
+    // Verify quotas were created in the egress quotas table
+    let quotaResult = await env.DB.prepare(
+      'SELECT * FROM data_set_egress_quotas WHERE data_set_id = ?',
+    )
       .bind(testDataSetId)
       .first()
 
-    expect(result).toStrictEqual({
-      id: testDataSetId,
-      service_provider_id: '',
-      payer_address: '',
-      with_cdn: 0,
-      with_ipfs_indexing: 0,
+    expect(quotaResult).toStrictEqual({
+      data_set_id: testDataSetId,
       cdn_egress_quota: Number(BYTES_PER_TIB),
       cache_miss_egress_quota: Number(BYTES_PER_TIB),
-      lockup_unlocks_at: null,
-      total_egress_bytes_used: 0,
-      terminate_service_tx_hash: null,
-      usage_reported_until: '1970-01-01T00:00:00.000Z',
-      pending_usage_report_tx_hash: null,
     })
+
+    // Verify data set was NOT created yet
+    let dataSetResult = await env.DB.prepare(
+      'SELECT * FROM data_sets WHERE id = ?',
+    )
+      .bind(testDataSetId)
+      .first()
+
+    expect(dataSetResult).toBeNull()
 
     // Step 2: Data set creation webhook arrives later
     const createPayload = {
@@ -241,24 +247,35 @@ describe('webhook ordering scenarios', () => {
       checkIfAddressIsSanctioned: mockCheckIfAddressIsSanctioned,
     })
 
-    // Verify data set metadata was updated but quotas preserved
-    result = await env.DB.prepare('SELECT * FROM data_sets WHERE id = ?')
+    // Verify data set was created with metadata
+    dataSetResult = await env.DB.prepare('SELECT * FROM data_sets WHERE id = ?')
       .bind(testDataSetId)
       .first()
 
-    expect(result).toStrictEqual({
+    expect(dataSetResult).toStrictEqual({
       id: testDataSetId,
       service_provider_id: testServiceProviderId,
       payer_address: payerAddress.toLowerCase(),
       with_cdn: 1,
       with_ipfs_indexing: 1,
-      cdn_egress_quota: Number(BYTES_PER_TIB),
-      cache_miss_egress_quota: Number(BYTES_PER_TIB),
       lockup_unlocks_at: null,
       total_egress_bytes_used: 0,
       terminate_service_tx_hash: null,
       usage_reported_until: '1970-01-01T00:00:00.000Z',
       pending_usage_report_tx_hash: null,
+    })
+
+    // Verify quotas remain unchanged in the egress quotas table
+    quotaResult = await env.DB.prepare(
+      'SELECT * FROM data_set_egress_quotas WHERE data_set_id = ?',
+    )
+      .bind(testDataSetId)
+      .first()
+
+    expect(quotaResult).toStrictEqual({
+      data_set_id: testDataSetId,
+      cdn_egress_quota: Number(BYTES_PER_TIB),
+      cache_miss_egress_quota: Number(BYTES_PER_TIB),
     })
   })
 
@@ -285,28 +302,30 @@ describe('webhook ordering scenarios', () => {
     await handleFWSSCDNPaymentRailsToppedUp(topUpEnv, {
       data_set_id: testDataSetId,
       cdn_amount_added: '1',
-      cache_miss_amount_added: '1',
+      cache_miss_amount_added: '2',
     })
 
-    // Verify accumulated quotas
-    let result = await env.DB.prepare('SELECT * FROM data_sets WHERE id = ?')
+    // Verify accumulated quotas in egress quotas table
+    let quotaResult = await env.DB.prepare(
+      'SELECT * FROM data_set_egress_quotas WHERE data_set_id = ?',
+    )
       .bind(testDataSetId)
       .first()
 
-    expect(result).toStrictEqual({
-      id: testDataSetId,
-      service_provider_id: '',
-      payer_address: '',
-      with_cdn: 0,
-      with_ipfs_indexing: 0,
+    expect(quotaResult).toStrictEqual({
+      data_set_id: testDataSetId,
       cdn_egress_quota: 2 * Number(BYTES_PER_TIB),
-      cache_miss_egress_quota: 2 * Number(BYTES_PER_TIB),
-      lockup_unlocks_at: null,
-      total_egress_bytes_used: 0,
-      terminate_service_tx_hash: null,
-      usage_reported_until: '1970-01-01T00:00:00.000Z',
-      pending_usage_report_tx_hash: null,
+      cache_miss_egress_quota: 3 * Number(BYTES_PER_TIB),
     })
+
+    // Verify data set still doesn't exist
+    let dataSetResult = await env.DB.prepare(
+      'SELECT * FROM data_sets WHERE id = ?',
+    )
+      .bind(testDataSetId)
+      .first()
+
+    expect(dataSetResult).toBeNull()
 
     // Step 3: Data set creation webhook arrives
     const createPayload = {
@@ -328,24 +347,35 @@ describe('webhook ordering scenarios', () => {
       checkIfAddressIsSanctioned: mockCheckIfAddressIsSanctioned,
     })
 
-    // Verify data set metadata was updated but accumulated quotas preserved
-    result = await env.DB.prepare('SELECT * FROM data_sets WHERE id = ?')
+    // Verify data set metadata was created
+    dataSetResult = await env.DB.prepare('SELECT * FROM data_sets WHERE id = ?')
       .bind(testDataSetId)
       .first()
 
-    expect(result).toStrictEqual({
+    expect(dataSetResult).toStrictEqual({
       id: testDataSetId,
       service_provider_id: testServiceProviderId,
       payer_address: payerAddress.toLowerCase(),
       with_cdn: 1,
       with_ipfs_indexing: 0,
-      cdn_egress_quota: 2 * Number(BYTES_PER_TIB),
-      cache_miss_egress_quota: 2 * Number(BYTES_PER_TIB),
       lockup_unlocks_at: null,
       total_egress_bytes_used: 0,
       terminate_service_tx_hash: null,
       usage_reported_until: '1970-01-01T00:00:00.000Z',
       pending_usage_report_tx_hash: null,
+    })
+
+    // Verify accumulated quotas preserved in egress quotas table
+    quotaResult = await env.DB.prepare(
+      'SELECT * FROM data_set_egress_quotas WHERE data_set_id = ?',
+    )
+      .bind(testDataSetId)
+      .first()
+
+    expect(quotaResult).toStrictEqual({
+      data_set_id: testDataSetId,
+      cdn_egress_quota: 2 * Number(BYTES_PER_TIB),
+      cache_miss_egress_quota: 3 * Number(BYTES_PER_TIB),
     })
   })
 
@@ -375,24 +405,33 @@ describe('webhook ordering scenarios', () => {
     })
 
     // Verify initial data set creation
-    let result = await env.DB.prepare('SELECT * FROM data_sets WHERE id = ?')
+    let dataSetResult = await env.DB.prepare(
+      'SELECT * FROM data_sets WHERE id = ?',
+    )
       .bind(testDataSetId)
       .first()
 
-    expect(result).toStrictEqual({
+    expect(dataSetResult).toStrictEqual({
       id: testDataSetId,
       service_provider_id: testServiceProviderId,
       payer_address: payerAddress.toLowerCase(),
       with_cdn: 1,
       with_ipfs_indexing: 1,
-      cdn_egress_quota: 0, // Initial value
-      cache_miss_egress_quota: 0, // Initial value
       lockup_unlocks_at: null,
       total_egress_bytes_used: 0,
       terminate_service_tx_hash: null,
       usage_reported_until: '1970-01-01T00:00:00.000Z',
       pending_usage_report_tx_hash: null,
     })
+
+    // Verify no quotas exist yet
+    let quotaResult = await env.DB.prepare(
+      'SELECT * FROM data_set_egress_quotas WHERE data_set_id = ?',
+    )
+      .bind(testDataSetId)
+      .first()
+
+    expect(quotaResult).toBeNull()
 
     // Step 2: CDN top-up webhook arrives later
     const topUpEnv = {
@@ -409,19 +448,30 @@ describe('webhook ordering scenarios', () => {
 
     await handleFWSSCDNPaymentRailsToppedUp(topUpEnv, topUpPayload)
 
-    // Verify quotas were updated
-    result = await env.DB.prepare('SELECT * FROM data_sets WHERE id = ?')
+    // Verify quotas were created in egress quotas table
+    quotaResult = await env.DB.prepare(
+      'SELECT * FROM data_set_egress_quotas WHERE data_set_id = ?',
+    )
       .bind(testDataSetId)
       .first()
 
-    expect(result).toStrictEqual({
+    expect(quotaResult).toStrictEqual({
+      data_set_id: testDataSetId,
+      cdn_egress_quota: Number(BYTES_PER_TIB),
+      cache_miss_egress_quota: Number(BYTES_PER_TIB),
+    })
+
+    // Verify data set remains unchanged
+    dataSetResult = await env.DB.prepare('SELECT * FROM data_sets WHERE id = ?')
+      .bind(testDataSetId)
+      .first()
+
+    expect(dataSetResult).toStrictEqual({
       id: testDataSetId,
       service_provider_id: testServiceProviderId,
       payer_address: payerAddress.toLowerCase(),
       with_cdn: 1,
       with_ipfs_indexing: 1,
-      cdn_egress_quota: Number(BYTES_PER_TIB),
-      cache_miss_egress_quota: Number(BYTES_PER_TIB),
       lockup_unlocks_at: null,
       total_egress_bytes_used: 0,
       terminate_service_tx_hash: null,

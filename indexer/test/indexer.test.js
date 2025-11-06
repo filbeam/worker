@@ -1149,7 +1149,7 @@ describe('POST /fwss/cdn-payment-rails-topped-up', () => {
 
     // Verify quotas were stored
     const result = await env.DB.prepare(
-      'SELECT cdn_egress_quota, cache_miss_egress_quota FROM data_sets WHERE id = ?',
+      'SELECT cdn_egress_quota, cache_miss_egress_quota FROM data_set_egress_quotas WHERE data_set_id = ?',
     )
       .bind(dataSetId)
       .first()
@@ -1187,7 +1187,7 @@ describe('POST /fwss/cdn-payment-rails-topped-up', () => {
     expect(await res.text()).toBe('OK')
 
     const result = await env.DB.prepare(
-      'SELECT cdn_egress_quota, cache_miss_egress_quota FROM data_sets WHERE id = ?',
+      'SELECT cdn_egress_quota, cache_miss_egress_quota FROM data_set_egress_quotas WHERE data_set_id = ?',
     )
       .bind(dataSetId)
       .first()
@@ -1241,7 +1241,7 @@ describe('POST /fwss/cdn-payment-rails-topped-up', () => {
     expect(res.status).toBe(200)
 
     const result = await env.DB.prepare(
-      'SELECT cdn_egress_quota, cache_miss_egress_quota FROM data_sets WHERE id = ?',
+      'SELECT cdn_egress_quota, cache_miss_egress_quota FROM data_set_egress_quotas WHERE data_set_id = ?',
     )
       .bind(dataSetId)
       .first()
@@ -1278,7 +1278,7 @@ describe('POST /fwss/cdn-payment-rails-topped-up', () => {
 
     // The handler now creates a data set if it doesn't exist (UPSERT logic)
     const result = await env.DB.prepare(
-      'SELECT cdn_egress_quota, cache_miss_egress_quota FROM data_sets WHERE id = ?',
+      'SELECT cdn_egress_quota, cache_miss_egress_quota FROM data_set_egress_quotas WHERE data_set_id = ?',
     )
       .bind(dataSetId)
       .first()
