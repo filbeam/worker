@@ -120,7 +120,12 @@ export default {
           if (retrievalResult.response.ok) {
             break
           }
-        } catch {}
+        } catch {
+          console.log('Retrieval attempt failed', {
+            retrievalCandidate,
+            willRetry: retrievalCandidates.length > 0
+          })
+        }
       }
 
       httpAssert(retrievalCandidate, 500, 'should never happen')
