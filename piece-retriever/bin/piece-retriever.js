@@ -105,7 +105,7 @@ export default {
           Math.random() * retrievalCandidates.length,
         )
         retrievalCandidate = retrievalCandidates[retrievalCandidateIndex]
-        retrievalCandidates.splice(retrievalCandidateIndex)
+        retrievalCandidates.splice(retrievalCandidateIndex, 1)
         try {
           retrievalResult = await retrieveFile(
             ctx,
