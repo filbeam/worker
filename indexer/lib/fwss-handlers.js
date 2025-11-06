@@ -131,7 +131,7 @@ export async function handleFWSSCDNPaymentRailsToppedUp(env, payload) {
       cdn_egress_quota,
       cache_miss_egress_quota
     )
-    VALUES (?, '', '', true, CAST(? AS INTEGER), CAST(? AS INTEGER))
+    VALUES (?, '', '', false, CAST(? AS INTEGER), CAST(? AS INTEGER))
     ON CONFLICT (id) DO UPDATE SET
       cdn_egress_quota = cdn_egress_quota + CAST(? AS INTEGER),
       cache_miss_egress_quota = cache_miss_egress_quota + CAST(? AS INTEGER)

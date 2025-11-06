@@ -160,7 +160,7 @@ describe('handleFWSSCDNPaymentRailsToppedUp', () => {
       id: 'non-existent-data-set',
       service_provider_id: '',
       payer_address: '',
-      with_cdn: 1,
+      with_cdn: 0,
       with_ipfs_indexing: 0,
       cdn_egress_quota: Number(BYTES_PER_TIB),
       cache_miss_egress_quota: Number(BYTES_PER_TIB),
@@ -210,7 +210,7 @@ describe('webhook ordering scenarios', () => {
       id: testDataSetId,
       service_provider_id: '',
       payer_address: '',
-      with_cdn: 1,
+      with_cdn: 0,
       with_ipfs_indexing: 0,
       cdn_egress_quota: Number(BYTES_PER_TIB),
       cache_miss_egress_quota: Number(BYTES_PER_TIB),
@@ -297,8 +297,8 @@ describe('webhook ordering scenarios', () => {
       id: testDataSetId,
       service_provider_id: '',
       payer_address: '',
-      with_cdn: 1, // true in SQLite
-      with_ipfs_indexing: 0, // false in SQLite
+      with_cdn: 0,
+      with_ipfs_indexing: 0,
       cdn_egress_quota: 2 * Number(BYTES_PER_TIB),
       cache_miss_egress_quota: 2 * Number(BYTES_PER_TIB),
       lockup_unlocks_at: null,
