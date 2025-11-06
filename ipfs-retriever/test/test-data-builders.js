@@ -1,4 +1,4 @@
-import { getBadBitsEntry } from '../lib/bad-bits-util'
+import { getBadBitsEntry } from '@filbeam/retrieval'
 
 /**
  * @param {Env} env

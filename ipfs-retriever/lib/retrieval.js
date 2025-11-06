@@ -2,7 +2,7 @@ import { CarReader } from '@ipld/car'
 // @ts-ignore - Types exist but package.json exports configuration prevents resolution
 import * as carBlockValidator from '@web3-storage/car-block-validator'
 import { recursive as exporter } from 'ipfs-unixfs-exporter'
-import { httpAssert } from './http-assert'
+import { httpAssert } from '@filbeam/retrieval'
 
 /** @import {UnixFSBasicEntry} from 'ipfs-unixfs-exporter' */
 /** @typedef {CarReader['_blocks'][0]} Block */

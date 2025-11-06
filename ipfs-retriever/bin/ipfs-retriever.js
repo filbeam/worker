@@ -1,4 +1,10 @@
-import { isValidEthereumAddress } from '../lib/address.js'
+import {
+  isValidEthereumAddress,
+  httpAssert,
+  setContentSecurityPolicy,
+  getBadBitsEntry,
+} from '@filbeam/retrieval'
+
 import { parseRequest } from '../lib/request.js'
 import {
   retrieveIpfsContent as defaultRetrieveIpfsContent,
@@ -11,9 +17,6 @@ import {
   updateDataSetStats,
   getSlugForWalletAndCid,
 } from '../lib/store.js'
-import { httpAssert } from '../lib/http-assert.js'
-import { setContentSecurityPolicy } from '../lib/content-security-policy.js'
-import { getBadBitsEntry } from '../lib/bad-bits-util.js'
 
 export default {
   /**

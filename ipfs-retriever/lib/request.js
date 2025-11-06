@@ -1,4 +1,4 @@
-import { httpAssert } from './http-assert.js'
+import { httpAssert } from '@filbeam/retrieval'
 import { base32ToBigInt } from './bigint-util.js'
 
 /**

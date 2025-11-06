@@ -1,5 +1,5 @@
 import { bigIntToBase32 } from './bigint-util.js'
-import { httpAssert } from './http-assert.js'
+import { httpAssert } from '@filbeam/retrieval'
 
 /**
  * Logs the result of a file retrieval attempt to the D1 database.
