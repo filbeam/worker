@@ -79,8 +79,9 @@ describe('getRetrievalCandidatesAndValidatePayer', () => {
       pieceCid,
       true,
     )
-    expect(results.length).toBe(1)
-    expect(results[0].serviceProviderId).toBe(APPROVED_SERVICE_PROVIDER_ID)
+    expect(results).toMatchObject([
+      { serviceProviderId: APPROVED_SERVICE_PROVIDER_ID },
+    ])
   })
 
   it('throws error if pieceCid not found', async () => {
@@ -175,8 +176,9 @@ describe('getRetrievalCandidatesAndValidatePayer', () => {
       pieceCid,
       true,
     )
-    expect(results.length).toBe(1)
-    expect(results[0].serviceProviderId).toBe(APPROVED_SERVICE_PROVIDER_ID)
+    expect(results).toMatchObject([
+      { serviceProviderId: APPROVED_SERVICE_PROVIDER_ID },
+    ])
   })
 
   it('returns multiple service providers when they share the same pieceCid', async () => {
@@ -224,9 +226,10 @@ describe('getRetrievalCandidatesAndValidatePayer', () => {
       true,
     )
 
-    expect(results.length).toBe(2)
-    expect(results[0].serviceProviderId).toBe(serviceProviderId1)
-    expect(results[1].serviceProviderId).toBe(serviceProviderId2)
+    expect(results).toMatchObject([
+      { serviceProviderId: serviceProviderId1 },
+      { serviceProviderId: serviceProviderId2 },
+    ])
   })
 
   it('ignores owners that are not approved by Filecoin Warm Storage Service', async () => {
@@ -272,14 +275,15 @@ describe('getRetrievalCandidatesAndValidatePayer', () => {
       pieceCid,
       true,
     )
-    expect(results.length).toBe(1)
-    expect(results[0]).toEqual({
-      dataSetId: dataSetId1,
-      serviceProviderId: serviceProviderId1.toLowerCase(),
-      serviceUrl: 'https://pdp-provider-1.xyz',
-      cdnEgressQuota: 100n,
-      cacheMissEgressQuota: 100n,
-    })
+    expect(results).toMatchObject([
+      {
+        dataSetId: dataSetId1,
+        serviceProviderId: serviceProviderId1.toLowerCase(),
+        serviceUrl: 'https://pdp-provider-1.xyz',
+        cdnEgressQuota: 100n,
+        cacheMissEgressQuota: 100n,
+      },
+    ])
   })
 })
 
@@ -357,14 +361,15 @@ describe('Egress Quota Management', () => {
       pieceCid,
       true,
     )
-    expect(results.length).toBe(1)
-    expect(results[0]).toStrictEqual({
-      dataSetId,
-      serviceProviderId: APPROVED_SERVICE_PROVIDER_ID,
-      serviceUrl: 'https://quota-test-provider.xyz',
-      cdnEgressQuota: 1n,
-      cacheMissEgressQuota: 1n,
-    })
+    expect(results).toMatchObject([
+      {
+        dataSetId,
+        serviceProviderId: APPROVED_SERVICE_PROVIDER_ID,
+        serviceUrl: 'https://quota-test-provider.xyz',
+        cdnEgressQuota: 1n,
+        cacheMissEgressQuota: 1n,
+      },
+    ])
   })
 
   it('correctly decrements CDN quota on cache hit', async () => {
@@ -551,14 +556,15 @@ describe('Egress Quota Management', () => {
       pieceCid,
       true,
     )
-    expect(results.length).toBe(1)
-    expect(results[0]).toStrictEqual({
-      dataSetId,
-      serviceProviderId: APPROVED_SERVICE_PROVIDER_ID,
-      serviceUrl: 'https://quota-test-provider.xyz',
-      cdnEgressQuota: 100n,
-      cacheMissEgressQuota: 100n,
-    })
+    expect(results).toMatchObject([
+      {
+        dataSetId,
+        serviceProviderId: APPROVED_SERVICE_PROVIDER_ID,
+        serviceUrl: 'https://quota-test-provider.xyz',
+        cdnEgressQuota: 100n,
+        cacheMissEgressQuota: 100n,
+      },
+    ])
 
     // Decrement by exact amount should result in 0
     await updateDataSetStats(env, {
@@ -600,14 +606,15 @@ describe('Egress Quota Management', () => {
       pieceCid,
       false,
     )
-    expect(results.length).toBe(1)
-    expect(results[0]).toStrictEqual({
-      dataSetId,
-      serviceProviderId: APPROVED_SERVICE_PROVIDER_ID,
-      serviceUrl: 'https://quota-test-provider.xyz',
-      cdnEgressQuota: 0n,
-      cacheMissEgressQuota: 1n,
-    })
+    expect(results).toMatchObject([
+      {
+        dataSetId,
+        serviceProviderId: APPROVED_SERVICE_PROVIDER_ID,
+        serviceUrl: 'https://quota-test-provider.xyz',
+        cdnEgressQuota: 0n,
+        cacheMissEgressQuota: 1n,
+      },
+    ])
   })
 
   it('allows retrieval when quota enforcement is disabled and cache-miss quota is exhausted', async () => {
@@ -632,14 +639,15 @@ describe('Egress Quota Management', () => {
       pieceCid,
       false,
     )
-    expect(results.length).toBe(1)
-    expect(results[0]).toStrictEqual({
-      dataSetId,
-      serviceProviderId: APPROVED_SERVICE_PROVIDER_ID,
-      serviceUrl: 'https://quota-test-provider.xyz',
-      cdnEgressQuota: 1n,
-      cacheMissEgressQuota: 0n,
-    })
+    expect(results).toMatchObject([
+      {
+        dataSetId,
+        serviceProviderId: APPROVED_SERVICE_PROVIDER_ID,
+        serviceUrl: 'https://quota-test-provider.xyz',
+        cdnEgressQuota: 1n,
+        cacheMissEgressQuota: 0n,
+      },
+    ])
   })
 
   it('allows retrieval when quota enforcement is disabled and both quotas are exhausted', async () => {
@@ -664,14 +672,15 @@ describe('Egress Quota Management', () => {
       pieceCid,
       false,
     )
-    expect(results.length).toBe(1)
-    expect(results[0]).toStrictEqual({
-      dataSetId,
-      serviceProviderId: APPROVED_SERVICE_PROVIDER_ID,
-      serviceUrl: 'https://quota-test-provider.xyz',
-      cdnEgressQuota: 0n,
-      cacheMissEgressQuota: 0n,
-    })
+    expect(results).toMatchObject([
+      {
+        dataSetId,
+        serviceProviderId: APPROVED_SERVICE_PROVIDER_ID,
+        serviceUrl: 'https://quota-test-provider.xyz',
+        cdnEgressQuota: 0n,
+        cacheMissEgressQuota: 0n,
+      },
+    ])
   })
 })
 

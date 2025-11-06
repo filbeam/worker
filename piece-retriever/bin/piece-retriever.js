@@ -124,7 +124,7 @@ export default {
         } catch {
           console.log('Retrieval attempt failed', {
             retrievalCandidate,
-            willRetry: retrievalCandidates.length > 0
+            willRetry: retrievalCandidates.length > 0,
           })
         }
       }
