@@ -1253,8 +1253,8 @@ describe('POST /fwss/cdn-payment-rails-topped-up', () => {
     })
   })
 
-  it('handles missing data set gracefully', async () => {
-    // Test that the handler doesn't fail when the data set doesn't exist
+  it('creates data set if it does not exist', async () => {
+    // Test that the handler creates a new data set with quotas if it doesn't exist
     const dataSetId = '999'
 
     env.CDN_RATE_DOLLARS_PER_TIB = '5'
@@ -1276,14 +1276,16 @@ describe('POST /fwss/cdn-payment-rails-topped-up', () => {
     expect(res.status).toBe(200)
     expect(await res.text()).toBe('OK')
 
-    // Since the data set doesn't exist, the quotas won't be stored
-    // This is expected behavior - the handler updates existing data sets only
+    // The handler now creates a data set if it doesn't exist (UPSERT logic)
     const result = await env.DB.prepare(
       'SELECT cdn_egress_quota, cache_miss_egress_quota FROM data_sets WHERE id = ?',
     )
       .bind(dataSetId)
       .first()
 
-    expect(result).toBe(null)
+    expect(result).toStrictEqual({
+      cdn_egress_quota: 1099511627776, // 1 TiB (5 FIL / 5 FIL per TiB)
+      cache_miss_egress_quota: 2199023255552, // 2 TiB (10 FIL / 5 FIL per TiB)
+    })
   })
 })

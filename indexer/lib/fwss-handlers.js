@@ -50,7 +50,11 @@ export async function handleFWSSDataSetCreated(
         with_ipfs_indexing
       )
       VALUES (?, ?, ?, ?, ?)
-      ON CONFLICT DO NOTHING
+      ON CONFLICT (id) DO UPDATE SET
+        service_provider_id = excluded.service_provider_id,
+        payer_address = excluded.payer_address,
+        with_cdn = excluded.with_cdn,
+        with_ipfs_indexing = excluded.with_ipfs_indexing
     `,
   )
     .bind(
@@ -119,16 +123,26 @@ export async function handleFWSSCDNPaymentRailsToppedUp(env, payload) {
 
   await env.DB.prepare(
     `
-    UPDATE data_sets
-    SET cdn_egress_quota = cdn_egress_quota + CAST(? AS INTEGER),
-        cache_miss_egress_quota = cache_miss_egress_quota + CAST(? AS INTEGER)
-    WHERE id = ?
+    INSERT INTO data_sets (
+      id,
+      service_provider_id,
+      payer_address,
+      with_cdn,
+      cdn_egress_quota,
+      cache_miss_egress_quota
+    )
+    VALUES (?, '', '', true, CAST(? AS INTEGER), CAST(? AS INTEGER))
+    ON CONFLICT (id) DO UPDATE SET
+      cdn_egress_quota = cdn_egress_quota + CAST(? AS INTEGER),
+      cache_miss_egress_quota = cache_miss_egress_quota + CAST(? AS INTEGER)
     `,
   )
     .bind(
+      payload.data_set_id,
       cdnEgressQuotaAdded.toString(),
       cacheMissEgressQuotaAdded.toString(),
-      payload.data_set_id,
+      cdnEgressQuotaAdded.toString(),
+      cacheMissEgressQuotaAdded.toString(),
     )
     .run()
 }

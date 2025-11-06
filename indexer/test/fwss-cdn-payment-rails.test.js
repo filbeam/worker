@@ -1,6 +1,9 @@
 import { describe, it, beforeEach, afterEach, expect } from 'vitest'
 import { env } from 'cloudflare:test'
-import { handleFWSSCDNPaymentRailsToppedUp } from '../lib/fwss-handlers.js'
+import {
+  handleFWSSCDNPaymentRailsToppedUp,
+  handleFWSSDataSetCreated,
+} from '../lib/fwss-handlers.js'
 import { withDataSet, withServiceProvider } from './test-helpers.js'
 import { BYTES_PER_TIB } from '../lib/constants.js'
 
@@ -35,19 +38,18 @@ describe('handleFWSSCDNPaymentRailsToppedUp', () => {
   it('calculates and stores egress quotas correctly', async () => {
     const testEnv = {
       ...env,
-      CDN_RATE_PER_TIB: '5000000000000000000', // 5 USDFC per TiB
-      CACHE_MISS_RATE_PER_TIB: '5000000000000000000', // Same rate for cache miss
+      CDN_RATE_PER_TIB: '1',
+      CACHE_MISS_RATE_PER_TIB: '1',
     }
 
     const payload = {
       data_set_id: testDataSetId,
-      cdn_amount_added: '5000000000000000000', // 5 USDFC = 1 TiB quota
-      cache_miss_amount_added: '10000000000000000000', // 10 USDFC = 2 TiB quota
+      cdn_amount_added: '1',
+      cache_miss_amount_added: '2',
     }
 
     await handleFWSSCDNPaymentRailsToppedUp(testEnv, payload)
 
-    // Verify the quotas were incremented correctly
     const result = await env.DB.prepare(
       'SELECT cdn_egress_quota, cache_miss_egress_quota FROM data_sets WHERE id = ?',
     )
@@ -55,16 +57,16 @@ describe('handleFWSSCDNPaymentRailsToppedUp', () => {
       .first()
 
     expect(result).toStrictEqual({
-      cdn_egress_quota: Number(BYTES_PER_TIB), // 1 TiB in bytes
-      cache_miss_egress_quota: Number(BYTES_PER_TIB * 2n), // 2 TiB in bytes
+      cdn_egress_quota: Number(BYTES_PER_TIB),
+      cache_miss_egress_quota: Number(BYTES_PER_TIB * 2n),
     })
   })
 
   it('handles zero amounts added', async () => {
     const testEnv = {
       ...env,
-      CDN_RATE_PER_TIB: '5000000000000000000',
-      CACHE_MISS_RATE_PER_TIB: '5000000000000000000',
+      CDN_RATE_PER_TIB: '1',
+      CACHE_MISS_RATE_PER_TIB: '1',
     }
 
     const payload = {
@@ -90,15 +92,14 @@ describe('handleFWSSCDNPaymentRailsToppedUp', () => {
   it('accumulates quota values on multiple top-ups', async () => {
     const testEnv = {
       ...env,
-      CDN_RATE_PER_TIB: '5000000000000000000',
-      CACHE_MISS_RATE_PER_TIB: '5000000000000000000',
+      CDN_RATE_PER_TIB: '1',
+      CACHE_MISS_RATE_PER_TIB: '1',
     }
 
-    // First top-up - 1 USDFC = 0.2 TiB
     const payload1 = {
       data_set_id: testDataSetId,
-      cdn_amount_added: '1000000000000000000', // 1 USDFC
-      cache_miss_amount_added: '2000000000000000000', // 2 USDFC
+      cdn_amount_added: '1',
+      cache_miss_amount_added: '2',
     }
 
     await handleFWSSCDNPaymentRailsToppedUp(testEnv, payload1)
@@ -109,18 +110,16 @@ describe('handleFWSSCDNPaymentRailsToppedUp', () => {
       .bind(testDataSetId)
       .first()
 
-    const expectedQuota1 = Number(BYTES_PER_TIB / 5n) // 0.2 TiB
-    const expectedQuota2 = Number((BYTES_PER_TIB * 2n) / 5n) // 0.4 TiB
     expect(result).toStrictEqual({
-      cdn_egress_quota: expectedQuota1,
-      cache_miss_egress_quota: expectedQuota2,
+      cdn_egress_quota: Number(BYTES_PER_TIB),
+      cache_miss_egress_quota: 2 * Number(BYTES_PER_TIB),
     })
 
-    // Second top-up with different values (should add, not replace)
+    // Second top-up should increment, not replace
     const payload2 = {
       data_set_id: testDataSetId,
-      cdn_amount_added: '5000000000000000000', // 5 USDFC = 1 TiB more
-      cache_miss_amount_added: '10000000000000000000', // 10 USDFC = 2 TiB more
+      cdn_amount_added: '1',
+      cache_miss_amount_added: '2',
     }
 
     await handleFWSSCDNPaymentRailsToppedUp(testEnv, payload2)
@@ -131,38 +130,303 @@ describe('handleFWSSCDNPaymentRailsToppedUp', () => {
       .bind(testDataSetId)
       .first()
 
-    // Should be accumulated: 0.2 + 1 = 1.2 TiB for CDN, 0.4 + 2 = 2.4 TiB for cache miss
-    const expectedAccumulatedCdn = Number(BYTES_PER_TIB / 5n + BYTES_PER_TIB)
-    const expectedAccumulatedCacheMiss = Number(
-      (BYTES_PER_TIB * 2n) / 5n + BYTES_PER_TIB * 2n,
-    )
     expect(result).toStrictEqual({
-      cdn_egress_quota: expectedAccumulatedCdn,
-      cache_miss_egress_quota: expectedAccumulatedCacheMiss,
+      cdn_egress_quota: 2 * Number(BYTES_PER_TIB),
+      cache_miss_egress_quota: 4 * Number(BYTES_PER_TIB),
     })
   })
 
-  it('handles missing data set gracefully', async () => {
+  it('creates data set if it does not exist', async () => {
     const testEnv = {
       ...env,
-      CDN_RATE_PER_TIB: '5000000000000000000',
-      CACHE_MISS_RATE_PER_TIB: '5000000000000000000',
+      CDN_RATE_PER_TIB: '1',
+      CACHE_MISS_RATE_PER_TIB: '1',
     }
 
     const payload = {
       data_set_id: 'non-existent-data-set',
-      cdn_amount_added: '5000000000000000000',
-      cache_miss_amount_added: '10000000000000000000',
+      cdn_amount_added: '1',
+      cache_miss_amount_added: '1',
     }
 
-    // Should not throw, just log warning
     await handleFWSSCDNPaymentRailsToppedUp(testEnv, payload)
 
-    // Verify no data was created for non-existent data set
+    // Verify data set was created with correct quotas
     const result = await env.DB.prepare('SELECT * FROM data_sets WHERE id = ?')
       .bind('non-existent-data-set')
       .first()
 
-    expect(result).toBeNull()
+    expect(result).toStrictEqual({
+      id: 'non-existent-data-set',
+      service_provider_id: '',
+      payer_address: '',
+      with_cdn: 1,
+      with_ipfs_indexing: 0,
+      cdn_egress_quota: Number(BYTES_PER_TIB),
+      cache_miss_egress_quota: Number(BYTES_PER_TIB),
+      lockup_unlocks_at: null,
+      total_egress_bytes_used: 0,
+      terminate_service_tx_hash: null,
+      usage_reported_until: '1970-01-01T00:00:00.000Z',
+      pending_usage_report_tx_hash: null,
+    })
+  })
+})
+
+describe('webhook ordering scenarios', () => {
+  beforeEach(async () => {
+    await env.DB.prepare('DELETE FROM data_sets').run()
+    await env.DB.prepare('DELETE FROM service_providers').run()
+    await env.DB.prepare('DELETE FROM wallet_details').run()
+  })
+
+  it('handles CDN top-up before data set creation', async () => {
+    const testServiceProviderId = '1'
+    const testDataSetId = '1'
+    const payerAddress = '0x0000000000000000000000000000000000000000'
+    await withServiceProvider(env, testServiceProviderId, 'test-service')
+
+    const topUpEnv = {
+      ...env,
+      CDN_RATE_PER_TIB: '1',
+      CACHE_MISS_RATE_PER_TIB: '1',
+    }
+
+    // Step 1: CDN top-up webhook arrives first
+    const topUpPayload = {
+      data_set_id: testDataSetId,
+      cdn_amount_added: '1',
+      cache_miss_amount_added: '1',
+    }
+
+    await handleFWSSCDNPaymentRailsToppedUp(topUpEnv, topUpPayload)
+
+    // Verify data set was created with quotas
+    let result = await env.DB.prepare('SELECT * FROM data_sets WHERE id = ?')
+      .bind(testDataSetId)
+      .first()
+
+    expect(result).toStrictEqual({
+      id: testDataSetId,
+      service_provider_id: '',
+      payer_address: '',
+      with_cdn: 1,
+      with_ipfs_indexing: 0,
+      cdn_egress_quota: Number(BYTES_PER_TIB),
+      cache_miss_egress_quota: Number(BYTES_PER_TIB),
+      lockup_unlocks_at: null,
+      total_egress_bytes_used: 0,
+      terminate_service_tx_hash: null,
+      usage_reported_until: '1970-01-01T00:00:00.000Z',
+      pending_usage_report_tx_hash: null,
+    })
+
+    // Step 2: Data set creation webhook arrives later
+    const createPayload = {
+      data_set_id: testDataSetId,
+      provider_id: testServiceProviderId,
+      payer: payerAddress,
+      metadata_keys: ['withCDN', 'withIPFSIndexing'],
+      metadata_values: ['true', 'true'],
+    }
+
+    const createEnv = {
+      ...env,
+      CHAINALYSIS_API_KEY: 'test-key',
+    }
+
+    const mockCheckIfAddressIsSanctioned = async () => false
+
+    await handleFWSSDataSetCreated(createEnv, createPayload, {
+      checkIfAddressIsSanctioned: mockCheckIfAddressIsSanctioned,
+    })
+
+    // Verify data set metadata was updated but quotas preserved
+    result = await env.DB.prepare('SELECT * FROM data_sets WHERE id = ?')
+      .bind(testDataSetId)
+      .first()
+
+    expect(result).toStrictEqual({
+      id: testDataSetId,
+      service_provider_id: testServiceProviderId,
+      payer_address: payerAddress.toLowerCase(),
+      with_cdn: 1,
+      with_ipfs_indexing: 1,
+      cdn_egress_quota: Number(BYTES_PER_TIB),
+      cache_miss_egress_quota: Number(BYTES_PER_TIB),
+      lockup_unlocks_at: null,
+      total_egress_bytes_used: 0,
+      terminate_service_tx_hash: null,
+      usage_reported_until: '1970-01-01T00:00:00.000Z',
+      pending_usage_report_tx_hash: null,
+    })
+  })
+
+  it('handles multiple CDN top-ups before data set creation', async () => {
+    const testServiceProviderId = '1'
+    const testDataSetId = '1'
+    const payerAddress = '0x0000000000000000000000000000000000000000'
+    await withServiceProvider(env, testServiceProviderId, 'test-service')
+
+    const topUpEnv = {
+      ...env,
+      CDN_RATE_PER_TIB: '1',
+      CACHE_MISS_RATE_PER_TIB: '1',
+    }
+
+    // Step 1: First CDN top-up
+    await handleFWSSCDNPaymentRailsToppedUp(topUpEnv, {
+      data_set_id: testDataSetId,
+      cdn_amount_added: '1',
+      cache_miss_amount_added: '1',
+    })
+
+    // Step 2: Second CDN top-up
+    await handleFWSSCDNPaymentRailsToppedUp(topUpEnv, {
+      data_set_id: testDataSetId,
+      cdn_amount_added: '1',
+      cache_miss_amount_added: '1',
+    })
+
+    // Verify accumulated quotas
+    let result = await env.DB.prepare('SELECT * FROM data_sets WHERE id = ?')
+      .bind(testDataSetId)
+      .first()
+
+    expect(result).toStrictEqual({
+      id: testDataSetId,
+      service_provider_id: '',
+      payer_address: '',
+      with_cdn: 1, // true in SQLite
+      with_ipfs_indexing: 0, // false in SQLite
+      cdn_egress_quota: 2 * Number(BYTES_PER_TIB),
+      cache_miss_egress_quota: 2 * Number(BYTES_PER_TIB),
+      lockup_unlocks_at: null,
+      total_egress_bytes_used: 0,
+      terminate_service_tx_hash: null,
+      usage_reported_until: '1970-01-01T00:00:00.000Z',
+      pending_usage_report_tx_hash: null,
+    })
+
+    // Step 3: Data set creation webhook arrives
+    const createPayload = {
+      data_set_id: testDataSetId,
+      provider_id: testServiceProviderId,
+      payer: payerAddress,
+      metadata_keys: ['withCDN'],
+      metadata_values: ['true'],
+    }
+
+    const createEnv = {
+      ...env,
+      CHAINALYSIS_API_KEY: 'test-key',
+    }
+
+    const mockCheckIfAddressIsSanctioned = async () => false
+
+    await handleFWSSDataSetCreated(createEnv, createPayload, {
+      checkIfAddressIsSanctioned: mockCheckIfAddressIsSanctioned,
+    })
+
+    // Verify data set metadata was updated but accumulated quotas preserved
+    result = await env.DB.prepare('SELECT * FROM data_sets WHERE id = ?')
+      .bind(testDataSetId)
+      .first()
+
+    expect(result).toStrictEqual({
+      id: testDataSetId,
+      service_provider_id: testServiceProviderId,
+      payer_address: payerAddress.toLowerCase(),
+      with_cdn: 1,
+      with_ipfs_indexing: 0,
+      cdn_egress_quota: 2 * Number(BYTES_PER_TIB),
+      cache_miss_egress_quota: 2 * Number(BYTES_PER_TIB),
+      lockup_unlocks_at: null,
+      total_egress_bytes_used: 0,
+      terminate_service_tx_hash: null,
+      usage_reported_until: '1970-01-01T00:00:00.000Z',
+      pending_usage_report_tx_hash: null,
+    })
+  })
+
+  it('handles data set creation before CDN top-up', async () => {
+    const testServiceProviderId = '1'
+    const testDataSetId = '1'
+    const payerAddress = '0x0000000000000000000000000000000000000000'
+    await withServiceProvider(env, testServiceProviderId, 'test-service')
+
+    // Step 1: Data set creation webhook arrives first (normal order)
+    const createPayload = {
+      data_set_id: testDataSetId,
+      provider_id: testServiceProviderId,
+      payer: payerAddress,
+      metadata_keys: ['withCDN', 'withIPFSIndexing'],
+      metadata_values: ['true', 'false'],
+    }
+
+    const createEnv = {
+      ...env,
+      CHAINALYSIS_API_KEY: 'test-key',
+    }
+
+    const mockCheckIfAddressIsSanctioned = async () => false
+    await handleFWSSDataSetCreated(createEnv, createPayload, {
+      checkIfAddressIsSanctioned: mockCheckIfAddressIsSanctioned,
+    })
+
+    // Verify initial data set creation
+    let result = await env.DB.prepare('SELECT * FROM data_sets WHERE id = ?')
+      .bind(testDataSetId)
+      .first()
+
+    expect(result).toStrictEqual({
+      id: testDataSetId,
+      service_provider_id: testServiceProviderId,
+      payer_address: payerAddress.toLowerCase(),
+      with_cdn: 1,
+      with_ipfs_indexing: 1,
+      cdn_egress_quota: 0, // Initial value
+      cache_miss_egress_quota: 0, // Initial value
+      lockup_unlocks_at: null,
+      total_egress_bytes_used: 0,
+      terminate_service_tx_hash: null,
+      usage_reported_until: '1970-01-01T00:00:00.000Z',
+      pending_usage_report_tx_hash: null,
+    })
+
+    // Step 2: CDN top-up webhook arrives later
+    const topUpEnv = {
+      ...env,
+      CDN_RATE_PER_TIB: '1',
+      CACHE_MISS_RATE_PER_TIB: '1',
+    }
+
+    const topUpPayload = {
+      data_set_id: testDataSetId,
+      cdn_amount_added: '1',
+      cache_miss_amount_added: '1',
+    }
+
+    await handleFWSSCDNPaymentRailsToppedUp(topUpEnv, topUpPayload)
+
+    // Verify quotas were updated
+    result = await env.DB.prepare('SELECT * FROM data_sets WHERE id = ?')
+      .bind(testDataSetId)
+      .first()
+
+    expect(result).toStrictEqual({
+      id: testDataSetId,
+      service_provider_id: testServiceProviderId,
+      payer_address: payerAddress.toLowerCase(),
+      with_cdn: 1,
+      with_ipfs_indexing: 1,
+      cdn_egress_quota: Number(BYTES_PER_TIB),
+      cache_miss_egress_quota: Number(BYTES_PER_TIB),
+      lockup_unlocks_at: null,
+      total_egress_bytes_used: 0,
+      terminate_service_tx_hash: null,
+      usage_reported_until: '1970-01-01T00:00:00.000Z',
+      pending_usage_report_tx_hash: null,
+    })
   })
 })
