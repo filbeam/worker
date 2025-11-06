@@ -142,7 +142,9 @@ export default {
           {
             status: 502,
             headers: new Headers({
-              'X-Data-Set-ID': retrievalCandidate.dataSetId,
+              'X-Data-Set-ID': retrievalAttempts
+                .map((a) => a.dataSetId)
+                .join(','),
             }),
           },
         )
