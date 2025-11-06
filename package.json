@@ -13,7 +13,9 @@
     "terminator",
     "workflows",
     "usage-reporter",
-    "payment-settler"
+    "payment-settler",
+    "retrieval",
+    "stats-api"
   ],
   "scripts": {
     "build:types": "npm run build:types --workspaces --if-present",
@@ -27,7 +29,7 @@
   "prettier": "@checkernetwork/prettier-config",
   "devDependencies": {
     "@checkernetwork/prettier-config": "^1.0.1",
-    "@cloudflare/vitest-pool-workers": "^0.10.3",
+    "@cloudflare/vitest-pool-workers": "^0.10.4",
     "@npmcli/map-workspaces": "^5.0.1",
     "@types/node": "^22.19.0",
     "neostandard": "^0.12.1",

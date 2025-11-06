@@ -177,7 +177,7 @@ describe('getStorageProviderAndValidatePayer', () => {
     expect(result.serviceProviderId).toBe(APPROVED_SERVICE_PROVIDER_ID)
   })
 
-  it('returns the service provider first in the ordering when multiple service providers share the same pieceCid', async () => {
+  it('returns a random service provider when multiple service providers share the same pieceCid', async () => {
     const dataSetId1 = 'data-set-a'
     const dataSetId2 = 'data-set-b'
     const pieceCid = 'shared-piece-cid'
@@ -215,14 +215,20 @@ describe('getStorageProviderAndValidatePayer', () => {
       payerAddress,
     })
 
-    // Should return only the serviceProviderId1 which is the first in the ordering
-    const result = await getStorageProviderAndValidatePayer(
-      env,
-      payerAddress,
-      pieceCid,
-      true,
-    )
-    expect(result.serviceProviderId).toBe(serviceProviderId1)
+    const serviceProviderIdsReturned = new Set()
+    for (let i = 0; i < 100; i++) {
+      const result = await getStorageProviderAndValidatePayer(
+        env,
+        payerAddress,
+        pieceCid,
+        true,
+      )
+      serviceProviderIdsReturned.add(result.serviceProviderId)
+      if (serviceProviderIdsReturned.size === 2) {
+        return
+      }
+    }
+    throw new Error('Did not return 2 different SPs')
   })
 
   it('ignores owners that are not approved by Filecoin Warm Storage Service', async () => {

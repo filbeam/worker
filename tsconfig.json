@@ -29,6 +29,12 @@
     },
     {
       "path": "payment-settler/tsconfig.json"
+    },
+    {
+      "path": "retrieval/tsconfig.json"
+    },
+    {
+      "path": "stats-api/tsconfig.json"
     }
   ],
   "include": ["bin/*.js"]

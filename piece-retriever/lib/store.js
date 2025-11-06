@@ -1,4 +1,4 @@
-import { httpAssert } from './http-assert.js'
+import { httpAssert } from '@filbeam/retrieval'
 
 /**
  * Logs the result of a file retrieval attempt to the D1 database.
@@ -212,7 +212,7 @@ export async function getStorageProviderAndValidatePayer(
     service_url: serviceUrl,
     cdn_egress_quota: cdnEgressQuota,
     cache_miss_egress_quota: cacheMissEgressQuota,
-  } = withSufficientCacheMissQuota[0]
+  } = pickRandom(withSufficientCacheMissQuota)
 
   // We need this assertion to supress TypeScript error. The compiler is not able to infer that
   // `withCDN.filter()` above returns only rows with `service_url` defined.
@@ -265,4 +265,13 @@ export async function updateDataSetStats(
       dataSetId,
     )
     .run()
+}
+
+/**
+ * @template T
+ * @param {T[]} arr
+ * @returns {T}
+ */
+function pickRandom(arr) {
+  return arr[Math.floor(Math.random() * arr.length)]
 }

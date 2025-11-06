@@ -16,7 +16,7 @@ database_id = "8cc92155-16f6-426a-b782-2965e0daf100"
 [env.dev.vars]
 ENVIRONMENT = "dev"
 RPC_URL = "https://api.calibration.node.glif.io/"
-FILBEAM_CONTRACT_ADDRESS = "0x96e13bC98fA0cdf01b07985c804960117EAB76E8"
+FILBEAM_CONTRACT_ADDRESS = "0x0000000000000000000000000000000000000000"
 FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS = "1667326380000"
 
 [[env.dev.d1_databases]]
@@ -27,7 +27,7 @@ database_id = "8cc92155-16f6-426a-b782-2965e0daf101"
 [env.calibration.vars]
 ENVIRONMENT = "calibration"
 RPC_URL = "https://api.calibration.node.glif.io/"
-FILBEAM_CONTRACT_ADDRESS = "0x"
+FILBEAM_CONTRACT_ADDRESS = "0x50aBAe0B3D37A2fA4D3a7f62FbD49F9a566AeB95"
 FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS = "1667326380000"
 
 [[env.calibration.d1_databases]]
@@ -42,7 +42,7 @@ database_id = "78f15bbb-391f-4797-9016-a6cb86c0b9b8"
 [env.mainnet.vars]
 ENVIRONMENT = "mainnet"
 RPC_URL = "https://api.node.glif.io/"
-FILBEAM_CONTRACT_ADDRESS = "0x" # TODO
+FILBEAM_CONTRACT_ADDRESS = "0x010ca67040e80c8FdBF679680D09b94e2A9ac6B8"
 FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS = "1598306400000"
 
 [[env.mainnet.d1_databases]]
