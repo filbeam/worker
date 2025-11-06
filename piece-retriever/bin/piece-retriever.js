@@ -5,7 +5,7 @@ import {
   measureStreamedEgress,
 } from '../lib/retrieval.js'
 import {
-  getStorageProviderAndValidatePayer,
+  getRetrievalCandidatesAndValidatePayer,
   logRetrievalResult,
   updateDataSetStats,
 } from '../lib/store.js'
@@ -71,18 +71,17 @@ export default {
       // Timestamp to measure file retrieval performance (from cache and from SP)
       const fetchStartedAt = performance.now()
 
-      const [{ serviceProviderId, serviceUrl, dataSetId }, isBadBit] =
-        await Promise.all([
-          getStorageProviderAndValidatePayer(
-            env,
-            payerWalletAddress,
-            pieceCid,
-            env.ENFORCE_EGRESS_QUOTA,
-          ),
-          env.BAD_BITS_KV.get(`bad-bits:${await getBadBitsEntry(pieceCid)}`, {
-            type: 'json',
-          }),
-        ])
+      const [retrievalCandidates, isBadBit] = await Promise.all([
+        getRetrievalCandidatesAndValidatePayer(
+          env,
+          payerWalletAddress,
+          pieceCid,
+          env.ENFORCE_EGRESS_QUOTA,
+        ),
+        env.BAD_BITS_KV.get(`bad-bits:${await getBadBitsEntry(pieceCid)}`, {
+          type: 'json',
+        }),
+      ])
 
       httpAssert(
         !isBadBit,
@@ -90,24 +89,39 @@ export default {
         'The requested CID was flagged by the Bad Bits Denylist at https://badbits.dwebops.pub',
       )
 
-      httpAssert(
-        serviceProviderId,
-        404,
-        `Unsupported Service Provider: ${serviceProviderId}`,
-      )
+      if (retrievalCandidates.length === 0) {
+        const response = new Response('No retrieval candidate found', {
+          status: 404,
+        })
+        setContentSecurityPolicy(response)
+        return response
+      }
 
+      let retrievalCandidate
       let retrievalResult
 
-      try {
-        retrievalResult = await retrieveFile(
-          ctx,
-          serviceUrl,
-          pieceCid,
-          request,
-          env.ORIGIN_CACHE_TTL,
-          { signal: request.signal },
+      while (retrievalCandidates.length > 0) {
+        const retrievalCandidateIndex = Math.floor(
+          Math.random() * retrievalCandidates.length,
         )
-      } catch {}
+        retrievalCandidate = retrievalCandidates[retrievalCandidateIndex]
+        retrievalCandidates.splice(retrievalCandidateIndex)
+        try {
+          retrievalResult = await retrieveFile(
+            ctx,
+            retrievalCandidate.serviceUrl,
+            pieceCid,
+            request,
+            env.ORIGIN_CACHE_TTL,
+            { signal: request.signal },
+          )
+          if (retrievalResult.response.ok) {
+            break
+          }
+        } catch {}
+      }
+
+      httpAssert(retrievalCandidate, 500, 'should never happen')
 
       if (!retrievalResult || retrievalResult.response.status >= 500) {
         ctx.waitUntil(
@@ -117,16 +131,16 @@ export default {
             egressBytes: 0,
             requestCountryCode,
             timestamp: requestTimestamp,
-            dataSetId,
+            dataSetId: retrievalCandidate.dataSetId,
             botName,
           }),
         )
         const response = new Response(
-          `Service provider ${serviceProviderId} is unavailable${retrievalResult ? ` at ${retrievalResult.url}` : ''}`,
+          `Service provider ${retrievalCandidate.serviceProviderId} is unavailable${retrievalResult ? ` at ${retrievalResult.url}` : ''}`,
           {
             status: 502,
             headers: new Headers({
-              'X-Data-Set-ID': dataSetId,
+              'X-Data-Set-ID': retrievalCandidate.dataSetId,
             }),
           },
         )
@@ -145,7 +159,7 @@ export default {
             egressBytes: 0,
             requestCountryCode,
             timestamp: requestTimestamp,
-            dataSetId,
+            dataSetId: retrievalCandidate.dataSetId,
             botName,
           }),
         )
@@ -154,7 +168,7 @@ export default {
           retrievalResult.response,
         )
         setContentSecurityPolicy(response)
-        response.headers.set('X-Data-Set-ID', dataSetId)
+        response.headers.set('X-Data-Set-ID', retrievalCandidate.dataSetId)
         response.headers.set(
           'Cache-Control',
           `public, max-age=${env.CLIENT_CACHE_TTL}`,
@@ -185,12 +199,12 @@ export default {
               fetchTtlb: lastByteFetchedAt - fetchStartedAt,
               workerTtfb: firstByteAt - workerStartedAt,
             },
-            dataSetId,
+            dataSetId: retrievalCandidate.dataSetId,
             botName,
           })
 
           await updateDataSetStats(env, {
-            dataSetId,
+            dataSetId: retrievalCandidate.dataSetId,
             egressBytes,
             cacheMiss: retrievalResult.cacheMiss,
             enforceEgressQuota: env.ENFORCE_EGRESS_QUOTA,
@@ -205,7 +219,7 @@ export default {
         headers: retrievalResult.response.headers,
       })
       setContentSecurityPolicy(response)
-      response.headers.set('X-Data-Set-ID', dataSetId)
+      response.headers.set('X-Data-Set-ID', retrievalCandidate.dataSetId)
       response.headers.set(
         'Cache-Control',
         `public, max-age=${env.CLIENT_CACHE_TTL}`,
