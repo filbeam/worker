@@ -29,7 +29,7 @@ const botName = Object.values(botTokens)[0]
 const botHeaders = { authorization: `Bearer ${Object.keys(botTokens)[0]}` }
 
 describe('piece-retriever.fetch', () => {
-  const defaultPayerAddress = '0x1234567890abcdef1234567890abcdef12345678'
+  const defaultPayerAddress = '0xc83dbfdf61616778537211a7e5ca2e87ec6cf0ed'
   const { pieceCid: realPieceCid, dataSetId: realDataSetId } =
     CONTENT_STORED_ON_CALIBRATION[0]
 
@@ -217,7 +217,7 @@ describe('piece-retriever.fetch', () => {
 
   it('fetches the file from calibration service provider', async () => {
     const expectedHash =
-      'b9614f45cf8d401a0384eb58376b00cbcbb14f98fcba226d9fe1effe298af673'
+      '3fde6bc0f4d21dd3b033b6100e3fa4023810f699b005b556bd28909b39fd87cf'
     const ctx = createExecutionContext()
     const req = withRequest(defaultPayerAddress, realPieceCid)
     const res = await worker.fetch(req, env, ctx, { retrieveFile })
