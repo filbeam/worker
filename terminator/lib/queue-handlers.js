@@ -42,7 +42,9 @@ export async function handleTerminateCdnServiceQueueMessage(
     const { request } = await publicClient.simulateContract({
       account,
       abi: fwssAbi,
-      address: /** @type {`0x${string}`} */ (env.FILBEAM_CONTRACT_ADDRESS),
+      address: /** @type {`0x${string}`} */ (
+        env.FILBEAM_OPERATOR_CONTRACT_ADDRESS
+      ),
       functionName: 'terminateCDNService',
       args: [BigInt(dataSetId)],
     })

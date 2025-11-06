@@ -39,7 +39,7 @@ describe('payment settler scheduled handler', () => {
 
   const mockEnv = {
     ...env,
-    FILBEAM_CONTRACT_ADDRESS: '0xTestContractAddress',
+    FILBEAM_OPERATOR_CONTRACT_ADDRESS: '0xTestContractAddress',
     FILBEAM_CONTROLLER_ADDRESS_PRIVATE_KEY:
       '0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
     TRANSACTION_MONITOR_WORKFLOW: mockWorkflow,
