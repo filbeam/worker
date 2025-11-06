@@ -10,18 +10,3 @@ export async function getBadBitsEntry(cid) {
     .join('')
   return hashHex
 }
-
-/**
- * @param {{ DB: D1Database }} env
- * @param {string} cid
- * @returns {Promise<boolean>}
- */
-export async function findInBadBits(env, cid) {
-  const badBitsEntry = await getBadBitsEntry(cid)
-
-  const result = await env.DB.prepare('SELECT * FROM bad_bits WHERE hash = ?')
-    .bind(badBitsEntry)
-    .all()
-
-  return result.results.length > 0
-}
