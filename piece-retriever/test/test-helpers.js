@@ -1,5 +1,5 @@
 import { DNS_ROOT } from './retriever.test'
-import { getBadBitsEntry } from '../lib/bad-bits-util'
+import { getBadBitsEntry } from '@filbeam/retrieval'
 
 /**
  * @param {string} payerWalletAddress

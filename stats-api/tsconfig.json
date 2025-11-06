@@ -5,11 +5,7 @@
     "composite": true,
     "outDir": "dist"
   },
-  "include": ["**/*.ts", "**/*.js", "src/**/*.json", "lib/**/*.json"],
+  "include": ["**/*.ts", "**/*.js", "src/**/*.json"],
   "exclude": ["dist", "test"],
-  "references": [
-    {
-      "path": "../workflows/tsconfig.json"
-    }
-  ]
+  "references": []
 }
