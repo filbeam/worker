@@ -108,6 +108,7 @@ export default {
         retrievalCandidate = retrievalCandidates[retrievalCandidateIndex]
         retrievalAttempts.push(retrievalCandidate)
         retrievalCandidates.splice(retrievalCandidateIndex, 1)
+        console.log('Attempting retrieval', retrievalCandidate)
         try {
           retrievalResult = await retrieveFile(
             ctx,
