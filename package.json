@@ -13,6 +13,7 @@
     "workflows",
     "usage-reporter",
     "payment-settler",
+    "retrieval",
     "stats-api"
   ],
   "scripts": {

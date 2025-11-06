@@ -1,4 +1,4 @@
-import { httpAssert } from './http-assert.js'
+import { httpAssert } from '@filbeam/retrieval'
 
 /**
  * Parse params found in path of the request URL
