@@ -99,12 +99,14 @@ export default {
 
       let retrievalCandidate
       let retrievalResult
+      const retrievalAttempts = []
 
       while (retrievalCandidates.length > 0) {
         const retrievalCandidateIndex = Math.floor(
           Math.random() * retrievalCandidates.length,
         )
         retrievalCandidate = retrievalCandidates[retrievalCandidateIndex]
+        retrievalAttempts.push(retrievalCandidate)
         retrievalCandidates.splice(retrievalCandidateIndex, 1)
         try {
           retrievalResult = await retrieveFile(
@@ -136,7 +138,7 @@ export default {
           }),
         )
         const response = new Response(
-          `Service provider ${retrievalCandidate.serviceProviderId} is unavailable${retrievalResult ? ` at ${retrievalResult.url}` : ''}`,
+          `No available service provider found. Attempted: ${retrievalAttempts.map((a) => `ID=${a.serviceProviderId} (Service URL=${a.serviceUrl})`).join(', ')}`,
           {
             status: 502,
             headers: new Headers({
