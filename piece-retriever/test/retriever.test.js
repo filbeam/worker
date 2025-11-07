@@ -933,7 +933,9 @@ describe('piece-retriever.fetch', () => {
     })
     await waitOnExecutionContext(ctx)
     expect(res.status).toBe(502)
-    expect(await res.text()).toMatch(/^Service provider \d+ is unavailable at /)
+    expect(await res.text()).toMatch(
+      /^No available service provider found. Attempted: ID=/,
+    )
     expect(res.headers.get('X-Data-Set-ID')).toBe(String(dataSetId))
 
     const result = await env.DB.prepare(
@@ -1063,7 +1065,9 @@ describe('piece-retriever.fetch', () => {
     })
     await waitOnExecutionContext(ctx)
     expect(res.status).toBe(502)
-    expect(await res.text()).toMatch(/^Service provider \d+ is unavailable$/)
+    expect(await res.text()).toMatch(
+      /^No available service provider found. Attempted: ID=/,
+    )
     expect(res.headers.get('X-Data-Set-ID')).toBe(String(dataSetId))
   })
 })

@@ -50,7 +50,7 @@ export async function handleFWSSDataSetCreated(
         with_ipfs_indexing
       )
       VALUES (?, ?, ?, ?, ?)
-      ON CONFLICT (id) DO NOTHING
+      ON CONFLICT DO NOTHING
     `,
   )
     .bind(

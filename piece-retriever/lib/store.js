@@ -86,15 +86,17 @@ export async function logRetrievalResult(env, params) {
  * @param {string} pieceCid - The piece CID to look up
  * @param {boolean} [enforceEgressQuota=false] - Whether to enforce egress quota
  *   limits. Default is `false`
- * @returns {Promise<{
- *   serviceProviderId: string
- *   serviceUrl: string
- *   dataSetId: string
- *   cdnEgressQuota: bigint
- *   cacheMissEgressQuota: bigint
- * }>}
+ * @returns {Promise<
+ *   {
+ *     serviceProviderId: string
+ *     serviceUrl: string
+ *     dataSetId: string
+ *     cdnEgressQuota: bigint
+ *     cacheMissEgressQuota: bigint
+ *   }[]
+ * >}
  */
-export async function getStorageProviderAndValidatePayer(
+export async function getRetrievalCandidatesAndValidatePayer(
   env,
   payerAddress,
   pieceCid,
@@ -214,29 +216,21 @@ export async function getStorageProviderAndValidatePayer(
     `Cache miss egress quota exhausted for payer '${payerAddress}' and data set '${withSufficientCDNQuota[0]?.data_set_id}'. Please top up your cache miss egress quota.`,
   )
 
-  const {
-    data_set_id: dataSetId,
-    service_provider_id: serviceProviderId,
-    service_url: serviceUrl,
-    cdn_egress_quota: cdnEgressQuota,
-    cache_miss_egress_quota: cacheMissEgressQuota,
-  } = pickRandom(withSufficientCacheMissQuota)
-
-  // We need this assertion to supress TypeScript error. The compiler is not able to infer that
-  // `withCDN.filter()` above returns only rows with `service_url` defined.
-  httpAssert(serviceUrl, 500, 'should never happen')
+  const retrievalCandidates = withSufficientCacheMissQuota.map((row) => ({
+    dataSetId: row.data_set_id,
+    serviceProviderId: row.service_provider_id,
+    // We need this cast to supress a TypeScript error. The compiler is not able to infer that
+    // `withCDN.filter()` above returns only rows with `service_url` defined.
+    serviceUrl: /** @type {string} */ (row.service_url),
+    cdnEgressQuota: BigInt(row.cdn_egress_quota ?? '0'),
+    cacheMissEgressQuota: BigInt(row.cache_miss_egress_quota ?? '0'),
+  }))
 
   console.log(
-    `Looked up Data set ID '${dataSetId}' and service provider id '${serviceProviderId}' for piece_cid '${pieceCid}' and payer '${payerAddress}'. Service URL: ${serviceUrl}`,
+    `Looked up ${retrievalCandidates.length} retrieval candidates for piece_cid '${pieceCid}' and payer '${payerAddress}'`,
   )
 
-  return {
-    serviceProviderId,
-    serviceUrl,
-    dataSetId,
-    cdnEgressQuota: BigInt(cdnEgressQuota ?? '0'),
-    cacheMissEgressQuota: BigInt(cacheMissEgressQuota ?? '0'),
-  }
+  return retrievalCandidates
 }
 
 /**
@@ -275,13 +269,4 @@ export async function updateDataSetStats(
       .bind(egressBytes, cacheMiss ? egressBytes : 0, dataSetId)
       .run()
   }
-}
-
-/**
- * @template T
- * @param {T[]} arr
- * @returns {T}
- */
-function pickRandom(arr) {
-  return arr[Math.floor(Math.random() * arr.length)]
 }
