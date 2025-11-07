@@ -1,4 +1,4 @@
-name = "filcdn-payment-settler"
+name = "filbeam-payment-settler"
 main = "bin/payment-settler.js"
 compatibility_date = "2024-12-05"
 compatibility_flags = ["nodejs_compat"]
@@ -13,20 +13,6 @@ binding = "DB"
 database_name = "test-db"
 database_id = "8cc92155-16f6-426a-b782-2965e0daf100"
 
-[[queues.producers]]
-queue = "transaction-queue"
-binding = "TRANSACTION_QUEUE"
-
-[[queues.consumers]]
-queue = "transaction-queue"
-max_batch_size = 10
-max_batch_timeout = 30
-
-[[workflows]]
-binding = "TRANSACTION_MONITOR_WORKFLOW"
-name = "transaction-monitor-workflow"
-class_name = "TransactionMonitorWorkflow"
-
 [env.dev.vars]
 ENVIRONMENT = "dev"
 RPC_URL = "https://api.calibration.node.glif.io/"
@@ -40,17 +26,17 @@ database_name = "dev-db"
 database_id = "8cc92155-16f6-426a-b782-2965e0daf101"
 
 [[env.dev.queues.producers]]
-queue = "dev-transaction-queue"
+queue = "payment-settler-transaction-queue-dev"
 binding = "TRANSACTION_QUEUE"
 
 [[env.dev.queues.consumers]]
-queue = "dev-transaction-queue"
-max_batch_size = 10
-max_batch_timeout = 30
+queue = "payment-settler-transaction-queue-dev"
+max_concurrency = 1
+max_retries = 3
 
 [[env.dev.workflows]]
 binding = "TRANSACTION_MONITOR_WORKFLOW"
-name = "dev-transaction-monitor-workflow"
+name = "payment-settler-transaction-monitor-workflow-dev"
 class_name = "TransactionMonitorWorkflow"
 
 [env.calibration.vars]
@@ -67,17 +53,17 @@ database_name = "filcdn-calibration-db"
 database_id = "78f15bbb-391f-4797-9016-a6cb86c0b9b8"
 
 [[env.calibration.queues.producers]]
-queue = "calibration-payment-settler-transaction-queue"
+queue = "payment-settler-transaction-queue-calibration"
 binding = "TRANSACTION_QUEUE"
 
 [[env.calibration.queues.consumers]]
-queue = "calibration-payment-settler-transaction-queue"
-max_batch_size = 10
-max_batch_timeout = 30
+queue = "payment-settler-transaction-queue-calibration"
+max_concurrency = 1
+max_retries = 3
 
 [[env.calibration.workflows]]
 binding = "TRANSACTION_MONITOR_WORKFLOW"
-name = "calibration-transaction-monitor-workflow"
+name = "payment-settler-transaction-monitor-workflow-calibration"
 class_name = "TransactionMonitorWorkflow"
 
 # TODO: Enable once FilBeam contract has been deployed
@@ -97,17 +83,17 @@ database_name = "filcdn-mainnet-db"
 database_id = "e8de6418-2cb7-4413-9ba0-a9c8aacf9a66"
 
 [[env.mainnet.queues.producers]]
-queue = "mainnet-payment-settler-transaction-queue"
+queue = "payment-settler-transaction-queue-mainnet"
 binding = "TRANSACTION_QUEUE"
 
 [[env.mainnet.queues.consumers]]
-queue = "mainnet-payment-settler-transaction-queue"
-max_batch_size = 10
-max_batch_timeout = 30
+queue = "payment-settler-transaction-queue-mainnet"
+max_concurrency = 1
+max_retries = 3
 
 [[env.mainnet.workflows]]
 binding = "TRANSACTION_MONITOR_WORKFLOW"
-name = "mainnet-transaction-monitor-workflow"
+name = "payment-settler-transaction-monitor-workflow-mainnet"
 class_name = "TransactionMonitorWorkflow"
 
 # TODO: Enable once FilBeam contract has been deployed
