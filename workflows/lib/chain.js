@@ -6,8 +6,8 @@ import { filecoinCalibration, filecoin } from 'viem/chains'
  * @param {{
  *   ENVIRONMENT: 'mainnet' | 'calibration' | 'dev'
  *   RPC_URL: string
- *   FILCDN_CONTROLLER_ADDRESS_PRIVATE_KEY?: string
  *   FILBEAM_CONTROLLER_PRIVATE_KEY?: string
+ *   FILBEAM_OPERATOR_PAYMENT_SETTLER_PRIVATE_KEY?: string
  * }} env
  */
 export function getChainClient(env) {
@@ -19,10 +19,10 @@ export function getChainClient(env) {
     transport,
   })
 
-  // Support both terminator and usage reporter private key field names
+  // Support both payment-settler, terminator and usage-reporter private keys
   const privateKey = /** @type {`0x${string}`} */ (
-    env.FILCDN_CONTROLLER_ADDRESS_PRIVATE_KEY ||
-      env.FILBEAM_CONTROLLER_PRIVATE_KEY
+    env.FILBEAM_CONTROLLER_PRIVATE_KEY ||
+      env.FILBEAM_OPERATOR_PAYMENT_SETTLER_PRIVATE_KEY
   )
 
   const account = privateKeyToAccount(privateKey)

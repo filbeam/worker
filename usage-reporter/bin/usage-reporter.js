@@ -78,7 +78,7 @@ export default {
       // See https://github.com/filbeam/worker/issues/340
       const { request } = await publicClient.simulateContract({
         account,
-        address: env.FILBEAM_CONTRACT_ADDRESS,
+        address: env.FILBEAM_OPERATOR_CONTRACT_ADDRESS,
         abi: filbeamAbi,
         functionName: 'recordUsageRollups',
         args: [

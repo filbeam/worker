@@ -1,5 +1,5 @@
 import { DNS_ROOT } from './retriever.test'
-import { getBadBitsEntry } from '../lib/bad-bits-util'
+import { getBadBitsEntry } from '@filbeam/retrieval'
 
 /**
  * @param {string} payerWalletAddress
@@ -44,17 +44,22 @@ export async function withDataSet(
   } = {},
 ) {
   await env.DB.prepare(
-    `INSERT INTO data_sets (id, service_provider_id, payer_address, with_cdn, cdn_egress_quota, cache_miss_egress_quota)
-     VALUES (?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO data_sets (id, service_provider_id, payer_address, with_cdn)
+     VALUES (?, ?, ?, ?)`,
   )
     .bind(
       String(dataSetId),
       String(serviceProviderId),
       payerAddress.toLowerCase(),
       withCDN,
-      cdnEgressQuota,
-      cacheMissEgressQuota,
     )
+    .run()
+
+  await env.DB.prepare(
+    `INSERT INTO data_set_egress_quotas (data_set_id, cdn_egress_quota, cache_miss_egress_quota)
+      VALUES (?, ?, ?)`,
+  )
+    .bind(String(dataSetId), cdnEgressQuota, cacheMissEgressQuota)
     .run()
 }
 

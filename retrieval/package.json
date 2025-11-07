@@ -1,0 +1,12 @@
+{
+  "name": "@filbeam/retrieval",
+  "version": "1.0.0",
+  "private": true,
+  "description": "FilBeam retrieval helpers",
+  "author": "Space Meridian <filbeam@meridian.space>",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "test": "vitest run"
+  }
+}

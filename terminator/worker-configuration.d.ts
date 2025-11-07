@@ -8,8 +8,8 @@ declare namespace Cloudflare {
 	interface Env {
 		ENVIRONMENT: "dev" | "calibration" | "mainnet";
 		RPC_URL: "https://api.calibration.node.glif.io/" | "https://api.node.glif.io/";
-		FILECOIN_WARM_STORAGE_SERVICE_ADDRESS: "0x02925630df557F957f70E112bA06e50965417CA0" | "0x8408502033C418E1bbC97cE9ac48E5528F371A9f";
-		FILCDN_CONTROLLER_ADDRESS_PRIVATE_KEY: string;
+		FILBEAM_OPERATOR_CONTRACT_ADDRESS: "0x0000000000000000000000000000000000000000" | "0xeA6631B25BA4c9c9e285DA25a03AA96ACc921530";
+		FILBEAM_CONTROLLER_PRIVATE_KEY: string;
 		DB: D1Database;
 		TRANSACTION_QUEUE: Queue;
 		TRANSACTION_MONITOR_WORKFLOW: Workflow<Parameters<import("./bin/terminator").TransactionMonitorWorkflow['run']>[0]['payload']>;
