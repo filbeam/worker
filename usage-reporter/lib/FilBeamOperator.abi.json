@@ -24,6 +24,7 @@
     ],
     "stateMutability": "nonpayable",
     "type": "function",
-    "name": "recordUsageRollups"
+    "name": "recordUsageRollups",
+    "outputs": []
   }
 ]
