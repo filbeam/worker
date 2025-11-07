@@ -16,7 +16,7 @@ database_id = "8cc92155-16f6-426a-b782-2965e0daf100"
 [env.dev.vars]
 ENVIRONMENT = "dev"
 RPC_URL = "https://api.calibration.node.glif.io/"
-FILBEAM_CONTRACT_ADDRESS = "0x0000000000000000000000000000000000000000"
+FILBEAM_OPERATOR_CONTRACT_ADDRESS = "0x0000000000000000000000000000000000000000"
 DEFAULT_LOCKUP_PERIOD_DAYS = 30 # 30 days lockup period
 FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS = 1667326380000 # Calibration network genesis timestamp in milliseconds
 
@@ -42,7 +42,7 @@ class_name = "TransactionMonitorWorkflow"
 [env.calibration.vars]
 ENVIRONMENT = "calibration"
 RPC_URL = "https://api.calibration.node.glif.io/"
-FILBEAM_CONTRACT_ADDRESS = "0xeA6631B25BA4c9c9e285DA25a03AA96ACc921530"
+FILBEAM_OPERATOR_CONTRACT_ADDRESS = "0xeA6631B25BA4c9c9e285DA25a03AA96ACc921530"
 DEFAULT_LOCKUP_PERIOD_DAYS = 30 # 30 days lockup period
 FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS = 1667326380000 # Calibration network genesis timestamp in milliseconds
 FILBEAM_CONTROLLER_PRIVATE_KEY = "0xabc"
@@ -73,7 +73,7 @@ class_name = "TransactionMonitorWorkflow"
 [env.mainnet.vars]
 ENVIRONMENT = "mainnet"
 RPC_URL = "https://api.node.glif.io/"
-FILBEAM_CONTRACT_ADDRESS = "0xeA6631B25BA4c9c9e285DA25a03AA96ACc921530"
+FILBEAM_OPERATOR_CONTRACT_ADDRESS = "0xeA6631B25BA4c9c9e285DA25a03AA96ACc921530"
 DEFAULT_LOCKUP_PERIOD_DAYS = 30 # 30 days lockup period
 FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS = 1598306400000 # Mainnet genesis timestamp in milliseconds
 

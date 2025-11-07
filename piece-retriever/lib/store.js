@@ -103,12 +103,20 @@ export async function getRetrievalCandidatesAndValidatePayer(
   enforceEgressQuota = false,
 ) {
   const query = `
-   SELECT pieces.data_set_id, data_sets.service_provider_id, data_sets.payer_address, data_sets.with_cdn,
-          data_sets.cdn_egress_quota, data_sets.cache_miss_egress_quota,
-          service_providers.service_url, wallet_details.is_sanctioned
+   SELECT 
+    pieces.data_set_id, 
+    data_sets.service_provider_id, 
+    data_sets.payer_address, 
+    data_sets.with_cdn,
+    data_set_egress_quotas.cdn_egress_quota, 
+    data_set_egress_quotas.cache_miss_egress_quota,
+    service_providers.service_url, 
+    wallet_details.is_sanctioned
    FROM pieces
    LEFT OUTER JOIN data_sets
      ON pieces.data_set_id = data_sets.id
+   LEFT OUTER JOIN data_set_egress_quotas
+     ON pieces.data_set_id = data_set_egress_quotas.data_set_id
    LEFT OUTER JOIN service_providers
      ON data_sets.service_provider_id = service_providers.id
    LEFT OUTER JOIN wallet_details
@@ -239,24 +247,26 @@ export async function updateDataSetStats(
   env,
   { dataSetId, egressBytes, cacheMiss, enforceEgressQuota = false },
 ) {
-  const cdnEgressBytesToDeduct = enforceEgressQuota ? egressBytes : 0
-  const cacheMissEgressBytesToDeduct =
-    enforceEgressQuota && cacheMiss ? egressBytes : 0
-
   await env.DB.prepare(
     `
     UPDATE data_sets
-    SET total_egress_bytes_used = total_egress_bytes_used + ?,
-        cdn_egress_quota = cdn_egress_quota - ?,
-        cache_miss_egress_quota = cache_miss_egress_quota - ?
+    SET total_egress_bytes_used = total_egress_bytes_used + ?
     WHERE id = ?
     `,
   )
-    .bind(
-      egressBytes,
-      cdnEgressBytesToDeduct,
-      cacheMissEgressBytesToDeduct,
-      dataSetId,
-    )
+    .bind(egressBytes, dataSetId)
     .run()
+
+  if (enforceEgressQuota) {
+    await env.DB.prepare(
+      `
+      UPDATE data_set_egress_quotas
+      SET cdn_egress_quota = cdn_egress_quota - ?,
+          cache_miss_egress_quota = cache_miss_egress_quota - ?
+      WHERE data_set_id = ?
+      `,
+    )
+      .bind(egressBytes, cacheMiss ? egressBytes : 0, dataSetId)
+      .run()
+  }
 }

@@ -44,7 +44,7 @@ export default {
       const { request } = await publicClient.simulateContract({
         account,
         abi: filbeamAbi,
-        address: env.FILBEAM_CONTRACT_ADDRESS,
+        address: env.FILBEAM_OPERATOR_CONTRACT_ADDRESS,
         functionName: 'settleCDNPaymentRailBatch',
         args: dataSetIds.map((id) => BigInt(id)),
       })

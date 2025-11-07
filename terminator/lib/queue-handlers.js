@@ -43,7 +43,7 @@ export async function handleTerminateCdnServiceQueueMessage(
       account,
       abi: fwssAbi,
       address: /** @type {`0x${string}`} */ (
-        env.FILECOIN_WARM_STORAGE_SERVICE_ADDRESS
+        env.FILBEAM_OPERATOR_CONTRACT_ADDRESS
       ),
       functionName: 'terminateCDNService',
       args: [BigInt(dataSetId)],
