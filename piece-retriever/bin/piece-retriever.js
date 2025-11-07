@@ -89,13 +89,11 @@ export default {
         'The requested CID was flagged by the Bad Bits Denylist at https://badbits.dwebops.pub',
       )
 
-      if (retrievalCandidates.length === 0) {
-        const response = new Response('No retrieval candidate found', {
-          status: 404,
-        })
-        setContentSecurityPolicy(response)
-        return response
-      }
+      httpAssert(
+        retrievalCandidates.length > 0,
+        500,
+        'Service provider lookup failed',
+      )
 
       let retrievalCandidate
       let retrievalResult
