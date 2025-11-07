@@ -79,11 +79,9 @@ export async function withDataSet(
       with_cdn,
       with_ipfs_indexing,
       service_provider_id,
-      payer_address,
-      cdn_egress_quota,
-      cache_miss_egress_quota
+      payer_address
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    VALUES (?, ?, ?, ?, ?)`,
   )
     .bind(
       String(dataSetId),
@@ -91,10 +89,23 @@ export async function withDataSet(
       withIPFSIndexing,
       serviceProviderId,
       payerAddress,
-      cdnEgressQuota,
-      cacheMissEgressQuota,
     )
     .run()
+
+  // Insert quotas into the separate table if they're provided
+  if (cdnEgressQuota > 0 || cacheMissEgressQuota > 0) {
+    await env.DB.prepare(
+      `
+      INSERT INTO data_set_egress_quotas (
+        data_set_id,
+        cdn_egress_quota,
+        cache_miss_egress_quota
+      )
+      VALUES (?, ?, ?)`,
+    )
+      .bind(String(dataSetId), cdnEgressQuota, cacheMissEgressQuota)
+      .run()
+  }
 
   return dataSetId
 }
