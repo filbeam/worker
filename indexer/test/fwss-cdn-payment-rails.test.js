@@ -40,14 +40,14 @@ describe('handleFWSSCDNPaymentRailsToppedUp', () => {
   it('calculates and stores egress quotas correctly', async () => {
     const testEnv = {
       ...env,
-      CDN_RATE_PER_TIB: '1',
-      CACHE_MISS_RATE_PER_TIB: '1',
+      CDN_RATE_PER_TIB: '5000000000000000000',
+      CACHE_MISS_RATE_PER_TIB: '5000000000000000000',
     }
 
     const payload = {
       data_set_id: testDataSetId,
-      cdn_amount_added: '1',
-      cache_miss_amount_added: '2',
+      cdn_amount_added: '5000000000000000000',
+      cache_miss_amount_added: '10000000000000000000',
     }
 
     await handleFWSSCDNPaymentRailsToppedUp(testEnv, payload)
@@ -67,8 +67,8 @@ describe('handleFWSSCDNPaymentRailsToppedUp', () => {
   it('handles zero amounts added', async () => {
     const testEnv = {
       ...env,
-      CDN_RATE_PER_TIB: '1',
-      CACHE_MISS_RATE_PER_TIB: '1',
+      CDN_RATE_PER_TIB: '5000000000000000000',
+      CACHE_MISS_RATE_PER_TIB: '5000000000000000000',
     }
 
     const payload = {
@@ -94,14 +94,14 @@ describe('handleFWSSCDNPaymentRailsToppedUp', () => {
   it('accumulates quota values on multiple top-ups', async () => {
     const testEnv = {
       ...env,
-      CDN_RATE_PER_TIB: '1',
-      CACHE_MISS_RATE_PER_TIB: '1',
+      CDN_RATE_PER_TIB: '5000000000000000000',
+      CACHE_MISS_RATE_PER_TIB: '5000000000000000000',
     }
 
     const payload1 = {
       data_set_id: testDataSetId,
-      cdn_amount_added: '1',
-      cache_miss_amount_added: '2',
+      cdn_amount_added: '5000000000000000000',
+      cache_miss_amount_added: '10000000000000000000',
     }
 
     await handleFWSSCDNPaymentRailsToppedUp(testEnv, payload1)
@@ -120,8 +120,8 @@ describe('handleFWSSCDNPaymentRailsToppedUp', () => {
     // Second top-up should increment, not replace
     const payload2 = {
       data_set_id: testDataSetId,
-      cdn_amount_added: '1',
-      cache_miss_amount_added: '2',
+      cdn_amount_added: '5000000000000000000',
+      cache_miss_amount_added: '10000000000000000000',
     }
 
     await handleFWSSCDNPaymentRailsToppedUp(testEnv, payload2)
@@ -141,14 +141,14 @@ describe('handleFWSSCDNPaymentRailsToppedUp', () => {
   it('creates quotas in egress table when data set does not exist', async () => {
     const testEnv = {
       ...env,
-      CDN_RATE_PER_TIB: '1',
-      CACHE_MISS_RATE_PER_TIB: '1',
+      CDN_RATE_PER_TIB: '5000000000000000000',
+      CACHE_MISS_RATE_PER_TIB: '5000000000000000000',
     }
 
     const payload = {
       data_set_id: 'non-existent-data-set',
-      cdn_amount_added: '1',
-      cache_miss_amount_added: '1',
+      cdn_amount_added: '5000000000000000000',
+      cache_miss_amount_added: '5000000000000000000',
     }
 
     await handleFWSSCDNPaymentRailsToppedUp(testEnv, payload)
@@ -185,22 +185,22 @@ describe('webhook ordering scenarios', () => {
   })
 
   it('handles CDN top-up before data set creation', async () => {
-    const testServiceProviderId = '1'
-    const testDataSetId = '1'
+    const testServiceProviderId = '5000000000000000000'
+    const testDataSetId = '5000000000000000000'
     const payerAddress = '0x0000000000000000000000000000000000000000'
     await withServiceProvider(env, testServiceProviderId, 'test-service')
 
     const topUpEnv = {
       ...env,
-      CDN_RATE_PER_TIB: '1',
-      CACHE_MISS_RATE_PER_TIB: '1',
+      CDN_RATE_PER_TIB: '5000000000000000000',
+      CACHE_MISS_RATE_PER_TIB: '5000000000000000000',
     }
 
     // Step 1: CDN top-up webhook arrives first
     const topUpPayload = {
       data_set_id: testDataSetId,
-      cdn_amount_added: '1',
-      cache_miss_amount_added: '1',
+      cdn_amount_added: '5000000000000000000',
+      cache_miss_amount_added: '5000000000000000000',
     }
 
     await handleFWSSCDNPaymentRailsToppedUp(topUpEnv, topUpPayload)
@@ -280,29 +280,29 @@ describe('webhook ordering scenarios', () => {
   })
 
   it('handles multiple CDN top-ups before data set creation', async () => {
-    const testServiceProviderId = '1'
-    const testDataSetId = '1'
+    const testServiceProviderId = '5000000000000000000'
+    const testDataSetId = '5000000000000000000'
     const payerAddress = '0x0000000000000000000000000000000000000000'
     await withServiceProvider(env, testServiceProviderId, 'test-service')
 
     const topUpEnv = {
       ...env,
-      CDN_RATE_PER_TIB: '1',
-      CACHE_MISS_RATE_PER_TIB: '1',
+      CDN_RATE_PER_TIB: '5000000000000000000',
+      CACHE_MISS_RATE_PER_TIB: '5000000000000000000',
     }
 
     // Step 1: First CDN top-up
     await handleFWSSCDNPaymentRailsToppedUp(topUpEnv, {
       data_set_id: testDataSetId,
-      cdn_amount_added: '1',
-      cache_miss_amount_added: '1',
+      cdn_amount_added: '5000000000000000000',
+      cache_miss_amount_added: '5000000000000000000',
     })
 
     // Step 2: Second CDN top-up
     await handleFWSSCDNPaymentRailsToppedUp(topUpEnv, {
       data_set_id: testDataSetId,
-      cdn_amount_added: '1',
-      cache_miss_amount_added: '2',
+      cdn_amount_added: '5000000000000000000',
+      cache_miss_amount_added: '10000000000000000000',
     })
 
     // Verify accumulated quotas in egress quotas table
@@ -380,8 +380,8 @@ describe('webhook ordering scenarios', () => {
   })
 
   it('handles data set creation before CDN top-up', async () => {
-    const testServiceProviderId = '1'
-    const testDataSetId = '1'
+    const testServiceProviderId = '5000000000000000000'
+    const testDataSetId = '5000000000000000000'
     const payerAddress = '0x0000000000000000000000000000000000000000'
     await withServiceProvider(env, testServiceProviderId, 'test-service')
 
@@ -436,14 +436,14 @@ describe('webhook ordering scenarios', () => {
     // Step 2: CDN top-up webhook arrives later
     const topUpEnv = {
       ...env,
-      CDN_RATE_PER_TIB: '1',
-      CACHE_MISS_RATE_PER_TIB: '1',
+      CDN_RATE_PER_TIB: '5000000000000000000',
+      CACHE_MISS_RATE_PER_TIB: '5000000000000000000',
     }
 
     const topUpPayload = {
       data_set_id: testDataSetId,
-      cdn_amount_added: '1',
-      cache_miss_amount_added: '1',
+      cdn_amount_added: '5000000000000000000',
+      cache_miss_amount_added: '5000000000000000000',
     }
 
     await handleFWSSCDNPaymentRailsToppedUp(topUpEnv, topUpPayload)
