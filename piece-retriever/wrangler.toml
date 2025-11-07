@@ -15,7 +15,7 @@ ORIGIN_CACHE_TTL = 86400
 CLIENT_CACHE_TTL = 31536000
 DNS_ROOT = ".localhost"
 BOT_TOKENS = ""
-ENFORCE_EGRESS_QUOTA = false
+ENFORCE_EGRESS_QUOTA = true
 
 [[env.dev.d1_databases]]
 binding = "DB"
@@ -31,7 +31,7 @@ ENVIRONMENT = "calibration "
 ORIGIN_CACHE_TTL = 86400
 CLIENT_CACHE_TTL = 31536000
 DNS_ROOT = ".calibration.filbeam.io"
-ENFORCE_EGRESS_QUOTA = false
+ENFORCE_EGRESS_QUOTA = true
 
 [[env.calibration.d1_databases]]
 binding = "DB"
@@ -47,7 +47,7 @@ ENVIRONMENT = "mainnet"
 ORIGIN_CACHE_TTL = 86400
 CLIENT_CACHE_TTL = 31536000
 DNS_ROOT = ".filbeam.io"
-ENFORCE_EGRESS_QUOTA = false
+ENFORCE_EGRESS_QUOTA = true
 
 [[env.mainnet.d1_databases]]
 binding = "DB"
