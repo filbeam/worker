@@ -55,7 +55,7 @@ export default {
 
       // Start transaction monitor workflow
       await env.TRANSACTION_MONITOR_WORKFLOW.create({
-        id: `settlement-tx-monitor-${hash}-${Date.now()}`,
+        id: `payment-settler-${hash}-${Date.now()}`,
         params: {
           transactionHash: hash,
           metadata: {

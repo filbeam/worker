@@ -103,9 +103,7 @@ describe('payment settler scheduled handler', () => {
     ])
 
     expect(mockWorkflow.create).toHaveBeenCalledWith({
-      id: expect.stringMatching(
-        /^settlement-tx-monitor-0xMockTransactionHash-\d+$/,
-      ),
+      id: expect.stringMatching(/^payment-settler-0xMockTransactionHash-\d+$/),
       params: {
         transactionHash: '0xMockTransactionHash',
         metadata: {
