@@ -87,6 +87,20 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           environment: ${{ matrix.environment }}
+      - name: Deploy Stats API
+        uses: cloudflare/wrangler-action@v3
+        with:
+          workingDirectory: stats-api
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          environment: ${{ matrix.environment }}
+      - name: Deploy Payment Settler
+        uses: cloudflare/wrangler-action@v3
+        with:
+          workingDirectory: payment-settler
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          environment: ${{ matrix.environment }}
       - name: Deploy Usage Reporter
         uses: cloudflare/wrangler-action@v3
         with:
