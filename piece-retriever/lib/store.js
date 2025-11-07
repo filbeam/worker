@@ -242,10 +242,18 @@ export async function getRetrievalCandidatesAndValidatePayer(
  *   cache hit (false).
  * @param {boolean} [params.enforceEgressQuota=false] - Whether to decrement
  *   egress quotas. Default is `false`
+ * @param {boolean} [params.isBotTraffic=false] - Whether the egress traffic
+ *   originated from the bot. Default is `false`
  */
 export async function updateDataSetStats(
   env,
-  { dataSetId, egressBytes, cacheMiss, enforceEgressQuota = false },
+  {
+    dataSetId,
+    egressBytes,
+    cacheMiss,
+    enforceEgressQuota = false,
+    isBotTraffic = false,
+  },
 ) {
   await env.DB.prepare(
     `
@@ -257,7 +265,7 @@ export async function updateDataSetStats(
     .bind(egressBytes, dataSetId)
     .run()
 
-  if (enforceEgressQuota) {
+  if (enforceEgressQuota && !isBotTraffic) {
     await env.DB.prepare(
       `
       UPDATE data_set_egress_quotas
