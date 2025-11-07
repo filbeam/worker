@@ -171,7 +171,7 @@ export async function handleTransactionRetryQueueMessage(
 
     // Start a new transaction monitor workflow for the retry transaction
     await env.TRANSACTION_MONITOR_WORKFLOW.create({
-      id: `usage-report-tx-monitor-${retryHash}-${Date.now()}`,
+      id: `usage-reporter-${retryHash}-${Date.now()}`,
       params: {
         transactionHash: retryHash,
         metadata: {

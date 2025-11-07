@@ -113,7 +113,7 @@ export default {
 
       // Start transaction monitor workflow
       await env.TRANSACTION_MONITOR_WORKFLOW.create({
-        id: `usage-report-tx-monitor-${hash}-${Date.now()}`,
+        id: `usage-reporter-${hash}-${Date.now()}`,
         params: {
           transactionHash: hash,
           metadata: {

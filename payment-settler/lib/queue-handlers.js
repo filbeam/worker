@@ -110,7 +110,7 @@ export async function handleTransactionRetryQueueMessage(
 
     // Start transaction monitor workflow
     await env.TRANSACTION_MONITOR_WORKFLOW.create({
-      id: `settlement-tx-monitor-${retryHash}-${Date.now()}`,
+      id: `payment-settler-${retryHash}-${Date.now()}`,
       params: {
         transactionHash: retryHash,
         metadata: {
