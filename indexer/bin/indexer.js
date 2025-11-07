@@ -46,6 +46,8 @@ export default {
     }
     const payload = await request.json()
 
+    console.log('Request body', payload)
+
     const pathname = new URL(request.url).pathname
     if (pathname === '/fwss/data-set-created') {
       if (

@@ -1,4 +1,4 @@
-name = "filcdn-payment-settler"
+name = "filbeam-payment-settler"
 main = "bin/payment-settler.js"
 compatibility_date = "2024-12-05"
 compatibility_flags = ["nodejs_compat"]
@@ -13,24 +13,10 @@ binding = "DB"
 database_name = "test-db"
 database_id = "8cc92155-16f6-426a-b782-2965e0daf100"
 
-[[queues.producers]]
-queue = "transaction-queue"
-binding = "TRANSACTION_QUEUE"
-
-[[queues.consumers]]
-queue = "transaction-queue"
-max_batch_size = 10
-max_batch_timeout = 30
-
-[[workflows]]
-binding = "TRANSACTION_MONITOR_WORKFLOW"
-name = "transaction-monitor-workflow"
-class_name = "TransactionMonitorWorkflow"
-
 [env.dev.vars]
 ENVIRONMENT = "dev"
 RPC_URL = "https://api.calibration.node.glif.io/"
-FILBEAM_CONTRACT_ADDRESS = "0x0000000000000000000000000000000000000000"
+FILBEAM_OPERATOR_CONTRACT_ADDRESS = "0x0000000000000000000000000000000000000000"
 DEFAULT_LOCKUP_PERIOD_DAYS = 30 # 30 days lockup period
 FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS = 1667326380000 # Calibration network genesis timestamp in milliseconds
 
@@ -40,26 +26,26 @@ database_name = "dev-db"
 database_id = "8cc92155-16f6-426a-b782-2965e0daf101"
 
 [[env.dev.queues.producers]]
-queue = "dev-transaction-queue"
+queue = "payment-settler-transaction-queue-dev"
 binding = "TRANSACTION_QUEUE"
 
 [[env.dev.queues.consumers]]
-queue = "dev-transaction-queue"
-max_batch_size = 10
-max_batch_timeout = 30
+queue = "payment-settler-transaction-queue-dev"
+max_concurrency = 1
+max_retries = 3
 
 [[env.dev.workflows]]
 binding = "TRANSACTION_MONITOR_WORKFLOW"
-name = "dev-transaction-monitor-workflow"
+name = "payment-settler-transaction-monitor-workflow-dev"
 class_name = "TransactionMonitorWorkflow"
 
 [env.calibration.vars]
 ENVIRONMENT = "calibration"
 RPC_URL = "https://api.calibration.node.glif.io/"
-FILBEAM_CONTRACT_ADDRESS = "0x50aBAe0B3D37A2fA4D3a7f62FbD49F9a566AeB95"
+FILBEAM_OPERATOR_CONTRACT_ADDRESS = "0xeA6631B25BA4c9c9e285DA25a03AA96ACc921530"
 DEFAULT_LOCKUP_PERIOD_DAYS = 30 # 30 days lockup period
 FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS = 1667326380000 # Calibration network genesis timestamp in milliseconds
-FILBEAM_CONTROLLER_PRIVATE_KEY = "0xabc"
+FILBEAM_OPERATOR_PAYMENT_SETTLER_PRIVATE_KEY = "0xabc"
 
 [[env.calibration.d1_databases]]
 binding = "DB"
@@ -67,27 +53,26 @@ database_name = "filcdn-calibration-db"
 database_id = "78f15bbb-391f-4797-9016-a6cb86c0b9b8"
 
 [[env.calibration.queues.producers]]
-queue = "calibration-payment-settler-transaction-queue"
+queue = "payment-settler-transaction-queue-calibration"
 binding = "TRANSACTION_QUEUE"
 
 [[env.calibration.queues.consumers]]
-queue = "calibration-payment-settler-transaction-queue"
-max_batch_size = 10
-max_batch_timeout = 30
+queue = "payment-settler-transaction-queue-calibration"
+max_concurrency = 1
+max_retries = 3
 
 [[env.calibration.workflows]]
 binding = "TRANSACTION_MONITOR_WORKFLOW"
-name = "calibration-transaction-monitor-workflow"
+name = "payment-settler-transaction-monitor-workflow-calibration"
 class_name = "TransactionMonitorWorkflow"
 
-# TODO: Enable once FilBeam contract has been deployed
-# [env.calibration.triggers]
-# crons = ["*/1 * * * *"]  # Run every minute
+[env.calibration.triggers]
+crons = ["*/45 * * * *"]  # Run every 45 minutes
 
 [env.mainnet.vars]
 ENVIRONMENT = "mainnet"
 RPC_URL = "https://api.node.glif.io/"
-FILBEAM_CONTRACT_ADDRESS = "0x010ca67040e80c8FdBF679680D09b94e2A9ac6B8"
+FILBEAM_OPERATOR_CONTRACT_ADDRESS = "0xeA6631B25BA4c9c9e285DA25a03AA96ACc921530"
 DEFAULT_LOCKUP_PERIOD_DAYS = 30 # 30 days lockup period
 FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS = 1598306400000 # Mainnet genesis timestamp in milliseconds
 
@@ -97,19 +82,18 @@ database_name = "filcdn-mainnet-db"
 database_id = "e8de6418-2cb7-4413-9ba0-a9c8aacf9a66"
 
 [[env.mainnet.queues.producers]]
-queue = "mainnet-payment-settler-transaction-queue"
+queue = "payment-settler-transaction-queue-mainnet"
 binding = "TRANSACTION_QUEUE"
 
 [[env.mainnet.queues.consumers]]
-queue = "mainnet-payment-settler-transaction-queue"
-max_batch_size = 10
-max_batch_timeout = 30
+queue = "payment-settler-transaction-queue-mainnet"
+max_concurrency = 1
+max_retries = 3
 
 [[env.mainnet.workflows]]
 binding = "TRANSACTION_MONITOR_WORKFLOW"
-name = "mainnet-transaction-monitor-workflow"
+name = "payment-settler-transaction-monitor-workflow-mainnet"
 class_name = "TransactionMonitorWorkflow"
 
-# TODO: Enable once FilBeam contract has been deployed
-# [env.mainnet.triggers]
-# crons = ["*/1 * * * *"]  # Run every minute
+[env.mainnet.triggers]
+crons = ["0 */6 * * *"]  # Run every 6 hrs

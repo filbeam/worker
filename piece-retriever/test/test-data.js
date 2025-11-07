@@ -8,11 +8,11 @@
  */
 export const CONTENT_STORED_ON_CALIBRATION = [
   {
-    serviceProviderId: '2',
-    serviceUrl: 'https://calibnet.pspsps.io/',
+    serviceProviderId: '4',
+    serviceUrl: 'https://caliberation-pdp.infrafolio.com',
     pieceCid:
-      'bafkzcibdqqwat4m7ymdhkvsbbo5m7jsejchayo75udw6v3qlfgofpz2lbppe7ea7',
-    dataSetId: 9,
+      'bafkzcibe3cebgd4bkp67e467vm4pnry6bc74bj5jdjb5e6vz5cy6p5mevxoubc6wb4',
+    dataSetId: 60,
   },
   {
     serviceProviderId: '3',
