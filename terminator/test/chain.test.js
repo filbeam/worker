@@ -6,9 +6,9 @@ describe('getChainClient', () => {
     const env = {
       ENVIRONMENT: 'mainnet',
       RPC_URL: 'https://api.node.glif.io/',
-      FILECOIN_WARM_STORAGE_SERVICE_ADDRESS:
-        '0x90f8bf6a479f320ead074411a4b0e7944ea8c9c1',
-      FILCDN_CONTROLLER_ADDRESS_PRIVATE_KEY:
+      FILBEAM_OPERATOR_CONTRACT_ADDRESS:
+        '0x0000000000000000000000000000000000000000',
+      FILBEAM_CONTROLLER_PRIVATE_KEY:
         '0xdead000000000000000000000000000000000000000000000000000000000000',
     }
 
@@ -25,9 +25,9 @@ describe('getChainClient', () => {
     const env = {
       ENVIRONMENT: 'calibration',
       RPC_URL: 'https://api.calibration.node.glif.io/',
-      FILECOIN_WARM_STORAGE_SERVICE_ADDRESS:
-        '0x90f8bf6a479f320ead074411a4b0e7944ea8c9c1',
-      FILCDN_CONTROLLER_ADDRESS_PRIVATE_KEY:
+      FILBEAM_OPERATOR_CONTRACT_ADDRESS:
+        '0x0000000000000000000000000000000000000000',
+      FILBEAM_CONTROLLER_PRIVATE_KEY:
         '0xdead000000000000000000000000000000000000000000000000000000000000',
     }
 
@@ -42,11 +42,11 @@ describe('getChainClient', () => {
 
   it('creates clients for dev environment (uses calibration chain)', async () => {
     const env = {
-      ENVIRONMENT: 'calibration',
+      ENVIRONMENT: 'dev',
       RPC_URL: 'https://api.calibration.node.glif.io/',
-      FILECOIN_WARM_STORAGE_SERVICE_ADDRESS:
-        '0x90f8bf6a479f320ead074411a4b0e7944ea8c9c1',
-      FILCDN_CONTROLLER_ADDRESS_PRIVATE_KEY:
+      FILBEAM_OPERATOR_CONTRACT_ADDRESS:
+        '0x0000000000000000000000000000000000000000',
+      FILBEAM_CONTROLLER_PRIVATE_KEY:
         '0xdead000000000000000000000000000000000000000000000000000000000000',
     }
 

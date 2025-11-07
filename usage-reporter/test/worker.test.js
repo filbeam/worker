@@ -49,7 +49,7 @@ describe('usage reporter worker scheduled entrypoint', () => {
 
   const mockEnv = {
     ...env,
-    FILBEAM_CONTRACT_ADDRESS: '0xMockFilBeamAddress',
+    FILBEAM_OPERATOR_CONTRACT_ADDRESS: '0xMockFilBeamAddress',
     FILBEAM_CONTROLLER_PRIVATE_KEY: '0xMockPrivateKey',
     TRANSACTION_MONITOR_WORKFLOW: mockWorkflow,
   }
@@ -110,7 +110,7 @@ describe('usage reporter worker scheduled entrypoint', () => {
     expect(simulateContractCalls).toStrictEqual([
       {
         account: mockAccount,
-        address: mockEnv.FILBEAM_CONTRACT_ADDRESS,
+        address: mockEnv.FILBEAM_OPERATOR_CONTRACT_ADDRESS,
         abi: filbeamAbi,
         functionName: 'recordUsageRollups',
         args: [100n, ['1', '2'], [2500n, 4000n], [500n, 1000n]],
@@ -173,7 +173,7 @@ describe('usage reporter worker scheduled entrypoint', () => {
     expect(simulateContractCalls).toStrictEqual([
       {
         account: mockAccount,
-        address: mockEnv.FILBEAM_CONTRACT_ADDRESS,
+        address: mockEnv.FILBEAM_OPERATOR_CONTRACT_ADDRESS,
         abi: filbeamAbi,
         functionName: 'recordUsageRollups',
         args: [100n, ['1', '3'], [1000n, 2000n], [0n, 2000n]],
@@ -207,7 +207,7 @@ describe('usage reporter worker scheduled entrypoint', () => {
     expect(simulateContractCalls).toStrictEqual([
       {
         account: mockAccount,
-        address: mockEnv.FILBEAM_CONTRACT_ADDRESS,
+        address: mockEnv.FILBEAM_OPERATOR_CONTRACT_ADDRESS,
         abi: filbeamAbi,
         functionName: 'recordUsageRollups',
         args: [100n, ['1'], [1000n], [0n]],
@@ -244,7 +244,7 @@ describe('usage reporter worker scheduled entrypoint', () => {
     expect(simulateContractCalls).toStrictEqual([
       {
         account: mockAccount,
-        address: mockEnv.FILBEAM_CONTRACT_ADDRESS,
+        address: mockEnv.FILBEAM_OPERATOR_CONTRACT_ADDRESS,
         abi: filbeamAbi,
         functionName: 'recordUsageRollups',
         args: [104n, ['1'], [5000n], [0n]],
@@ -285,7 +285,7 @@ describe('usage reporter worker scheduled entrypoint', () => {
     expect(simulateContractCalls).toStrictEqual([
       {
         account: mockAccount,
-        address: mockEnv.FILBEAM_CONTRACT_ADDRESS,
+        address: mockEnv.FILBEAM_OPERATOR_CONTRACT_ADDRESS,
         abi: filbeamAbi,
         functionName: 'recordUsageRollups',
         args: [100n, ['1'], [7500n], [2500n]],
@@ -310,7 +310,7 @@ describe('usage reporter worker scheduled entrypoint', () => {
     expect(simulateContractCalls).toStrictEqual([
       {
         account: mockAccount,
-        address: mockEnv.FILBEAM_CONTRACT_ADDRESS,
+        address: mockEnv.FILBEAM_OPERATOR_CONTRACT_ADDRESS,
         abi: filbeamAbi,
         functionName: 'recordUsageRollups',
         args: [100n, ['1'], [1000n], [0n]],

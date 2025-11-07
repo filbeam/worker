@@ -21,8 +21,7 @@ export function getChainClient(env) {
 
   // Support both terminator and usage reporter private key field names
   const privateKey = /** @type {`0x${string}`} */ (
-    env.FILCDN_CONTROLLER_ADDRESS_PRIVATE_KEY ||
-      env.FILBEAM_CONTROLLER_PRIVATE_KEY
+    env.FILBEAM_CONTROLLER_PRIVATE_KEY
   )
 
   const account = privateKeyToAccount(privateKey)
