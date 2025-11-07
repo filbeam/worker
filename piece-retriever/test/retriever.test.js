@@ -830,7 +830,7 @@ describe('piece-retriever.fetch', () => {
 
     // Check that both quotas went negative (100 - 500 = -400)
     const quotaResult = await env.DB.prepare(
-      'SELECT cdn_egress_quota, cache_miss_egress_quota FROM data_sets WHERE id = ?',
+      'SELECT cdn_egress_quota, cache_miss_egress_quota FROM data_set_egress_quotas WHERE data_set_id = ?',
     )
       .bind(dataSetId)
       .first()
@@ -907,7 +907,7 @@ describe('piece-retriever.fetch', () => {
 
     // Check that quotas were decremented correctly (cache hit)
     const quotaResult = await env.DB.prepare(
-      'SELECT cdn_egress_quota, cache_miss_egress_quota FROM data_sets WHERE id = ?',
+      'SELECT cdn_egress_quota, cache_miss_egress_quota FROM data_set_egress_quotas WHERE data_set_id = ?',
     )
       .bind(dataSetId)
       .first()

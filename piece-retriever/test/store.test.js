@@ -394,7 +394,7 @@ describe('Egress Quota Management', () => {
     })
 
     const result = await env.DB.prepare(
-      'SELECT cdn_egress_quota, cache_miss_egress_quota FROM data_sets WHERE id = ?',
+      'SELECT cdn_egress_quota, cache_miss_egress_quota FROM data_set_egress_quotas WHERE data_set_id = ?',
     )
       .bind(dataSetId)
       .first()
@@ -427,7 +427,7 @@ describe('Egress Quota Management', () => {
     })
 
     const result = await env.DB.prepare(
-      'SELECT cdn_egress_quota, cache_miss_egress_quota FROM data_sets WHERE id = ?',
+      'SELECT cdn_egress_quota, cache_miss_egress_quota FROM data_set_egress_quotas WHERE data_set_id = ?',
     )
       .bind(dataSetId)
       .first()
@@ -461,7 +461,7 @@ describe('Egress Quota Management', () => {
     })
 
     const result = await env.DB.prepare(
-      'SELECT cdn_egress_quota, cache_miss_egress_quota FROM data_sets WHERE id = ?',
+      'SELECT cdn_egress_quota, cache_miss_egress_quota FROM data_set_egress_quotas WHERE data_set_id = ?',
     )
       .bind(dataSetId)
       .first()
@@ -497,7 +497,7 @@ describe('Egress Quota Management', () => {
     })
 
     const result = await env.DB.prepare(
-      'SELECT cdn_egress_quota, cache_miss_egress_quota FROM data_sets WHERE id = ?',
+      'SELECT cdn_egress_quota, cache_miss_egress_quota FROM data_set_egress_quotas WHERE data_set_id = ?',
     )
       .bind(dataSetId)
       .first()
@@ -575,7 +575,7 @@ describe('Egress Quota Management', () => {
     })
 
     const afterDecrement = await env.DB.prepare(
-      'SELECT cdn_egress_quota FROM data_sets WHERE id = ?',
+      'SELECT cdn_egress_quota FROM data_set_egress_quotas WHERE data_set_id = ?',
     )
       .bind(dataSetId)
       .first()
@@ -756,21 +756,21 @@ describe('updateDataSetStats', () => {
       enforceEgressQuota: false,
     })
 
-    const { results: afterCacheHit } = await env.DB.prepare(
-      `SELECT total_egress_bytes_used, cdn_egress_quota, cache_miss_egress_quota
-       FROM data_sets
-       WHERE id = ?`,
+    const dataSetResult = await env.DB.prepare(
+      `SELECT total_egress_bytes_used FROM data_sets WHERE id = ?`,
     )
       .bind(DATA_SET_ID)
-      .all()
+      .first()
 
-    expect(afterCacheHit).toStrictEqual([
-      {
-        total_egress_bytes_used: EGRESS_BYTES,
-        cdn_egress_quota: initialCdnQuota,
-        cache_miss_egress_quota: initialCacheMissQuota,
-      },
-    ])
+    const quotaResult = await env.DB.prepare(
+      `SELECT cdn_egress_quota, cache_miss_egress_quota FROM data_set_egress_quotas WHERE data_set_id = ?`,
+    )
+      .bind(DATA_SET_ID)
+      .first()
+
+    expect(dataSetResult.total_egress_bytes_used).toBe(EGRESS_BYTES)
+    expect(quotaResult.cdn_egress_quota).toBe(initialCdnQuota)
+    expect(quotaResult.cache_miss_egress_quota).toBe(initialCacheMissQuota)
 
     // Test with cache miss (cacheMiss = true)
     await updateDataSetStats(env, {
@@ -780,21 +780,21 @@ describe('updateDataSetStats', () => {
       enforceEgressQuota: false,
     })
 
-    const { results: afterCacheMiss } = await env.DB.prepare(
-      `SELECT total_egress_bytes_used, cdn_egress_quota, cache_miss_egress_quota
-       FROM data_sets
-       WHERE id = ?`,
+    const dataSetResult2 = await env.DB.prepare(
+      `SELECT total_egress_bytes_used FROM data_sets WHERE id = ?`,
     )
       .bind(DATA_SET_ID)
-      .all()
+      .first()
 
-    expect(afterCacheMiss).toStrictEqual([
-      {
-        total_egress_bytes_used: EGRESS_BYTES * 2,
-        cdn_egress_quota: initialCdnQuota,
-        cache_miss_egress_quota: initialCacheMissQuota,
-      },
-    ])
+    const quotaResult2 = await env.DB.prepare(
+      `SELECT cdn_egress_quota, cache_miss_egress_quota FROM data_set_egress_quotas WHERE data_set_id = ?`,
+    )
+      .bind(DATA_SET_ID)
+      .first()
+
+    expect(dataSetResult2.total_egress_bytes_used).toBe(EGRESS_BYTES * 2)
+    expect(quotaResult2.cdn_egress_quota).toBe(initialCdnQuota)
+    expect(quotaResult2.cache_miss_egress_quota).toBe(initialCacheMissQuota)
   })
 
   it('decrements quotas when enforceEgressQuota is true', async () => {
@@ -817,21 +817,21 @@ describe('updateDataSetStats', () => {
       enforceEgressQuota: true,
     })
 
-    const { results: afterCacheHit } = await env.DB.prepare(
-      `SELECT total_egress_bytes_used, cdn_egress_quota, cache_miss_egress_quota
-       FROM data_sets
-       WHERE id = ?`,
+    const dataSetResult = await env.DB.prepare(
+      `SELECT total_egress_bytes_used FROM data_sets WHERE id = ?`,
     )
       .bind(DATA_SET_ID)
-      .all()
+      .first()
 
-    expect(afterCacheHit).toStrictEqual([
-      {
-        total_egress_bytes_used: EGRESS_BYTES,
-        cdn_egress_quota: initialCdnQuota - EGRESS_BYTES,
-        cache_miss_egress_quota: initialCacheMissQuota,
-      },
-    ])
+    const quotaResult = await env.DB.prepare(
+      `SELECT cdn_egress_quota, cache_miss_egress_quota FROM data_set_egress_quotas WHERE data_set_id = ?`,
+    )
+      .bind(DATA_SET_ID)
+      .first()
+
+    expect(dataSetResult.total_egress_bytes_used).toBe(EGRESS_BYTES)
+    expect(quotaResult.cdn_egress_quota).toBe(initialCdnQuota - EGRESS_BYTES)
+    expect(quotaResult.cache_miss_egress_quota).toBe(initialCacheMissQuota)
 
     // Test with cache miss (cacheMiss = true)
     await updateDataSetStats(env, {
@@ -841,20 +841,24 @@ describe('updateDataSetStats', () => {
       enforceEgressQuota: true,
     })
 
-    const { results: afterCacheMiss } = await env.DB.prepare(
-      `SELECT total_egress_bytes_used, cdn_egress_quota, cache_miss_egress_quota
-       FROM data_sets
-       WHERE id = ?`,
+    const dataSetResult2 = await env.DB.prepare(
+      `SELECT total_egress_bytes_used FROM data_sets WHERE id = ?`,
     )
       .bind(DATA_SET_ID)
-      .all()
+      .first()
 
-    expect(afterCacheMiss).toStrictEqual([
-      {
-        total_egress_bytes_used: EGRESS_BYTES * 2,
-        cdn_egress_quota: initialCdnQuota - EGRESS_BYTES * 2,
-        cache_miss_egress_quota: initialCacheMissQuota - EGRESS_BYTES,
-      },
-    ])
+    const quotaResult2 = await env.DB.prepare(
+      `SELECT cdn_egress_quota, cache_miss_egress_quota FROM data_set_egress_quotas WHERE data_set_id = ?`,
+    )
+      .bind(DATA_SET_ID)
+      .first()
+
+    expect(dataSetResult2.total_egress_bytes_used).toBe(EGRESS_BYTES * 2)
+    expect(quotaResult2.cdn_egress_quota).toBe(
+      initialCdnQuota - EGRESS_BYTES * 2,
+    )
+    expect(quotaResult2.cache_miss_egress_quota).toBe(
+      initialCacheMissQuota - EGRESS_BYTES,
+    )
   })
 })

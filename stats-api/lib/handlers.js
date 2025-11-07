@@ -8,19 +8,23 @@
  * @returns {Promise<Response>} JSON response with egress quotas or error
  */
 export async function handleGetDataSetStats(env, dataSetId) {
-  const result = await env.DB.prepare(
-    'SELECT cdn_egress_quota, cache_miss_egress_quota FROM data_sets WHERE id = ?',
+  const quotaResult = await env.DB.prepare(
+    `SELECT 
+      cdn_egress_quota, 
+      cache_miss_egress_quota 
+    FROM data_set_egress_quotas 
+    WHERE data_set_id = ?`,
   )
     .bind(dataSetId)
     .first()
 
-  if (!result) {
+  if (!quotaResult) {
     return new Response('Not Found', { status: 404 })
   }
 
   const response = {
-    cdnEgressQuota: String(result.cdn_egress_quota ?? 0),
-    cacheMissEgressQuota: String(result.cache_miss_egress_quota ?? 0),
+    cdnEgressQuota: String(quotaResult?.cdn_egress_quota ?? 0),
+    cacheMissEgressQuota: String(quotaResult?.cache_miss_egress_quota ?? 0),
   }
 
   return new Response(JSON.stringify(response), {
