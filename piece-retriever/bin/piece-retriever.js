@@ -119,8 +119,13 @@ export default {
           if (retrievalResult.response.ok) {
             break
           }
+          console.log(`Retrieval attempt failed: HTTP ${retrievalResult.response.status}', {
+            retrievalCandidate,
+            willRetry: retrievalCandidates.length > 0,
+          })
+        }
         } catch {
-          console.log('Retrieval attempt failed', {
+          console.log('Retrieval attempt failed: ${err.message ?? err}', {
             retrievalCandidate,
             willRetry: retrievalCandidates.length > 0,
           })
