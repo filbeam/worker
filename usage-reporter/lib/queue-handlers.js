@@ -38,7 +38,7 @@ export async function handleTransactionConfirmedQueueMessage(message, env) {
     await env.DB.prepare(
       `
       UPDATE data_sets
-      SET usage_reported_until = datetime(?),
+      SET usage_reported_until = ?,
           pending_usage_report_tx_hash = NULL
       WHERE pending_usage_report_tx_hash = ?
       `,

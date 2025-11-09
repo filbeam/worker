@@ -60,7 +60,7 @@ export class TransactionMonitorWorkflow extends WorkflowEntrypoint {
             await this.env.TRANSACTION_QUEUE.send({
               type: metadata.onSuccess,
               transactionHash,
-              ...metadata.successData,
+              ...metadata?.successData,
             })
 
             console.log(
