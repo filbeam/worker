@@ -111,6 +111,7 @@ export default {
         `Stored pending transaction hash for ${usageReportData.dataSetIds.length} data sets`,
       )
 
+      const upToTimestamp = new Date(upToTimestampMs).toISOString()
       // Start transaction monitor workflow
       await env.TRANSACTION_MONITOR_WORKFLOW.create({
         id: `usage-reporter-${hash}-${Date.now()}`,
@@ -118,8 +119,8 @@ export default {
           transactionHash: hash,
           metadata: {
             onSuccess: 'transaction-confirmed',
-            successData: { upToTimestamp: upToTimestampMs },
-            retryData: { upToTimestamp: upToTimestampMs },
+            successData: { upToTimestamp },
+            retryData: { upToTimestamp },
           },
         },
       })
