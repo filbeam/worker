@@ -1,7 +1,7 @@
 [
   {
     "type": "function",
-    "name": "settleCDNPaymentRailBatch",
+    "name": "settleCDNPaymentRails",
     "inputs": [
       {
         "name": "dataSetIds",
