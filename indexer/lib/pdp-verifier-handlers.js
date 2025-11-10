@@ -19,7 +19,9 @@ export async function insertDataSetPiece(
       cid,
       ipfs_root_cid
     ) VALUES (?, ?, ?, ?)
-    ON CONFLICT DO NOTHING
+    ON CONFLICT DO UPDATE SET
+      cid = excluded.cid,
+      ipfs_root_cid = excluded.ipfs_root_cid
     `,
   )
     .bind(pieceId, dataSetId, pieceCid, ipfsRootCid)
