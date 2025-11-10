@@ -121,7 +121,7 @@ export async function getRetrievalCandidatesAndValidatePayer(
      ON data_sets.service_provider_id = service_providers.id
    LEFT OUTER JOIN wallet_details
      ON data_sets.payer_address = wallet_details.address
-   WHERE pieces.cid = ?
+   WHERE pieces.cid = ? AND is_deleted IS FALSE
  `
 
   const results = /**

@@ -475,7 +475,7 @@ describe('piece-retriever.indexer', () => {
       expect(await res.text()).toBe('OK')
 
       const { results: pieces } = await env.DB.prepare(
-        'SELECT id, cid FROM pieces WHERE data_set_id = ? ORDER BY id',
+        'SELECT id, cid FROM pieces WHERE data_set_id = ? AND is_deleted IS FALSE ORDER BY id',
       )
         .bind(dataSetId)
         .all()
@@ -510,7 +510,7 @@ describe('piece-retriever.indexer', () => {
       }
 
       const { results: pieces } = await env.DB.prepare(
-        'SELECT * FROM pieces WHERE data_set_id = ?',
+        'SELECT * FROM pieces WHERE data_set_id = ? AND is_deleted = FALSE',
       )
         .bind(dataSetId)
         .all()
@@ -541,7 +541,7 @@ describe('piece-retriever.indexer', () => {
       }
 
       const { results: pieces } = await env.DB.prepare(
-        'SELECT data_set_id, id FROM pieces WHERE data_set_id = ? OR data_set_id = ? ORDER BY data_set_id',
+        'SELECT data_set_id, id FROM pieces WHERE (data_set_id = ? OR data_set_id = ?) AND is_deleted IS FALSE ORDER BY data_set_id',
       )
         .bind(dataSetIds[0], dataSetIds[1])
         .all()
@@ -580,7 +580,7 @@ describe('piece-retriever.indexer', () => {
       expect(await res.text()).toBe('OK')
 
       const { results: pieces } = await env.DB.prepare(
-        'SELECT id, cid, ipfs_root_cid FROM pieces WHERE data_set_id = ? ORDER BY id',
+        'SELECT id, cid, ipfs_root_cid FROM pieces WHERE data_set_id = ? AND is_deleted IS FALSE ORDER BY id',
       )
         .bind(dataSetId)
         .all()
@@ -634,7 +634,65 @@ describe('piece-retriever.indexer', () => {
       )
         .bind(dataSetId)
         .all()
-      expect(pieces.length).toBe(0)
+      expect(pieces.length).toBeGreaterThan(0)
+      for (const piece of pieces) {
+        expect(piece.is_deleted).toBe(1)
+      }
+    })
+
+    it('delete before add (events out of order) leads to the same result', async () => {
+      const dataSetId = randomId()
+      const pieceId = randomId().toString()
+      const pieceCid =
+        '0x0155912024c6db010b63fa0aff84de00a4cd98802e03d1df5ea18ea430c3a0cdc84af4fc4024ab2714'
+
+      const removeRes = await workerImpl.fetch(
+        new Request('https://host/pdp-verifier/pieces-removed', {
+          method: 'POST',
+          headers: {
+            [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+          },
+          body: JSON.stringify({
+            data_set_id: dataSetId,
+            piece_ids: [pieceId],
+          }),
+        }),
+        env,
+        CTX,
+        {},
+      )
+      expect(removeRes.status).toBe(200)
+      expect(await removeRes.text()).toBe('OK')
+
+      const addRes = await workerImpl.fetch(
+        new Request('https://host/fwss/piece-added', {
+          method: 'POST',
+          headers: {
+            [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+          },
+          body: JSON.stringify({
+            data_set_id: dataSetId,
+            piece_id: pieceId,
+            piece_cid: pieceCid,
+            metadata_keys: [],
+            metadata_values: [],
+          }),
+        }),
+        env,
+        CTX,
+        {},
+      )
+      expect(addRes.status).toBe(200)
+
+      const { results: pieces } = await env.DB.prepare(
+        'SELECT * FROM pieces WHERE data_set_id = ?',
+      )
+        .bind(dataSetId)
+        .all()
+      expect(pieces.length).toBeGreaterThan(0)
+      for (const piece of pieces) {
+        expect(piece.is_deleted).toBe(1)
+      }
     })
   })
 
