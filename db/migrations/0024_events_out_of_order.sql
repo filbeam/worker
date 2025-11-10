@@ -29,3 +29,5 @@ CREATE TABLE data_sets_tmp (
 INSERT INTO data_sets_tmp SELECT * FROM data_sets;
 DROP TABLE data_sets;
 ALTER TABLE data_sets_tmp RENAME TO data_sets;
+
+ALTER TABLE service_providers ADD COLUMN block_number INTEGER;

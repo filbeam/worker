@@ -700,7 +700,7 @@ describe('piece-retriever.indexer', () => {
   })
 
   describe('POST /service-provider-registry/product-added', () => {
-    it('returns 400 if provider_id and product_type are missing', async () => {
+    it('returns 400 if provider_id and product_type and block_number are missing', async () => {
       const req = new Request(
         'https://host/service-provider-registry/product-added',
         {
@@ -718,6 +718,7 @@ describe('piece-retriever.indexer', () => {
     it('inserts a provider service URL', async () => {
       const serviceUrl = 'https://provider.example.com'
       const providerId = 123
+      const blockNumber = 234
       const req = new Request(
         'https://host/service-provider-registry/product-added',
         {
@@ -732,6 +733,7 @@ describe('piece-retriever.indexer', () => {
             capability_values: ['some value', serviceUrl, 'another value']
               .map((s) => `0x${Buffer.from(s).toString('hex')}`)
               .join(','),
+            block_number: blockNumber,
           }),
         },
       )
@@ -748,6 +750,75 @@ describe('piece-retriever.indexer', () => {
         {
           id: providerId.toString(),
           service_url: serviceUrl,
+          block_number: blockNumber,
+        },
+      ])
+    })
+    it('updates a provider service URL if events arrived out of order', async () => {
+      const serviceUrl = 'https://provider.example.com'
+      const providerId = 123
+      const blockNumber = 234
+
+      let ctx = createExecutionContext()
+      const updateRes = await workerImpl.fetch(
+        new Request('https://host/service-provider-registry/product-updated', {
+          method: 'POST',
+          headers: {
+            [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+          },
+          body: JSON.stringify({
+            provider_id: providerId,
+            product_type: 0,
+            capability_keys: 'someKey,serviceURL,anotherKey',
+            capability_values: ['some value', serviceUrl, 'another value']
+              .map((s) => `0x${Buffer.from(s).toString('hex')}`)
+              .join(','),
+            block_number: blockNumber,
+          }),
+        }),
+        env,
+        ctx,
+      )
+      await waitOnExecutionContext(ctx)
+      expect(updateRes.status).toBe(200)
+      expect(await updateRes.text()).toBe('OK')
+
+      ctx = createExecutionContext()
+      const addRes = await workerImpl.fetch(
+        new Request('https://host/service-provider-registry/product-added', {
+          method: 'POST',
+          headers: {
+            [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+          },
+          body: JSON.stringify({
+            provider_id: providerId,
+            product_type: 0,
+            capability_keys: 'someKey,serviceURL,anotherKey',
+            capability_values: [
+              'some value',
+              'https://old.example.com/',
+              'another value',
+            ]
+              .map((s) => `0x${Buffer.from(s).toString('hex')}`)
+              .join(','),
+            block_number: blockNumber - 1,
+          }),
+        }),
+        env,
+        ctx,
+      )
+      await waitOnExecutionContext(ctx)
+      expect(addRes.status).toBe(200)
+      expect(await addRes.text()).toBe('OK')
+
+      const { results: providers } = await env.DB.prepare(
+        'SELECT * FROM service_providers',
+      ).all()
+      expect(providers).toEqual([
+        {
+          id: providerId.toString(),
+          service_url: serviceUrl,
+          block_number: blockNumber,
         },
       ])
     })
@@ -773,6 +844,7 @@ describe('piece-retriever.indexer', () => {
             capability_values: ['some value', serviceUrl, 'another value']
               .map((s) => `0x${Buffer.from(s).toString('hex')}`)
               .join(','),
+            block_number: 123,
           }),
         },
       )
@@ -797,6 +869,7 @@ describe('piece-retriever.indexer', () => {
             capability_values: ['some value', newServiceUrl, 'another value']
               .map((s) => `0x${Buffer.from(s).toString('hex')}`)
               .join(','),
+            block_number: 234,
           }),
         },
       )
@@ -852,6 +925,7 @@ describe('piece-retriever.indexer', () => {
             capability_values: ['some value', serviceUrl, 'another value']
               .map((s) => `0x${Buffer.from(s).toString('hex')}`)
               .join(','),
+            block_number: 123,
           }),
         },
       )

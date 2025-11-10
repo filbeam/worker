@@ -8,6 +8,7 @@ const PRODUCT_TYPE_PDP = 0
  * @param {string | number} productType
  * @param {string} capabilityKeys
  * @param {string} capabilityValues
+ * @param {number} blockNumber
  * @returns {Promise<Response>}
  */
 export async function handleProductAdded(
@@ -16,12 +17,14 @@ export async function handleProductAdded(
   productType,
   capabilityKeys,
   capabilityValues,
+  blockNumber,
 ) {
   if (
     (typeof providerId !== 'string' && typeof providerId !== 'number') ||
     (typeof productType !== 'string' && typeof productType !== 'number') ||
     typeof capabilityKeys !== 'string' ||
-    typeof capabilityValues !== 'string'
+    typeof capabilityValues !== 'string' ||
+    typeof blockNumber !== 'number'
   ) {
     console.error('ServiceProviderRegistry.ProductAdded: Invalid payload', {
       providerId,
@@ -38,6 +41,7 @@ export async function handleProductAdded(
     providerId,
     capabilityKeys,
     capabilityValues,
+    blockNumber,
   )
 }
 
@@ -47,6 +51,7 @@ export async function handleProductAdded(
  * @param {string | number} productType
  * @param {string} capabilityKeys
  * @param {string} capabilityValues
+ * @param {number} blockNumber
  * @returns {Promise<Response>}
  */
 export async function handleProductUpdated(
@@ -55,12 +60,14 @@ export async function handleProductUpdated(
   productType,
   capabilityKeys,
   capabilityValues,
+  blockNumber,
 ) {
   if (
     (typeof providerId !== 'string' && typeof providerId !== 'number') ||
     (typeof productType !== 'string' && typeof productType !== 'number') ||
     typeof capabilityKeys !== 'string' ||
-    typeof capabilityValues !== 'string'
+    typeof capabilityValues !== 'string' ||
+    typeof blockNumber !== 'number'
   ) {
     console.error('ServiceProviderRegistry.ProductUpdated: Invalid payload', {
       providerId,
@@ -77,6 +84,7 @@ export async function handleProductUpdated(
     providerId,
     capabilityKeys,
     capabilityValues,
+    blockNumber,
   )
 }
 
@@ -152,6 +160,7 @@ export async function handleProviderRemoved(env, providerId) {
  * @param {string | number} providerId
  * @param {string} capabilityKeys
  * @param {string} capabilityValues
+ * @param {number} blockNumber
  * @returns {Promise<Response>}
  */
 async function handleProviderServiceUrlUpdate(
@@ -159,6 +168,7 @@ async function handleProviderServiceUrlUpdate(
   providerId,
   capabilityKeys,
   capabilityValues,
+  blockNumber,
 ) {
   const serviceUrlIndex = capabilityKeys.split(',').indexOf('serviceURL')
   if (serviceUrlIndex === -1) {
@@ -206,16 +216,24 @@ async function handleProviderServiceUrlUpdate(
 
   await env.DB.prepare(
     `
-        INSERT INTO service_providers (
+        INSERT OR REPLACE INTO service_providers (
           id,
-          service_url
+          service_url,
+          block_number
         )
-        VALUES (?, ?)
-        ON CONFLICT(id) DO UPDATE SET
-          service_url=excluded.service_url
+        SELECT ?, ?, ?
+        WHERE NOT EXISTS (
+          SELECT * FROM service_providers WHERE id = ? AND block_number > ?
+        )
       `,
   )
-    .bind(String(providerId), serviceUrl)
+    .bind(
+      String(providerId),
+      serviceUrl,
+      String(blockNumber),
+      String(providerId),
+      String(blockNumber),
+    )
     .run()
   return new Response('OK', { status: 200 })
 }
