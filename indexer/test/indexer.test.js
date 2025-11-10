@@ -692,6 +692,9 @@ describe('piece-retriever.indexer', () => {
       expect(pieces.length).toBeGreaterThan(0)
       for (const piece of pieces) {
         expect(piece.is_deleted).toBe(1)
+        expect(piece.cid).toBe(
+          'bafkzcibey3nqcc3d7ifp7bg6acsm3geafyb5dx26ughkimgdudg4qsxu7racjkzhcq',
+        )
       }
     })
   })
