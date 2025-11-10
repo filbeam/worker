@@ -640,7 +640,7 @@ describe('piece-retriever.indexer', () => {
       }
     })
 
-    it('delete before add (events out of order) leads to the same result', async () => {
+    it('marks as deleted when delete arrives before add (events out of order)', async () => {
       const dataSetId = randomId()
       const pieceId = randomId().toString()
       const pieceCid =
@@ -1044,6 +1044,66 @@ describe('POST /fwss/cdn-service-terminated', () => {
       .bind(dataSetId)
       .all()
     expect(dataSets).toStrictEqual([{ id: dataSetId, with_cdn: 0 }])
+  })
+
+  it('marks as `withCDN=false` when termination arrives before creation (events out of order)', async () => {
+    const mockCheckIfAddressIsSanctioned = vi.fn()
+    mockCheckIfAddressIsSanctioned.mockResolvedValueOnce(false)
+
+    const dataSetId = randomId()
+    const payerAddress = '0xpayer'
+    const serviceProviderId = randomId()
+
+    const terminateRes = await workerImpl.fetch(
+      new Request('https://host/fwss/cdn-service-terminated', {
+        method: 'POST',
+        headers: {
+          [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+        },
+        body: JSON.stringify({
+          data_set_id: dataSetId,
+          block_number: 1000000, // Add block_number for epoch-based timestamp calculation
+        }),
+      }),
+      env,
+    )
+    expect(terminateRes.status).toBe(200)
+    expect(await terminateRes.text()).toBe('OK')
+
+    const createRes = await workerImpl.fetch(
+      new Request('https://host/fwss/data-set-created', {
+        method: 'POST',
+        headers: {
+          [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+        },
+        body: JSON.stringify({
+          data_set_id: dataSetId,
+          payer: payerAddress,
+          provider_id: serviceProviderId,
+          metadata_keys: ['withCDN'],
+          metadata_values: [],
+        }),
+      }),
+      env,
+      {},
+      { checkIfAddressIsSanctioned: mockCheckIfAddressIsSanctioned },
+    )
+    expect(createRes.status).toBe(200)
+    expect(await createRes.text()).toBe('OK')
+
+    const { results: dataSets } = await env.DB.prepare(
+      'SELECT * FROM data_sets WHERE id = ?',
+    )
+      .bind(dataSetId)
+      .all()
+    expect(dataSets).toMatchObject([
+      {
+        id: dataSetId,
+        payer_address: payerAddress,
+        service_provider_id: serviceProviderId,
+        with_cdn: 0,
+      },
+    ])
   })
 })
 
