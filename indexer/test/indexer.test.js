@@ -751,6 +751,7 @@ describe('piece-retriever.indexer', () => {
           id: providerId.toString(),
           service_url: serviceUrl,
           block_number: blockNumber,
+          is_deleted: 0,
         },
       ])
     })
@@ -819,6 +820,66 @@ describe('piece-retriever.indexer', () => {
           id: providerId.toString(),
           service_url: serviceUrl,
           block_number: blockNumber,
+          is_deleted: 0,
+        },
+      ])
+    })
+    it('keeps a service provider deleted if events arrived out of order', async () => {
+      const serviceUrl = 'https://provider.example.com'
+      const providerId = 123
+      const blockNumber = 234
+
+      let ctx = createExecutionContext()
+      const removeRes = await workerImpl.fetch(
+        new Request('https://host/service-provider-registry/provider-removed', {
+          method: 'POST',
+          headers: {
+            [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+          },
+          body: JSON.stringify({
+            provider_id: providerId,
+          }),
+        }),
+        env,
+        ctx,
+      )
+      await waitOnExecutionContext(ctx)
+      expect(removeRes.status).toBe(200)
+      expect(await removeRes.text()).toBe('OK')
+
+      ctx = createExecutionContext()
+      const addRes = await workerImpl.fetch(
+        new Request('https://host/service-provider-registry/product-added', {
+          method: 'POST',
+          headers: {
+            [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+          },
+          body: JSON.stringify({
+            provider_id: providerId,
+            product_type: 0,
+            capability_keys: 'serviceURL',
+            capability_values: [serviceUrl]
+              .map((s) => `0x${Buffer.from(s).toString('hex')}`)
+              .join(','),
+            block_number: blockNumber,
+          }),
+        }),
+        env,
+        ctx,
+      )
+      await waitOnExecutionContext(ctx)
+      expect(addRes.status).toBe(200)
+      expect(await addRes.text()).toBe('OK')
+
+      const { results: providers } = await env.DB.prepare(
+        'SELECT * FROM service_providers',
+      ).all()
+      expect(providers).toEqual([
+        {
+          id: providerId.toString(),
+          service_url: serviceUrl,
+          block_number: blockNumber,
+          is_deleted: 1,
         },
       ])
     })
@@ -886,6 +947,88 @@ describe('piece-retriever.indexer', () => {
         .all()
       expect(providers.length).toBe(1)
       expect(providers[0].service_url).toBe(newServiceUrl)
+    })
+    it('keeps a service provider deleted if events arrived out of order', async () => {
+      const providerId = 123
+      const blockNumber = 234
+
+      let ctx = createExecutionContext()
+      const addRes = await workerImpl.fetch(
+        new Request('https://host/service-provider-registry/product-added', {
+          method: 'POST',
+          headers: {
+            [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+          },
+          body: JSON.stringify({
+            provider_id: providerId,
+            product_type: 0,
+            capability_keys: 'serviceURL',
+            capability_values: ['https://old.example.com']
+              .map((s) => `0x${Buffer.from(s).toString('hex')}`)
+              .join(','),
+            block_number: 234,
+          }),
+        }),
+        env,
+        ctx,
+      )
+      await waitOnExecutionContext(ctx)
+      expect(addRes.status).toBe(200)
+      expect(await addRes.text()).toBe('OK')
+
+      ctx = createExecutionContext()
+      const removeRes = await workerImpl.fetch(
+        new Request('https://host/service-provider-registry/provider-removed', {
+          method: 'POST',
+          headers: {
+            [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+          },
+          body: JSON.stringify({
+            provider_id: providerId,
+          }),
+        }),
+        env,
+        ctx,
+      )
+      await waitOnExecutionContext(ctx)
+      expect(removeRes.status).toBe(200)
+      expect(await removeRes.text()).toBe('OK')
+
+      ctx = createExecutionContext()
+      const updateRes = await workerImpl.fetch(
+        new Request('https://host/service-provider-registry/product-updated', {
+          method: 'POST',
+          headers: {
+            [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+          },
+          body: JSON.stringify({
+            provider_id: providerId,
+            product_type: 0,
+            capability_keys: 'serviceURL',
+            capability_values: ['https://new.example.com']
+              .map((s) => `0x${Buffer.from(s).toString('hex')}`)
+              .join(','),
+            block_number: 234,
+          }),
+        }),
+        env,
+        ctx,
+      )
+      await waitOnExecutionContext(ctx)
+      expect(updateRes.status).toBe(200)
+      expect(await updateRes.text()).toBe('OK')
+
+      const { results: providers } = await env.DB.prepare(
+        'SELECT * FROM service_providers',
+      ).all()
+      expect(providers).toEqual([
+        {
+          id: providerId.toString(),
+          service_url: 'https://new.example.com',
+          block_number: blockNumber,
+          is_deleted: 1,
+        },
+      ])
     })
   })
   describe('POST /service-provider-registry/product-removed', () => {
@@ -959,26 +1102,7 @@ describe('piece-retriever.indexer', () => {
       )
         .bind(String(providerId))
         .all()
-      expect(providers.length).toBe(0) // The provider should be removed
-    })
-
-    it('returns 404 if the provider does not exist', async () => {
-      const req = new Request(
-        'https://host/service-provider-registry/product-removed',
-        {
-          method: 'POST',
-          headers: {
-            [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
-          },
-          body: JSON.stringify({
-            provider_id: 13,
-            product_type: 0,
-          }),
-        },
-      )
-      const res = await workerImpl.fetch(req, env)
-      expect(res.status).toBe(404)
-      expect(await res.text()).toBe('Provider Not Found')
+      expect(providers).toMatchObject([{ is_deleted: 1 }])
     })
   })
 })

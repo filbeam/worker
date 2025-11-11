@@ -111,6 +111,7 @@ export async function getRetrievalCandidatesAndValidatePayer(
     data_set_egress_quotas.cdn_egress_quota, 
     data_set_egress_quotas.cache_miss_egress_quota,
     service_providers.service_url, 
+    service_providers.is_deleted as service_provider_is_deleted,
     wallet_details.is_sanctioned
    FROM pieces
    LEFT OUTER JOIN data_sets
@@ -121,7 +122,8 @@ export async function getRetrievalCandidatesAndValidatePayer(
      ON data_sets.service_provider_id = service_providers.id
    LEFT OUTER JOIN wallet_details
      ON data_sets.payer_address = wallet_details.address
-   WHERE pieces.cid = ? AND is_deleted IS FALSE
+   WHERE
+     pieces.cid = ? AND pieces.is_deleted IS FALSE
  `
 
   const results = /**
@@ -133,6 +135,7 @@ export async function getRetrievalCandidatesAndValidatePayer(
    *   cdn_egress_quota: string | undefined
    *   cache_miss_egress_quota: string | undefined
    *   service_url: string | undefined
+   *   service_provider_is_deleted: boolean | undefined
    *   is_sanctioned: number | undefined
    * }[]}
    */ (
@@ -147,7 +150,10 @@ export async function getRetrievalCandidatesAndValidatePayer(
   )
 
   const withServiceProvider = results.filter(
-    (row) => row && row.service_provider_id != null,
+    (row) =>
+      row &&
+      row.service_provider_id != null &&
+      !row.service_provider_is_deleted,
   )
   httpAssert(
     withServiceProvider.length > 0,

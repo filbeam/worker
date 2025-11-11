@@ -26,3 +26,4 @@ CREATE TABLE data_sets (
 
 DELETE FROM service_providers;
 ALTER TABLE service_providers ADD COLUMN block_number INTEGER;
+ALTER TABLE service_providers ADD COLUMN is_deleted BOOLEAN NOT NULL DEFAULT false;

@@ -109,17 +109,7 @@ export async function handleProductRemoved(env, providerId, productType) {
     return new Response('OK', { status: 200 })
   }
 
-  const result = await env.DB.prepare(
-    `
-        DELETE FROM service_providers WHERE id = ?
-      `,
-  )
-    .bind(String(providerId))
-    .run()
-  if (result.meta.changes === 0) {
-    return new Response('Provider Not Found', { status: 404 })
-  }
-  return new Response('OK', { status: 200 })
+  return await handleProviderRemoval(env, providerId)
 }
 
 /**
@@ -135,24 +125,7 @@ export async function handleProviderRemoved(env, providerId) {
     return new Response('Bad Request', { status: 400 })
   }
 
-  const result = await env.DB.prepare(
-    `
-        DELETE FROM service_providers WHERE id = ?
-      `,
-  )
-    .bind(String(providerId))
-    .run()
-  if (result.meta.changes === 0) {
-    // Provider was likely not ingested due to invalid serviceURL
-    console.error(
-      'ServiceProviderRegistry.ProviderRemoved: Provider not found',
-      {
-        providerId,
-      },
-    )
-    return new Response('OK', { status: 200 })
-  }
-  return new Response('OK', { status: 200 })
+  return await handleProviderRemoval(env, providerId)
 }
 
 /**
@@ -216,24 +189,47 @@ async function handleProviderServiceUrlUpdate(
 
   await env.DB.prepare(
     `
+        WITH sp AS (SELECT * FROM service_providers WHERE id = ?)
         INSERT OR REPLACE INTO service_providers (
           id,
           service_url,
-          block_number
+          block_number,
+          is_deleted
         )
-        SELECT ?, ?, ?
+        SELECT ?, ?, ?, (SELECT is_deleted FROM sp)
         WHERE NOT EXISTS (
-          SELECT * FROM service_providers WHERE id = ? AND block_number > ?
+          SELECT * FROM sp WHERE block_number > ?
         )
       `,
   )
     .bind(
       String(providerId),
+      String(providerId),
       serviceUrl,
       String(blockNumber),
-      String(providerId),
       String(blockNumber),
     )
+    .run()
+  return new Response('OK', { status: 200 })
+}
+
+/**
+ * @param {{ DB: D1Database }} env
+ * @param {string | number} providerId
+ * @returns {Promise<Response>}
+ */
+async function handleProviderRemoval(env, providerId) {
+  await env.DB.prepare(
+    `
+        INSERT INTO service_providers (
+          id,
+          is_deleted
+        ) VALUES (?, TRUE)
+        ON CONFLICT DO UPDATE SET
+          is_deleted = excluded.is_deleted
+      `,
+  )
+    .bind(String(providerId))
     .run()
   return new Response('OK', { status: 200 })
 }
