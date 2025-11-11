@@ -50,7 +50,10 @@ export async function handleFWSSDataSetCreated(
         with_ipfs_indexing
       )
       VALUES (?, ?, ?, ?, ?)
-      ON CONFLICT DO NOTHING
+      ON CONFLICT DO UPDATE SET
+        service_provider_id = excluded.service_provider_id,
+        payer_address = excluded.payer_address,
+        with_ipfs_indexing = excluded.with_ipfs_indexing
     `,
   )
     .bind(
@@ -85,13 +88,15 @@ export async function handleFWSSServiceTerminated(env, payload) {
 
   await env.DB.prepare(
     `
-      UPDATE data_sets
-      SET with_cdn = false,
-          lockup_unlocks_at = datetime(?)
-      WHERE id = ?
+      INSERT INTO data_sets (
+        id, with_cdn, lockup_unlocks_at
+      ) VALUES (?, FALSE, datetime(?))
+      ON CONFLICT DO UPDATE SET
+        with_cdn = excluded.with_cdn,
+        lockup_unlocks_at = excluded.lockup_unlocks_at
     `,
   )
-    .bind(lockupUnlocksAtISO, payload.data_set_id)
+    .bind(payload.data_set_id, lockupUnlocksAtISO)
     .run()
 }
 
