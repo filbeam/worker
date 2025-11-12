@@ -87,7 +87,7 @@ describe('payment settler scheduled handler', () => {
         abi: expect.any(Array),
         address: '0xTestContractAddress',
         functionName: 'settleCDNPaymentRails',
-        args: [expect.any(BigInt), expect.any(BigInt)],
+        args: [[expect.any(BigInt), expect.any(BigInt)]],
       },
     ])
 
@@ -97,7 +97,7 @@ describe('payment settler scheduled handler', () => {
         abi: expect.any(Array),
         address: '0xTestContractAddress',
         functionName: 'settleCDNPaymentRails',
-        args: [expect.any(BigInt), expect.any(BigInt)],
+        args: [[expect.any(BigInt), expect.any(BigInt)]],
         mockedRequest: true,
       },
     ])
@@ -161,7 +161,7 @@ describe('payment settler scheduled handler', () => {
         abi: expect.any(Array),
         address: '0xTestContractAddress',
         functionName: 'settleCDNPaymentRails',
-        args: [expect.any(BigInt), expect.any(BigInt)],
+        args: [[expect.any(BigInt), expect.any(BigInt)]],
       },
     ])
     expect(writeContractCalls).toStrictEqual([
@@ -170,7 +170,7 @@ describe('payment settler scheduled handler', () => {
         abi: expect.any(Array),
         address: '0xTestContractAddress',
         functionName: 'settleCDNPaymentRails',
-        args: [expect.any(BigInt), expect.any(BigInt)],
+        args: [[expect.any(BigInt), expect.any(BigInt)]],
         mockedRequest: true,
       },
     ])
