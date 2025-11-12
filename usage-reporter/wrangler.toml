@@ -13,6 +13,9 @@ binding = "DB"
 database_name = "test-db"
 database_id = "8cc92155-16f6-426a-b782-2965e0daf100"
 
+[[analytics_engine_datasets]]
+binding = "USAGE_REPORTER_ANALYTICS"
+
 [env.dev.vars]
 ENVIRONMENT = "dev"
 RPC_URL = "https://api.calibration.node.glif.io/"
@@ -24,6 +27,9 @@ binding = "DB"
 database_name = "dev-db"
 database_id = "8cc92155-16f6-426a-b782-2965e0daf101"
 
+[[env.dev.analytics_engine_datasets]]
+binding = "USAGE_REPORTER_ANALYTICS"
+
 [env.calibration.vars]
 ENVIRONMENT = "calibration"
 RPC_URL = "https://api.calibration.node.glif.io/"
@@ -34,6 +40,9 @@ FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS = "1667326380000"
 binding = "DB"
 database_name = "filcdn-calibration-db"
 database_id = "78f15bbb-391f-4797-9016-a6cb86c0b9b8"
+
+[[env.calibration.analytics_engine_datasets]]
+binding = "USAGE_REPORTER_ANALYTICS"
 
 [env.calibration.triggers]
 crons = ["*/30 * * * *"]  # Run every 30 minutes
@@ -48,6 +57,9 @@ FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS = "1598306400000"
 binding = "DB"
 database_name = "filcdn-mainnet-db"
 database_id = "e8de6418-2cb7-4413-9ba0-a9c8aacf9a66"
+
+[[env.mainnet.analytics_engine_datasets]]
+binding = "USAGE_REPORTER_ANALYTICS"
 
 [env.mainnet.triggers]
 crons = ["0 */4 * * *"]  # Run every 4 hrs

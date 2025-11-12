@@ -10,6 +10,7 @@ import {
   handleTransactionRetryQueueMessage as defaultHandleTransactionRetryQueueMessage,
   handleTransactionConfirmedQueueMessage as defaultHandleTransactionConfirmedQueueMessage,
 } from '../lib/queue-handlers.js'
+import { calculateTotalBytes } from '../lib/analytics.js'
 
 /**
  * @typedef {{
@@ -65,6 +66,10 @@ export default {
       }
 
       console.log(`Found usage data for ${usageData.length} data sets`)
+
+      // Calculate total bytes for analytics
+      const { totalCdnBytes, totalCacheMissBytes } =
+        calculateTotalBytes(usageData)
 
       // Prepare usage report data for contract call
       const usageReportData = prepareUsageReportData(usageData)
@@ -128,6 +133,34 @@ export default {
       console.log(
         `Started transaction monitor workflow for transaction: ${hash}`,
       )
+
+      // Report metrics to Analytics Engine
+      if (env.USAGE_REPORTER_ANALYTICS) {
+        env.USAGE_REPORTER_ANALYTICS.writeDataPoint({
+          indexes: [
+            env.ENVIRONMENT || 'unknown', // index1: environment
+            'usage_report', // index2: report type
+          ],
+          doubles: [
+            usageReportData.dataSetIds.length, // double1: number of datasets
+            Date.now(), // double2: timestamp when report was made
+          ],
+          blobs: [
+            totalCdnBytes.toString(), // blob1: total CDN bytes (as string)
+            totalCacheMissBytes.toString(), // blob2: total cache miss bytes (as string)
+            upToEpoch.toString(), // blob3: epoch reported up to (as string)
+          ],
+        })
+
+        console.log(
+          `Analytics metrics reported: ${usageReportData.dataSetIds.length} datasets, ` +
+            `${totalCdnBytes} CDN bytes, ${totalCacheMissBytes} cache miss bytes`,
+        )
+      } else {
+        console.warn(
+          'Analytics Engine not configured, skipping metrics reporting',
+        )
+      }
     } catch (error) {
       console.error('Error in usage reporter worker:', error)
       throw error

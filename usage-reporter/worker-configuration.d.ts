@@ -14,6 +14,7 @@ declare namespace Cloudflare {
         TRANSACTION_QUEUE: Queue;
         FILBEAM_CONTROLLER_PRIVATE_KEY: string;
         TRANSACTION_MONITOR_WORKFLOW: Workflow<Parameters<import("./bin/usage-reporter").TransactionMonitorWorkflow['run']>[0]['payload']>;
+        USAGE_REPORTER_ANALYTICS: AnalyticsEngineDataset;
 	}
 }
 interface Env extends Cloudflare.Env {}

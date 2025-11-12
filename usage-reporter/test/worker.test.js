@@ -317,4 +317,71 @@ describe('usage reporter worker scheduled entrypoint', () => {
       },
     ])
   })
+
+  it('should report metrics when USAGE_REPORTER_ANALYTICS is defined', async () => {
+    const mockAnalyticsEngine = {
+      writeDataPoint: vi.fn(),
+    }
+
+    const mockEnvWithAnalytics = {
+      ...mockEnv,
+      USAGE_REPORTER_ANALYTICS: mockAnalyticsEngine,
+      ENVIRONMENT: 'test',
+    }
+
+    await withDataSet(mockEnvWithAnalytics, {
+      id: '1',
+      usageReportedUntil: EPOCH_99_TIMESTAMP_ISO,
+    })
+    await withDataSet(mockEnvWithAnalytics, {
+      id: '2',
+      usageReportedUntil: EPOCH_98_TIMESTAMP_ISO,
+    })
+
+    await withRetrievalLog(mockEnvWithAnalytics, {
+      timestamp: EPOCH_100_TIMESTAMP_ISO,
+      dataSetId: '1',
+      egressBytes: 3000,
+      cacheMiss: 0,
+    })
+    await withRetrievalLog(mockEnvWithAnalytics, {
+      timestamp: EPOCH_100_TIMESTAMP_ISO,
+      dataSetId: '1',
+      egressBytes: 500,
+      cacheMiss: 1,
+    })
+    await withRetrievalLog(mockEnvWithAnalytics, {
+      timestamp: EPOCH_100_TIMESTAMP_ISO,
+      dataSetId: '2',
+      egressBytes: 2000,
+      cacheMiss: 0,
+    })
+    await withRetrievalLog(mockEnvWithAnalytics, {
+      timestamp: EPOCH_100_TIMESTAMP_ISO,
+      dataSetId: '2',
+      egressBytes: 1000,
+      cacheMiss: 1,
+    })
+
+    await worker.scheduled(null, mockEnvWithAnalytics, null, {
+      getChainClient: mockGetChainClient,
+    })
+
+    expect(mockAnalyticsEngine.writeDataPoint).toHaveBeenCalledTimes(1)
+    expect(mockAnalyticsEngine.writeDataPoint).toHaveBeenCalledWith({
+      indexes: [
+        'test', // environment
+        'usage_report', // report type
+      ],
+      doubles: [
+        2, // number of datasets
+        expect.any(Number), // timestamp
+      ],
+      blobs: [
+        '6500', // total CDN bytes (3000 + 500 + 2000 + 1000)
+        '1500', // total cache miss bytes (500 + 1000)
+        '100', // epoch reported up to
+      ],
+    })
+  })
 })
