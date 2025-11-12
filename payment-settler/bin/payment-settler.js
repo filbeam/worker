@@ -46,7 +46,7 @@ export default {
         abi: filbeamAbi,
         address: env.FILBEAM_OPERATOR_CONTRACT_ADDRESS,
         functionName: 'settleCDNPaymentRails',
-        args: dataSetIds.map((id) => BigInt(id)),
+        args: [dataSetIds.map((id) => BigInt(id))],
       })
 
       const hash = await walletClient.writeContract(request)
