@@ -1,4 +1,4 @@
-import { handleGetDataSetStats } from '../lib/handlers.js'
+import { handleGetDataSetStats, handleGetPayerStats } from '../lib/handlers.js'
 
 export default {
   /**
@@ -24,6 +24,9 @@ export default {
       if (pathSegments.length === 2 && pathSegments[0] === 'data-set') {
         const dataSetId = pathSegments[1]
         return await handleGetDataSetStats(env, dataSetId)
+      } else if (pathSegments.length === 2 && pathSegments[0] === 'payer') {
+        const payerAddress = pathSegments[1].toLowerCase()
+        return await handleGetPayerStats(env, payerAddress)
       }
 
       return new Response('Not Found', { status: 404 })
