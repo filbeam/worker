@@ -38,7 +38,7 @@ export async function handleTransactionConfirmedQueueMessage(message, env) {
     await env.DB.prepare(
       `
       UPDATE data_sets
-      SET usage_reported_until = datetime(?),
+      SET usage_reported_until = ?,
           pending_usage_report_tx_hash = NULL
       WHERE pending_usage_report_tx_hash = ?
       `,
@@ -171,7 +171,7 @@ export async function handleTransactionRetryQueueMessage(
 
     // Start a new transaction monitor workflow for the retry transaction
     await env.TRANSACTION_MONITOR_WORKFLOW.create({
-      id: `usage-report-tx-monitor-${retryHash}-${Date.now()}`,
+      id: `usage-reporter-${retryHash}-${Date.now()}`,
       params: {
         transactionHash: retryHash,
         metadata: {

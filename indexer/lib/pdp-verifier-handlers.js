@@ -19,7 +19,9 @@ export async function insertDataSetPiece(
       cid,
       ipfs_root_cid
     ) VALUES (?, ?, ?, ?)
-    ON CONFLICT DO NOTHING
+    ON CONFLICT DO UPDATE SET
+      cid = excluded.cid,
+      ipfs_root_cid = excluded.ipfs_root_cid
     `,
   )
     .bind(pieceId, dataSetId, pieceCid, ipfsRootCid)
@@ -34,13 +36,14 @@ export async function insertDataSetPiece(
 export async function removeDataSetPieces(env, dataSetId, pieceIds) {
   await env.DB.prepare(
     `
-    DELETE FROM pieces
-    WHERE data_set_id = ? AND id IN (${new Array(pieceIds.length)
+    INSERT INTO pieces (id, data_set_id, is_deleted)
+    VALUES ${new Array(pieceIds.length)
       .fill(null)
-      .map(() => '?')
-      .join(', ')})
+      .map(() => '(?, ?, TRUE)')
+      .join(', ')}
+    ON CONFLICT DO UPDATE set is_deleted = true
     `,
   )
-    .bind(String(dataSetId), ...pieceIds.map(String))
+    .bind(...pieceIds.flatMap((pieceId) => [pieceId, dataSetId]))
     .run()
 }

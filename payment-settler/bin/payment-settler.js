@@ -44,9 +44,9 @@ export default {
       const { request } = await publicClient.simulateContract({
         account,
         abi: filbeamAbi,
-        address: env.FILBEAM_CONTRACT_ADDRESS,
-        functionName: 'settleCDNPaymentRailBatch',
-        args: dataSetIds.map((id) => BigInt(id)),
+        address: env.FILBEAM_OPERATOR_CONTRACT_ADDRESS,
+        functionName: 'settleCDNPaymentRails',
+        args: [dataSetIds.map((id) => BigInt(id))],
       })
 
       const hash = await walletClient.writeContract(request)
@@ -55,7 +55,7 @@ export default {
 
       // Start transaction monitor workflow
       await env.TRANSACTION_MONITOR_WORKFLOW.create({
-        id: `settlement-tx-monitor-${hash}-${Date.now()}`,
+        id: `payment-settler-${hash}-${Date.now()}`,
         params: {
           transactionHash: hash,
           metadata: {

@@ -46,6 +46,8 @@ export default {
     }
     const payload = await request.json()
 
+    console.log('Request body', payload)
+
     const pathname = new URL(request.url).pathname
     if (pathname === '/fwss/data-set-created') {
       if (
@@ -173,6 +175,7 @@ export default {
         product_type: productType,
         capability_keys: capabilityKeys,
         capability_values: capabilityValues,
+        block_number: blockNumber,
       } = payload
       return await handleProductAdded(
         env,
@@ -180,6 +183,7 @@ export default {
         productType,
         capabilityKeys,
         capabilityValues,
+        blockNumber,
       )
     } else if (pathname === '/service-provider-registry/product-updated') {
       const {
@@ -187,6 +191,7 @@ export default {
         product_type: productType,
         capability_keys: capabilityKeys,
         capability_values: capabilityValues,
+        block_number: blockNumber,
       } = payload
       return await handleProductUpdated(
         env,
@@ -194,6 +199,7 @@ export default {
         productType,
         capabilityKeys,
         capabilityValues,
+        blockNumber,
       )
     } else if (pathname === '/service-provider-registry/product-removed') {
       const { provider_id: providerId, product_type: productType } = payload

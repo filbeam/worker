@@ -475,7 +475,7 @@ describe('piece-retriever.indexer', () => {
       expect(await res.text()).toBe('OK')
 
       const { results: pieces } = await env.DB.prepare(
-        'SELECT id, cid FROM pieces WHERE data_set_id = ? ORDER BY id',
+        'SELECT id, cid FROM pieces WHERE data_set_id = ? AND is_deleted IS FALSE ORDER BY id',
       )
         .bind(dataSetId)
         .all()
@@ -510,7 +510,7 @@ describe('piece-retriever.indexer', () => {
       }
 
       const { results: pieces } = await env.DB.prepare(
-        'SELECT * FROM pieces WHERE data_set_id = ?',
+        'SELECT * FROM pieces WHERE data_set_id = ? AND is_deleted = FALSE',
       )
         .bind(dataSetId)
         .all()
@@ -541,7 +541,7 @@ describe('piece-retriever.indexer', () => {
       }
 
       const { results: pieces } = await env.DB.prepare(
-        'SELECT data_set_id, id FROM pieces WHERE data_set_id = ? OR data_set_id = ? ORDER BY data_set_id',
+        'SELECT data_set_id, id FROM pieces WHERE (data_set_id = ? OR data_set_id = ?) AND is_deleted IS FALSE ORDER BY data_set_id',
       )
         .bind(dataSetIds[0], dataSetIds[1])
         .all()
@@ -580,7 +580,7 @@ describe('piece-retriever.indexer', () => {
       expect(await res.text()).toBe('OK')
 
       const { results: pieces } = await env.DB.prepare(
-        'SELECT id, cid, ipfs_root_cid FROM pieces WHERE data_set_id = ? ORDER BY id',
+        'SELECT id, cid, ipfs_root_cid FROM pieces WHERE data_set_id = ? AND is_deleted IS FALSE ORDER BY id',
       )
         .bind(dataSetId)
         .all()
@@ -634,12 +634,73 @@ describe('piece-retriever.indexer', () => {
       )
         .bind(dataSetId)
         .all()
-      expect(pieces.length).toBe(0)
+      expect(pieces.length).toBeGreaterThan(0)
+      for (const piece of pieces) {
+        expect(piece.is_deleted).toBe(1)
+      }
+    })
+
+    it('marks as deleted when delete arrives before add (events out of order)', async () => {
+      const dataSetId = randomId()
+      const pieceId = randomId().toString()
+      const pieceCid =
+        '0x0155912024c6db010b63fa0aff84de00a4cd98802e03d1df5ea18ea430c3a0cdc84af4fc4024ab2714'
+
+      const removeRes = await workerImpl.fetch(
+        new Request('https://host/pdp-verifier/pieces-removed', {
+          method: 'POST',
+          headers: {
+            [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+          },
+          body: JSON.stringify({
+            data_set_id: dataSetId,
+            piece_ids: [pieceId],
+          }),
+        }),
+        env,
+        CTX,
+        {},
+      )
+      expect(removeRes.status).toBe(200)
+      expect(await removeRes.text()).toBe('OK')
+
+      const addRes = await workerImpl.fetch(
+        new Request('https://host/fwss/piece-added', {
+          method: 'POST',
+          headers: {
+            [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+          },
+          body: JSON.stringify({
+            data_set_id: dataSetId,
+            piece_id: pieceId,
+            piece_cid: pieceCid,
+            metadata_keys: [],
+            metadata_values: [],
+          }),
+        }),
+        env,
+        CTX,
+        {},
+      )
+      expect(addRes.status).toBe(200)
+
+      const { results: pieces } = await env.DB.prepare(
+        'SELECT * FROM pieces WHERE data_set_id = ?',
+      )
+        .bind(dataSetId)
+        .all()
+      expect(pieces.length).toBeGreaterThan(0)
+      for (const piece of pieces) {
+        expect(piece.is_deleted).toBe(1)
+        expect(piece.cid).toBe(
+          'bafkzcibey3nqcc3d7ifp7bg6acsm3geafyb5dx26ughkimgdudg4qsxu7racjkzhcq',
+        )
+      }
     })
   })
 
   describe('POST /service-provider-registry/product-added', () => {
-    it('returns 400 if provider_id and product_type are missing', async () => {
+    it('returns 400 if provider_id and product_type and block_number are missing', async () => {
       const req = new Request(
         'https://host/service-provider-registry/product-added',
         {
@@ -657,6 +718,7 @@ describe('piece-retriever.indexer', () => {
     it('inserts a provider service URL', async () => {
       const serviceUrl = 'https://provider.example.com'
       const providerId = 123
+      const blockNumber = 234
       const req = new Request(
         'https://host/service-provider-registry/product-added',
         {
@@ -671,6 +733,7 @@ describe('piece-retriever.indexer', () => {
             capability_values: ['some value', serviceUrl, 'another value']
               .map((s) => `0x${Buffer.from(s).toString('hex')}`)
               .join(','),
+            block_number: blockNumber,
           }),
         },
       )
@@ -687,6 +750,136 @@ describe('piece-retriever.indexer', () => {
         {
           id: providerId.toString(),
           service_url: serviceUrl,
+          block_number: blockNumber,
+          is_deleted: 0,
+        },
+      ])
+    })
+    it('updates a provider service URL if events arrived out of order', async () => {
+      const serviceUrl = 'https://provider.example.com'
+      const providerId = 123
+      const blockNumber = 234
+
+      let ctx = createExecutionContext()
+      const updateRes = await workerImpl.fetch(
+        new Request('https://host/service-provider-registry/product-updated', {
+          method: 'POST',
+          headers: {
+            [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+          },
+          body: JSON.stringify({
+            provider_id: providerId,
+            product_type: 0,
+            capability_keys: 'someKey,serviceURL,anotherKey',
+            capability_values: ['some value', serviceUrl, 'another value']
+              .map((s) => `0x${Buffer.from(s).toString('hex')}`)
+              .join(','),
+            block_number: blockNumber,
+          }),
+        }),
+        env,
+        ctx,
+      )
+      await waitOnExecutionContext(ctx)
+      expect(updateRes.status).toBe(200)
+      expect(await updateRes.text()).toBe('OK')
+
+      ctx = createExecutionContext()
+      const addRes = await workerImpl.fetch(
+        new Request('https://host/service-provider-registry/product-added', {
+          method: 'POST',
+          headers: {
+            [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+          },
+          body: JSON.stringify({
+            provider_id: providerId,
+            product_type: 0,
+            capability_keys: 'someKey,serviceURL,anotherKey',
+            capability_values: [
+              'some value',
+              'https://old.example.com/',
+              'another value',
+            ]
+              .map((s) => `0x${Buffer.from(s).toString('hex')}`)
+              .join(','),
+            block_number: blockNumber - 1,
+          }),
+        }),
+        env,
+        ctx,
+      )
+      await waitOnExecutionContext(ctx)
+      expect(addRes.status).toBe(200)
+      expect(await addRes.text()).toBe('OK')
+
+      const { results: providers } = await env.DB.prepare(
+        'SELECT * FROM service_providers',
+      ).all()
+      expect(providers).toEqual([
+        {
+          id: providerId.toString(),
+          service_url: serviceUrl,
+          block_number: blockNumber,
+          is_deleted: 0,
+        },
+      ])
+    })
+    it('keeps a service provider deleted if events arrived out of order', async () => {
+      const serviceUrl = 'https://provider.example.com'
+      const providerId = 123
+      const blockNumber = 234
+
+      let ctx = createExecutionContext()
+      const removeRes = await workerImpl.fetch(
+        new Request('https://host/service-provider-registry/provider-removed', {
+          method: 'POST',
+          headers: {
+            [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+          },
+          body: JSON.stringify({
+            provider_id: providerId,
+          }),
+        }),
+        env,
+        ctx,
+      )
+      await waitOnExecutionContext(ctx)
+      expect(removeRes.status).toBe(200)
+      expect(await removeRes.text()).toBe('OK')
+
+      ctx = createExecutionContext()
+      const addRes = await workerImpl.fetch(
+        new Request('https://host/service-provider-registry/product-added', {
+          method: 'POST',
+          headers: {
+            [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+          },
+          body: JSON.stringify({
+            provider_id: providerId,
+            product_type: 0,
+            capability_keys: 'serviceURL',
+            capability_values: [serviceUrl]
+              .map((s) => `0x${Buffer.from(s).toString('hex')}`)
+              .join(','),
+            block_number: blockNumber,
+          }),
+        }),
+        env,
+        ctx,
+      )
+      await waitOnExecutionContext(ctx)
+      expect(addRes.status).toBe(200)
+      expect(await addRes.text()).toBe('OK')
+
+      const { results: providers } = await env.DB.prepare(
+        'SELECT * FROM service_providers',
+      ).all()
+      expect(providers).toEqual([
+        {
+          id: providerId.toString(),
+          service_url: serviceUrl,
+          block_number: blockNumber,
+          is_deleted: 1,
         },
       ])
     })
@@ -712,6 +905,7 @@ describe('piece-retriever.indexer', () => {
             capability_values: ['some value', serviceUrl, 'another value']
               .map((s) => `0x${Buffer.from(s).toString('hex')}`)
               .join(','),
+            block_number: 123,
           }),
         },
       )
@@ -736,6 +930,7 @@ describe('piece-retriever.indexer', () => {
             capability_values: ['some value', newServiceUrl, 'another value']
               .map((s) => `0x${Buffer.from(s).toString('hex')}`)
               .join(','),
+            block_number: 234,
           }),
         },
       )
@@ -752,6 +947,88 @@ describe('piece-retriever.indexer', () => {
         .all()
       expect(providers.length).toBe(1)
       expect(providers[0].service_url).toBe(newServiceUrl)
+    })
+    it('keeps a service provider deleted if events arrived out of order', async () => {
+      const providerId = 123
+      const blockNumber = 234
+
+      let ctx = createExecutionContext()
+      const addRes = await workerImpl.fetch(
+        new Request('https://host/service-provider-registry/product-added', {
+          method: 'POST',
+          headers: {
+            [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+          },
+          body: JSON.stringify({
+            provider_id: providerId,
+            product_type: 0,
+            capability_keys: 'serviceURL',
+            capability_values: ['https://old.example.com']
+              .map((s) => `0x${Buffer.from(s).toString('hex')}`)
+              .join(','),
+            block_number: 234,
+          }),
+        }),
+        env,
+        ctx,
+      )
+      await waitOnExecutionContext(ctx)
+      expect(addRes.status).toBe(200)
+      expect(await addRes.text()).toBe('OK')
+
+      ctx = createExecutionContext()
+      const removeRes = await workerImpl.fetch(
+        new Request('https://host/service-provider-registry/provider-removed', {
+          method: 'POST',
+          headers: {
+            [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+          },
+          body: JSON.stringify({
+            provider_id: providerId,
+          }),
+        }),
+        env,
+        ctx,
+      )
+      await waitOnExecutionContext(ctx)
+      expect(removeRes.status).toBe(200)
+      expect(await removeRes.text()).toBe('OK')
+
+      ctx = createExecutionContext()
+      const updateRes = await workerImpl.fetch(
+        new Request('https://host/service-provider-registry/product-updated', {
+          method: 'POST',
+          headers: {
+            [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+          },
+          body: JSON.stringify({
+            provider_id: providerId,
+            product_type: 0,
+            capability_keys: 'serviceURL',
+            capability_values: ['https://new.example.com']
+              .map((s) => `0x${Buffer.from(s).toString('hex')}`)
+              .join(','),
+            block_number: 234,
+          }),
+        }),
+        env,
+        ctx,
+      )
+      await waitOnExecutionContext(ctx)
+      expect(updateRes.status).toBe(200)
+      expect(await updateRes.text()).toBe('OK')
+
+      const { results: providers } = await env.DB.prepare(
+        'SELECT * FROM service_providers',
+      ).all()
+      expect(providers).toEqual([
+        {
+          id: providerId.toString(),
+          service_url: 'https://new.example.com',
+          block_number: blockNumber,
+          is_deleted: 1,
+        },
+      ])
     })
   })
   describe('POST /service-provider-registry/product-removed', () => {
@@ -791,6 +1068,7 @@ describe('piece-retriever.indexer', () => {
             capability_values: ['some value', serviceUrl, 'another value']
               .map((s) => `0x${Buffer.from(s).toString('hex')}`)
               .join(','),
+            block_number: 123,
           }),
         },
       )
@@ -824,26 +1102,7 @@ describe('piece-retriever.indexer', () => {
       )
         .bind(String(providerId))
         .all()
-      expect(providers.length).toBe(0) // The provider should be removed
-    })
-
-    it('returns 404 if the provider does not exist', async () => {
-      const req = new Request(
-        'https://host/service-provider-registry/product-removed',
-        {
-          method: 'POST',
-          headers: {
-            [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
-          },
-          body: JSON.stringify({
-            provider_id: 13,
-            product_type: 0,
-          }),
-        },
-      )
-      const res = await workerImpl.fetch(req, env)
-      expect(res.status).toBe(404)
-      expect(await res.text()).toBe('Provider Not Found')
+      expect(providers).toMatchObject([{ is_deleted: 1 }])
     })
   })
 })
@@ -983,6 +1242,66 @@ describe('POST /fwss/cdn-service-terminated', () => {
       .bind(dataSetId)
       .all()
     expect(dataSets).toStrictEqual([{ id: dataSetId, with_cdn: 0 }])
+  })
+
+  it('marks as `withCDN=false` when termination arrives before creation (events out of order)', async () => {
+    const mockCheckIfAddressIsSanctioned = vi.fn()
+    mockCheckIfAddressIsSanctioned.mockResolvedValueOnce(false)
+
+    const dataSetId = randomId()
+    const payerAddress = '0xpayer'
+    const serviceProviderId = randomId()
+
+    const terminateRes = await workerImpl.fetch(
+      new Request('https://host/fwss/cdn-service-terminated', {
+        method: 'POST',
+        headers: {
+          [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+        },
+        body: JSON.stringify({
+          data_set_id: dataSetId,
+          block_number: 1000000, // Add block_number for epoch-based timestamp calculation
+        }),
+      }),
+      env,
+    )
+    expect(terminateRes.status).toBe(200)
+    expect(await terminateRes.text()).toBe('OK')
+
+    const createRes = await workerImpl.fetch(
+      new Request('https://host/fwss/data-set-created', {
+        method: 'POST',
+        headers: {
+          [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+        },
+        body: JSON.stringify({
+          data_set_id: dataSetId,
+          payer: payerAddress,
+          provider_id: serviceProviderId,
+          metadata_keys: ['withCDN'],
+          metadata_values: [],
+        }),
+      }),
+      env,
+      {},
+      { checkIfAddressIsSanctioned: mockCheckIfAddressIsSanctioned },
+    )
+    expect(createRes.status).toBe(200)
+    expect(await createRes.text()).toBe('OK')
+
+    const { results: dataSets } = await env.DB.prepare(
+      'SELECT * FROM data_sets WHERE id = ?',
+    )
+      .bind(dataSetId)
+      .all()
+    expect(dataSets).toMatchObject([
+      {
+        id: dataSetId,
+        payer_address: payerAddress,
+        service_provider_id: serviceProviderId,
+        with_cdn: 0,
+      },
+    ])
   })
 })
 
@@ -1149,7 +1468,7 @@ describe('POST /fwss/cdn-payment-rails-topped-up', () => {
 
     // Verify quotas were stored
     const result = await env.DB.prepare(
-      'SELECT cdn_egress_quota, cache_miss_egress_quota FROM data_sets WHERE id = ?',
+      'SELECT cdn_egress_quota, cache_miss_egress_quota FROM data_set_egress_quotas WHERE data_set_id = ?',
     )
       .bind(dataSetId)
       .first()
@@ -1187,7 +1506,7 @@ describe('POST /fwss/cdn-payment-rails-topped-up', () => {
     expect(await res.text()).toBe('OK')
 
     const result = await env.DB.prepare(
-      'SELECT cdn_egress_quota, cache_miss_egress_quota FROM data_sets WHERE id = ?',
+      'SELECT cdn_egress_quota, cache_miss_egress_quota FROM data_set_egress_quotas WHERE data_set_id = ?',
     )
       .bind(dataSetId)
       .first()
@@ -1241,7 +1560,7 @@ describe('POST /fwss/cdn-payment-rails-topped-up', () => {
     expect(res.status).toBe(200)
 
     const result = await env.DB.prepare(
-      'SELECT cdn_egress_quota, cache_miss_egress_quota FROM data_sets WHERE id = ?',
+      'SELECT cdn_egress_quota, cache_miss_egress_quota FROM data_set_egress_quotas WHERE data_set_id = ?',
     )
       .bind(dataSetId)
       .first()
@@ -1253,8 +1572,8 @@ describe('POST /fwss/cdn-payment-rails-topped-up', () => {
     })
   })
 
-  it('handles missing data set gracefully', async () => {
-    // Test that the handler doesn't fail when the data set doesn't exist
+  it('creates data set if it does not exist', async () => {
+    // Test that the handler creates a new data set with quotas if it doesn't exist
     const dataSetId = '999'
 
     env.CDN_RATE_DOLLARS_PER_TIB = '5'
@@ -1276,14 +1595,16 @@ describe('POST /fwss/cdn-payment-rails-topped-up', () => {
     expect(res.status).toBe(200)
     expect(await res.text()).toBe('OK')
 
-    // Since the data set doesn't exist, the quotas won't be stored
-    // This is expected behavior - the handler updates existing data sets only
+    // The handler now creates a data set if it doesn't exist (UPSERT logic)
     const result = await env.DB.prepare(
-      'SELECT cdn_egress_quota, cache_miss_egress_quota FROM data_sets WHERE id = ?',
+      'SELECT cdn_egress_quota, cache_miss_egress_quota FROM data_set_egress_quotas WHERE data_set_id = ?',
     )
       .bind(dataSetId)
       .first()
 
-    expect(result).toBe(null)
+    expect(result).toStrictEqual({
+      cdn_egress_quota: 1099511627776, // 1 TiB (5 FIL / 5 FIL per TiB)
+      cache_miss_egress_quota: 2199023255552, // 2 TiB (10 FIL / 5 FIL per TiB)
+    })
   })
 })

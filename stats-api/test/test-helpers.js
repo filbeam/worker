@@ -23,16 +23,45 @@ export async function withDataSet(
   } = {},
 ) {
   await env.DB.prepare(
-    `INSERT INTO data_sets (id, service_provider_id, payer_address, with_cdn, cdn_egress_quota, cache_miss_egress_quota)
-     VALUES (?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO data_sets (id, service_provider_id, payer_address, with_cdn)
+     VALUES (?, ?, ?, ?)`,
   )
-    .bind(
-      dataSetId,
-      serviceProviderId,
-      payerAddress.toLowerCase(),
-      withCDN,
-      cdnEgressQuota,
-      cacheMissEgressQuota,
-    )
+    .bind(dataSetId, serviceProviderId, payerAddress.toLowerCase(), withCDN)
+    .run()
+
+  await env.DB.prepare(
+    `INSERT INTO data_set_egress_quotas (data_set_id, cdn_egress_quota, cache_miss_egress_quota)
+      VALUES (?, ?, ?)`,
+  )
+    .bind(dataSetId, cdnEgressQuota, cacheMissEgressQuota)
+    .run()
+}
+
+/**
+ * Helper to insert a retrieval log entry
+ *
+ * @param {Object} env - Environment object with DB
+ * @param {Object} params - Parameters for the retrieval log
+ * @param {string} params.timestamp - ISO 8601 timestamp string
+ * @param {string} params.dataSetId - Data set ID
+ * @param {number} params.responseStatus - HTTP response status (default: 200)
+ * @param {number | null} params.egressBytes - Egress bytes (default: null)
+ * @param {number} params.cacheMiss - Cache miss flag (0 or 1, default: 0)
+ */
+export async function withRetrievalLog(
+  env,
+  {
+    timestamp,
+    dataSetId,
+    responseStatus = 200,
+    egressBytes = null,
+    cacheMiss = 0,
+  },
+) {
+  return await env.DB.prepare(
+    `INSERT INTO retrieval_logs (timestamp, data_set_id, response_status, egress_bytes, cache_miss)
+     VALUES (datetime(?), ?, ?, ?, ?)`,
+  )
+    .bind(timestamp, dataSetId, responseStatus, egressBytes, cacheMiss)
     .run()
 }

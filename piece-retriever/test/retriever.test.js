@@ -830,7 +830,7 @@ describe('piece-retriever.fetch', () => {
 
     // Check that both quotas went negative (100 - 500 = -400)
     const quotaResult = await env.DB.prepare(
-      'SELECT cdn_egress_quota, cache_miss_egress_quota FROM data_sets WHERE id = ?',
+      'SELECT cdn_egress_quota, cache_miss_egress_quota FROM data_set_egress_quotas WHERE data_set_id = ?',
     )
       .bind(dataSetId)
       .first()
@@ -907,7 +907,7 @@ describe('piece-retriever.fetch', () => {
 
     // Check that quotas were decremented correctly (cache hit)
     const quotaResult = await env.DB.prepare(
-      'SELECT cdn_egress_quota, cache_miss_egress_quota FROM data_sets WHERE id = ?',
+      'SELECT cdn_egress_quota, cache_miss_egress_quota FROM data_set_egress_quotas WHERE data_set_id = ?',
     )
       .bind(dataSetId)
       .first()
@@ -933,7 +933,9 @@ describe('piece-retriever.fetch', () => {
     })
     await waitOnExecutionContext(ctx)
     expect(res.status).toBe(502)
-    expect(await res.text()).toMatch(/^Service provider \d+ is unavailable at /)
+    expect(await res.text()).toMatch(
+      /^No available service provider found. Attempted: ID=/,
+    )
     expect(res.headers.get('X-Data-Set-ID')).toBe(String(dataSetId))
 
     const result = await env.DB.prepare(
@@ -1063,7 +1065,9 @@ describe('piece-retriever.fetch', () => {
     })
     await waitOnExecutionContext(ctx)
     expect(res.status).toBe(502)
-    expect(await res.text()).toMatch(/^Service provider \d+ is unavailable$/)
+    expect(await res.text()).toMatch(
+      /^No available service provider found. Attempted: ID=/,
+    )
     expect(res.headers.get('X-Data-Set-ID')).toBe(String(dataSetId))
   })
 })

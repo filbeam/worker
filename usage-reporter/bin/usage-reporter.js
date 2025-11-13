@@ -78,7 +78,7 @@ export default {
       // See https://github.com/filbeam/worker/issues/340
       const { request } = await publicClient.simulateContract({
         account,
-        address: env.FILBEAM_CONTRACT_ADDRESS,
+        address: env.FILBEAM_OPERATOR_CONTRACT_ADDRESS,
         abi: filbeamAbi,
         functionName: 'recordUsageRollups',
         args: [
@@ -111,15 +111,16 @@ export default {
         `Stored pending transaction hash for ${usageReportData.dataSetIds.length} data sets`,
       )
 
+      const upToTimestamp = new Date(upToTimestampMs).toISOString()
       // Start transaction monitor workflow
       await env.TRANSACTION_MONITOR_WORKFLOW.create({
-        id: `usage-report-tx-monitor-${hash}-${Date.now()}`,
+        id: `usage-reporter-${hash}-${Date.now()}`,
         params: {
           transactionHash: hash,
           metadata: {
             onSuccess: 'transaction-confirmed',
-            successData: { upToTimestamp: upToTimestampMs },
-            retryData: { upToTimestamp: upToTimestampMs },
+            successData: { upToTimestamp },
+            retryData: { upToTimestamp },
           },
         },
       })
