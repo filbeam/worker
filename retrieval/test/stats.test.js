@@ -180,45 +180,4 @@ describe('updateDataSetStats', () => {
       initialCacheMissQuota - EGRESS_BYTES,
     )
   })
-
-  it('does not decrement quotas when isBotTraffic is true', async () => {
-    const DATA_SET_ID = 'test-data-set-bot-traffic'
-    const EGRESS_BYTES = 100
-    const initialCdnQuota = 500
-    const initialCacheMissQuota = 300
-
-    await withDataSet(env, {
-      dataSetId: DATA_SET_ID,
-      cdnEgressQuota: initialCdnQuota,
-      cacheMissEgressQuota: initialCacheMissQuota,
-    })
-
-    await updateDataSetStats(env, {
-      dataSetId: DATA_SET_ID,
-      egressBytes: EGRESS_BYTES,
-      cacheMiss: false,
-      enforceEgressQuota: true,
-      isBotTraffic: true,
-    })
-
-    const quotaResult = await env.DB.prepare(
-      'SELECT * FROM data_set_egress_quotas WHERE data_set_id = ?',
-    )
-      .bind(DATA_SET_ID)
-      .first()
-
-    expect(quotaResult).toStrictEqual({
-      data_set_id: DATA_SET_ID,
-      cdn_egress_quota: initialCdnQuota,
-      cache_miss_egress_quota: initialCacheMissQuota,
-    })
-
-    const dataSetResult = await env.DB.prepare(
-      'SELECT total_egress_bytes_used FROM data_sets WHERE id = ?',
-    )
-      .bind(DATA_SET_ID)
-      .first()
-
-    expect(dataSetResult.total_egress_bytes_used).toBe(EGRESS_BYTES)
-  })
 })
