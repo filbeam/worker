@@ -253,13 +253,7 @@ export async function getRetrievalCandidatesAndValidatePayer(
  */
 export async function updateDataSetStats(
   env,
-  {
-    dataSetId,
-    egressBytes,
-    cacheMiss,
-    enforceEgressQuota = false,
-    isBotTraffic = false,
-  },
+  { dataSetId, egressBytes, cacheMiss, enforceEgressQuota = false },
 ) {
   await env.DB.prepare(
     `
@@ -271,7 +265,7 @@ export async function updateDataSetStats(
     .bind(egressBytes, dataSetId)
     .run()
 
-  if (enforceEgressQuota && !isBotTraffic) {
+  if (enforceEgressQuota) {
     await env.DB.prepare(
       `
       UPDATE data_set_egress_quotas
