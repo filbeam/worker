@@ -1,0 +1,12 @@
+name = "filbeam-retrieval"
+main = "index.js"
+compatibility_date = "2025-09-08"
+compatibility_flags = ["nodejs_compat"]
+
+[env.dev.vars]
+RPC_URL = "https://api.calibration.node.glif.io/rpc/v0"
+
+[[env.dev.d1_databases]]
+binding = "DB"
+database_name = "dev-db"
+database_id = "8cc92155-16f6-426a-b782-2965e0daf101"

@@ -5,7 +5,7 @@
     "composite": true,
     "outDir": "dist"
   },
-  "include": ["**/*.js"],
-  "exclude": ["dist"],
+  "include": ["**/*.ts", "**/*.js", "src/**/*.json"],
+  "exclude": ["dist", "test"],
   "references": []
 }

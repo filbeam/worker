@@ -3,6 +3,7 @@ import {
   httpAssert,
   setContentSecurityPolicy,
   getBadBitsEntry,
+  updateDataSetStats,
 } from '@filbeam/retrieval'
 
 import { parseRequest } from '../lib/request.js'
@@ -13,7 +14,6 @@ import {
 import {
   getRetrievalCandidatesAndValidatePayer,
   logRetrievalResult,
-  updateDataSetStats,
 } from '../lib/store.js'
 
 export default {
