@@ -4,6 +4,7 @@ import {
   setContentSecurityPolicy,
   getBadBitsEntry,
   updateDataSetStats,
+  logRetrievalResult,
 } from '@filbeam/retrieval'
 
 import { parseRequest } from '../lib/request.js'
@@ -11,10 +12,7 @@ import {
   retrieveFile as defaultRetrieveFile,
   measureStreamedEgress,
 } from '../lib/retrieval.js'
-import {
-  getRetrievalCandidatesAndValidatePayer,
-  logRetrievalResult,
-} from '../lib/store.js'
+import { getRetrievalCandidatesAndValidatePayer } from '../lib/store.js'
 
 export default {
   /**
