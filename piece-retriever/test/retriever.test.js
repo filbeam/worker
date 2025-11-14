@@ -462,6 +462,37 @@ describe('piece-retriever.fetch', () => {
     },
   )
 
+  it('charges bots for egress', async () => {
+    const botToken = Object.keys(botTokens)[0]
+    /** @type {string} */
+    const botName = env.BOT_TOKENS[botToken]
+    console.log({ botToken, botName })
+
+    const mockRetrieveFile = vi.fn().mockResolvedValue({
+      response: new Response('fake'),
+      cacheMiss: true,
+    })
+    const ctx = createExecutionContext()
+    const req = withRequest(defaultPayerAddress, realPieceCid, 'GET', {
+      authorization: `Bearer ${botToken}`,
+    })
+    const res = await worker.fetch(req, env, ctx, {
+      retrieveFile: mockRetrieveFile,
+    })
+    await waitOnExecutionContext(ctx)
+    expect(res.status).toBe(200)
+    const readOutput = await env.DB.prepare(
+      'SELECT egress_bytes FROM retrieval_logs WHERE data_set_id = ?',
+    )
+      .bind(String(realDataSetId))
+      .all()
+    expect(readOutput.results).toStrictEqual([
+      expect.objectContaining({
+        egress_bytes: 4,
+      }),
+    ])
+  })
+
   it('requests payment if withCDN=false', async () => {
     const dataSetId = 'test-data-set-no-cdn'
     const pieceId = 'root-no-cdn'
