@@ -341,24 +341,6 @@ export async function getStorageProviderAndValidatePayerByDataSetAndPiece(
 }
 
 /**
- * @param {Pick<Env, 'DB'>} env - Worker environment (contains D1 binding).
- * @param {object} params - Parameters for the data set update.
- * @param {string} params.dataSetId - The ID of the data set to update.
- * @param {number} params.egressBytes - The egress bytes used for the response.
- */
-export async function updateDataSetStats(env, { dataSetId, egressBytes }) {
-  await env.DB.prepare(
-    `
-    UPDATE data_sets
-    SET total_egress_bytes_used = total_egress_bytes_used + ?
-    WHERE id = ?
-    `,
-  )
-    .bind(egressBytes, dataSetId)
-    .run()
-}
-
-/**
  * Builds a slug from dataSetId and pieceId.
  *
  * @param {bigint} dataSetId - The data set ID as BigInt

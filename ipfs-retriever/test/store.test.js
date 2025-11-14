@@ -4,7 +4,6 @@ import {
   logRetrievalResult,
   getStorageProviderAndValidatePayerByWalletAndCid,
   getStorageProviderAndValidatePayerByDataSetAndPiece,
-  updateDataSetStats,
   getSlugForWalletAndCid,
 } from '../lib/store.js'
 import { env } from 'cloudflare:test'
@@ -497,57 +496,6 @@ describe('getStorageProviderAndValidatePayerByDataSetAndPiece', () => {
     assert.strictEqual(result.dataSetId, '0')
     assert.strictEqual(result.pieceId, '0')
     assert.strictEqual(result.serviceProviderId, APPROVED_SERVICE_PROVIDER_ID)
-  })
-})
-
-describe('updateDataSetStats', () => {
-  it('updates egress stats', async () => {
-    const DATA_SET_ID = 'test-data-set-1'
-    const EGRESS_BYTES = 123456
-
-    await withDataSetPiece(env, {
-      dataSetId: DATA_SET_ID,
-    })
-    await updateDataSetStats(env, {
-      dataSetId: DATA_SET_ID,
-      egressBytes: EGRESS_BYTES,
-    })
-
-    const { results: insertResults } = await env.DB.prepare(
-      `SELECT id, total_egress_bytes_used
-       FROM data_sets
-       WHERE id = ?`,
-    )
-      .bind(DATA_SET_ID)
-      .all()
-
-    assert.deepStrictEqual(insertResults, [
-      {
-        id: DATA_SET_ID,
-        total_egress_bytes_used: EGRESS_BYTES,
-      },
-    ])
-
-    // Update the egress stats
-    await updateDataSetStats(env, {
-      dataSetId: DATA_SET_ID,
-      egressBytes: 1000,
-    })
-
-    const { results: updateResults } = await env.DB.prepare(
-      `SELECT id, total_egress_bytes_used
-       FROM data_sets
-       WHERE id = ?`,
-    )
-      .bind(DATA_SET_ID)
-      .all()
-
-    assert.deepStrictEqual(updateResults, [
-      {
-        id: DATA_SET_ID,
-        total_egress_bytes_used: EGRESS_BYTES + 1000,
-      },
-    ])
   })
 })
 

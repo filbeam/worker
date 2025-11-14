@@ -3,6 +3,7 @@ import {
   httpAssert,
   setContentSecurityPolicy,
   getBadBitsEntry,
+  updateDataSetStats,
 } from '@filbeam/retrieval'
 
 import { parseRequest } from '../lib/request.js'
@@ -14,7 +15,6 @@ import {
 import {
   getStorageProviderAndValidatePayerByDataSetAndPiece,
   logRetrievalResult,
-  updateDataSetStats,
   getSlugForWalletAndCid,
 } from '../lib/store.js'
 
@@ -180,7 +180,12 @@ export default {
             dataSetId,
           })
 
-          await updateDataSetStats(env, { dataSetId, egressBytes })
+          await updateDataSetStats(env, {
+            dataSetId,
+            egressBytes,
+            cacheMiss,
+            enforceEgressQuota: env.ENFORCE_EGRESS_QUOTA,
+          })
         })(),
       )
 
