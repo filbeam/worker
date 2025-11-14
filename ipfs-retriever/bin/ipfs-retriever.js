@@ -4,6 +4,7 @@ import {
   setContentSecurityPolicy,
   getBadBitsEntry,
   updateDataSetStats,
+  logRetrievalResult,
 } from '@filbeam/retrieval'
 
 import { parseRequest } from '../lib/request.js'
@@ -14,7 +15,6 @@ import {
 } from '../lib/retrieval.js'
 import {
   getStorageProviderAndValidatePayerByDataSetAndPiece,
-  logRetrievalResult,
   getSlugForWalletAndCid,
 } from '../lib/store.js'
 
@@ -80,7 +80,7 @@ export default {
     const workerStartedAt = performance.now()
     const requestCountryCode = request.headers.get('CF-IPCountry')
 
-    const { dataSetId, pieceId, ipfsSubpath, ipfsFormat } = parseRequest(
+    const { dataSetId, pieceId, ipfsSubpath, ipfsFormat, botName } = parseRequest(
       request,
       env,
     )
@@ -143,6 +143,7 @@ export default {
             requestCountryCode,
             timestamp: requestTimestamp,
             dataSetId,
+            botName,
           }),
         )
         const response = new Response(originResponse.body, originResponse)
@@ -178,6 +179,7 @@ export default {
               workerTtfb: firstByteAt - workerStartedAt,
             },
             dataSetId,
+            botName
           })
 
           await updateDataSetStats(env, {
@@ -225,6 +227,7 @@ export default {
           requestCountryCode,
           timestamp: requestTimestamp,
           dataSetId: null,
+          botName,
         }),
       )
 

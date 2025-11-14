@@ -1,8 +1,9 @@
 import { describe, it, expect } from 'vitest'
-import { parseRequest } from '../lib/request.js'
+import { parseRequest, checkBotAuthorization } from '../lib/request.js'
 import { bigIntToBase32 } from '../lib/bigint-util.js'
 
 const DNS_ROOT = '.filbeam.io'
+const BOT_TOKENS = JSON.stringify({ secret: 'bot1' })
 
 describe('parseRequest', () => {
   it('should parse dataSetId and pieceId from a slug URL', () => {
@@ -12,8 +13,8 @@ describe('parseRequest', () => {
     const encodedPieceId = bigIntToBase32(BigInt(pieceId))
     const slug = `1-${encodedDataSetId}-${encodedPieceId}`
 
-    const request = { url: `https://${slug}${DNS_ROOT}/` }
-    const result = parseRequest(request, { DNS_ROOT })
+    const request = new Request(`https://${slug}${DNS_ROOT}/`)
+    const result = parseRequest(request, { DNS_ROOT, BOT_TOKENS })
 
     expect(result).toEqual({
       dataSetId,
@@ -31,8 +32,8 @@ describe('parseRequest', () => {
     const slug = `1-${encodedDataSetId}-${encodedPieceId}`
     const subpath = '/path/to/file.txt'
 
-    const request = { url: `https://${slug}${DNS_ROOT}${subpath}` }
-    const result = parseRequest(request, { DNS_ROOT })
+    const request = new Request(`https://${slug}${DNS_ROOT}${subpath}`)
+    const result = parseRequest(request, { DNS_ROOT, BOT_TOKENS })
 
     expect(result).toEqual({
       dataSetId,
@@ -49,8 +50,8 @@ describe('parseRequest', () => {
     const encodedPieceId = bigIntToBase32(BigInt(pieceId))
     const slug = `1-${encodedDataSetId}-${encodedPieceId}`
 
-    const request = { url: `https://${slug}${DNS_ROOT}` }
-    const result = parseRequest(request, { DNS_ROOT })
+    const request = new Request(`https://${slug}${DNS_ROOT}`)
+    const result = parseRequest(request, { DNS_ROOT, BOT_TOKENS })
 
     expect(result).toEqual({
       dataSetId,
@@ -63,8 +64,8 @@ describe('parseRequest', () => {
   it('should handle zero values for dataSetId and pieceId', () => {
     const slug = '1-0-0'
 
-    const request = { url: `https://${slug}${DNS_ROOT}/` }
-    const result = parseRequest(request, { DNS_ROOT })
+    const request = new Request(`https://${slug}${DNS_ROOT}/`)
+    const result = parseRequest(request, { DNS_ROOT, BOT_TOKENS })
 
     expect(result).toEqual({
       dataSetId: '0',
@@ -75,36 +76,36 @@ describe('parseRequest', () => {
   })
 
   it('should return descriptive error for invalid hostname format - missing parts', () => {
-    const request = { url: `https://1-abc${DNS_ROOT}/` }
-    expect(() => parseRequest(request, { DNS_ROOT })).toThrowError(
+    const request = new Request(`https://1-abc${DNS_ROOT}/`)
+    expect(() => parseRequest(request, { DNS_ROOT, BOT_TOKENS })).toThrowError(
       `The hostname must be in the format: 1-{dataSetId}-{pieceId}${DNS_ROOT}`,
     )
   })
 
   it('should return descriptive error for invalid hostname format - too many parts', () => {
-    const request = { url: `https://1-abc-def-ghi${DNS_ROOT}/` }
-    expect(() => parseRequest(request, { DNS_ROOT })).toThrowError(
+    const request = new Request(`https://1-abc-def-ghi${DNS_ROOT}/`)
+    expect(() => parseRequest(request, { DNS_ROOT, BOT_TOKENS })).toThrowError(
       `The hostname must be in the format: 1-{dataSetId}-{pieceId}${DNS_ROOT}`,
     )
   })
 
   it('should return descriptive error for invalid hostname format - no dashes', () => {
-    const request = { url: `https://1abc${DNS_ROOT}/` }
-    expect(() => parseRequest(request, { DNS_ROOT })).toThrowError(
+    const request = new Request(`https://1abc${DNS_ROOT}/`)
+    expect(() => parseRequest(request, { DNS_ROOT, BOT_TOKENS })).toThrowError(
       `The hostname must be in the format: 1-{dataSetId}-{pieceId}${DNS_ROOT}`,
     )
   })
 
   it('should return descriptive error for missing dataSetId', () => {
-    const request = { url: `https://1--abc${DNS_ROOT}/` }
-    expect(() => parseRequest(request, { DNS_ROOT })).toThrowError(
+    const request = new Request(`https://1--abc${DNS_ROOT}/`)
+    expect(() => parseRequest(request, { DNS_ROOT, BOT_TOKENS })).toThrowError(
       `The hostname must be in the format: 1-{dataSetId}-{pieceId}${DNS_ROOT}`,
     )
   })
 
   it('should return descriptive error for missing pieceId', () => {
-    const request = { url: `https://1-abc-${DNS_ROOT}/` }
-    expect(() => parseRequest(request, { DNS_ROOT })).toThrowError(
+    const request = new Request(`https://1-abc-${DNS_ROOT}/`)
+    expect(() => parseRequest(request, { DNS_ROOT, BOT_TOKENS })).toThrowError(
       `The hostname must be in the format: 1-{dataSetId}-{pieceId}${DNS_ROOT}`,
     )
   })
@@ -116,22 +117,22 @@ describe('parseRequest', () => {
     const encodedPieceId = bigIntToBase32(BigInt(pieceId))
     const slug = `2-${encodedDataSetId}-${encodedPieceId}`
 
-    const request = { url: `https://${slug}${DNS_ROOT}/` }
-    expect(() => parseRequest(request, { DNS_ROOT })).toThrowError(
+    const request = new Request(`https://${slug}${DNS_ROOT}/`)
+    expect(() => parseRequest(request, { DNS_ROOT, BOT_TOKENS })).toThrowError(
       'Unsupported slug version: 2. Expected version 1.',
     )
   })
 
   it('should return descriptive error for invalid base32 dataSetId', () => {
-    const request = { url: `https://1-invalid1-aeete${DNS_ROOT}/` }
-    expect(() => parseRequest(request, { DNS_ROOT })).toThrowError(
+    const request = new Request(`https://1-invalid1-aeete${DNS_ROOT}/`)
+    expect(() => parseRequest(request, { DNS_ROOT, BOT_TOKENS })).toThrowError(
       /Invalid dataSetId encoding in slug: invalid1/,
     )
   })
 
   it('should return descriptive error for invalid base32 pieceId', () => {
-    const request = { url: `https://1-ga4q-invalid1${DNS_ROOT}/` }
-    expect(() => parseRequest(request, { DNS_ROOT })).toThrowError(
+    const request = new Request(`https://1-ga4q-invalid1${DNS_ROOT}/`)
+    expect(() => parseRequest(request, { DNS_ROOT, BOT_TOKENS })).toThrowError(
       /Invalid pieceId encoding in slug: invalid1/,
     )
   })
@@ -143,8 +144,8 @@ describe('parseRequest', () => {
     const encodedPieceId = bigIntToBase32(BigInt(pieceId))
     const slug = `1-${encodedDataSetId}-${encodedPieceId}`
 
-    const request = { url: `https://${slug}.wrong.io/` }
-    expect(() => parseRequest(request, { DNS_ROOT })).toThrowError(
+    const request = new Request(`https://${slug}.wrong.io/`)
+    expect(() => parseRequest(request, { DNS_ROOT, BOT_TOKENS })).toThrowError(
       `Invalid hostname: ${slug}.wrong.io. It must end with ${DNS_ROOT}.`,
     )
   })
@@ -157,10 +158,8 @@ describe('parseRequest', () => {
     const slug = `1-${encodedDataSetId}-${encodedPieceId}`
     const subpath = '/file.txt'
 
-    const request = {
-      url: `https://${slug}${DNS_ROOT}${subpath}?foo=bar&baz=qux`,
-    }
-    const result = parseRequest(request, { DNS_ROOT })
+    const request = new Request(`https://${slug}${DNS_ROOT}${subpath}?foo=bar&baz=qux`)
+    const result = parseRequest(request, { DNS_ROOT, BOT_TOKENS })
 
     expect(result).toEqual({
       dataSetId,
@@ -178,10 +177,8 @@ describe('parseRequest', () => {
     const slug = `1-${encodedDataSetId}-${encodedPieceId}`
     const subpath = '/path/to/file.txt'
 
-    const request = {
-      url: `https://${slug}${DNS_ROOT}${subpath}?format=car`,
-    }
-    const result = parseRequest(request, { DNS_ROOT })
+    const request = new Request(`https://${slug}${DNS_ROOT}${subpath}?format=car`)
+    const result = parseRequest(request, { DNS_ROOT, BOT_TOKENS })
 
     expect(result).toEqual({
       dataSetId,
@@ -198,8 +195,8 @@ describe('parseRequest', () => {
     const encodedPieceId = bigIntToBase32(BigInt(pieceId))
     const slug = `1-${encodedDataSetId}-${encodedPieceId}`
 
-    const request = { url: `https://${slug}${DNS_ROOT}/?format=raw` }
-    const result = parseRequest(request, { DNS_ROOT })
+    const request = new Request(`https://${slug}${DNS_ROOT}/?format=raw`)
+    const result = parseRequest(request, { DNS_ROOT, BOT_TOKENS })
 
     expect(result).toEqual({
       dataSetId,
@@ -216,8 +213,8 @@ describe('parseRequest', () => {
     const encodedPieceId = bigIntToBase32(BigInt(pieceId))
     const slug = `1-${encodedDataSetId}-${encodedPieceId}`
 
-    const request = { url: `https://${slug}${DNS_ROOT}/file.txt` }
-    const result = parseRequest(request, { DNS_ROOT })
+    const request = new Request(`https://${slug}${DNS_ROOT}/file.txt`)
+    const result = parseRequest(request, { DNS_ROOT, BOT_TOKENS })
 
     expect(result).toEqual({
       dataSetId,
@@ -235,10 +232,8 @@ describe('parseRequest', () => {
     const slug = `1-${encodedDataSetId}-${encodedPieceId}`
     const subpath = '/directory/'
 
-    const request = {
-      url: `https://${slug}${DNS_ROOT}${subpath}`,
-    }
-    const result = parseRequest(request, { DNS_ROOT })
+    const request = new Request(`https://${slug}${DNS_ROOT}${subpath}`)
+    const result = parseRequest(request, { DNS_ROOT, BOT_TOKENS })
 
     expect(result).toEqual({
       dataSetId,
@@ -256,10 +251,8 @@ describe('parseRequest', () => {
     const slug = `1-${encodedDataSetId}-${encodedPieceId}`
     const subpath = '/file%20with%20spaces.txt'
 
-    const request = {
-      url: `https://${slug}${DNS_ROOT}${subpath}`,
-    }
-    const result = parseRequest(request, { DNS_ROOT })
+    const request = new Request(`https://${slug}${DNS_ROOT}${subpath}`)
+    const result = parseRequest(request, { DNS_ROOT, BOT_TOKENS })
 
     expect(result).toEqual({
       dataSetId,
@@ -276,8 +269,8 @@ describe('parseRequest', () => {
     const encodedPieceId = bigIntToBase32(BigInt(pieceId))
     const slug = `1-${encodedDataSetId}-${encodedPieceId}`
 
-    const request = { url: `https://${slug}${DNS_ROOT}/` }
-    const result = parseRequest(request, { DNS_ROOT })
+    const request = new Request(`https://${slug}${DNS_ROOT}/`)
+    const result = parseRequest(request, { DNS_ROOT, BOT_TOKENS })
 
     expect(result).toEqual({
       dataSetId,
@@ -285,5 +278,55 @@ describe('parseRequest', () => {
       ipfsSubpath: '/',
       ipfsFormat: null,
     })
+  })
+})
+
+describe('checkBotAuthorization', () => {
+  it('should return undefined when no authorization header is present', () => {
+    const request = new Request('https://example.com', {
+      headers: {},
+    })
+    const result = checkBotAuthorization(request, { BOT_TOKENS })
+    expect(result).toBeUndefined()
+  })
+
+  it('should throw 401 error when authorization header is not Bearer format', () => {
+    const request = new Request('https://example.com', {
+      headers: { authorization: 'Basic sometoken' },
+    })
+    expect(() => checkBotAuthorization(request, { BOT_TOKENS })).toThrowError(
+      'Unauthorized: Authorization header must use Bearer scheme',
+    )
+  })
+
+  it('should throw 401 error when authorization header has no token after Bearer', () => {
+    const request = new Request('https://example.com', {
+      headers: { authorization: 'Bearer' },
+    })
+    expect(() => checkBotAuthorization(request, { BOT_TOKENS })).toThrowError(
+      'Unauthorized: Authorization header must use Bearer scheme',
+    )
+  })
+
+  it('should throw 401 error when token is not in BOT_TOKENS list', () => {
+    const request = new Request('https://example.com', {
+      headers: { authorization: 'Bearer invalid_token' },
+    })
+    expect(() => checkBotAuthorization(request, { BOT_TOKENS })).toThrowError(
+      'Unauthorized: Invalid Access Token i...n',
+    )
+  })
+
+  it('should return token prefix when valid token is provided', () => {
+    const request = new Request('https://example.com', {
+      headers: { authorization: 'Bearer secret' },
+    })
+    const result = checkBotAuthorization(request, {
+      BOT_TOKENS: JSON.stringify({
+        secret: 'bot1',
+        secret_2: 'bot2',
+      }),
+    })
+    expect(result).toBe('bot1')
   })
 })

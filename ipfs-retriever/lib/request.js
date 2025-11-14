@@ -7,14 +7,16 @@ import { base32ToBigInt } from './bigint-util.js'
  * @param {Request} request
  * @param {object} options
  * @param {string} options.DNS_ROOT
+ * @param {string} options.BOT_TOKENS
  * @returns {{
  *   dataSetId: string
  *   pieceId: string
  *   ipfsSubpath: string
  *   ipfsFormat: string | null
+ *   botName?: string
  * }}
  */
-export function parseRequest(request, { DNS_ROOT }) {
+export function parseRequest(request, { DNS_ROOT, BOT_TOKENS }) {
   const url = new URL(request.url)
   console.log('retrieval request', { DNS_ROOT, url })
 
@@ -73,5 +75,36 @@ export function parseRequest(request, { DNS_ROOT }) {
   const ipfsSubpath = url.pathname || '/'
   const ipfsFormat = url.searchParams.get('format')
 
-  return { dataSetId, pieceId, ipfsSubpath, ipfsFormat }
+  const botName = checkBotAuthorization(request, { BOT_TOKENS })
+
+  return { dataSetId, pieceId, ipfsSubpath, ipfsFormat, botName }
+}
+
+/**
+ * @param {Request} request
+ * @param {object} args
+ * @param {string} args.BOT_TOKENS
+ * @returns {string | undefined} Bot name or the access token
+ */
+export function checkBotAuthorization(request, { BOT_TOKENS }) {
+  const botTokens = JSON.parse(BOT_TOKENS)
+
+  const auth = request.headers.get('authorization')
+  if (!auth) return undefined
+
+  const [prefix, token, ...rest] = auth.split(' ')
+
+  httpAssert(
+    prefix === 'Bearer' && token && rest.length === 0,
+    401,
+    'Unauthorized: Authorization header must use Bearer scheme',
+  )
+
+  httpAssert(
+    token in botTokens,
+    401,
+    `Unauthorized: Invalid Access Token ${token.slice(0, 1)}...${token.slice(-1)}`,
+  )
+
+  return botTokens[token]
 }

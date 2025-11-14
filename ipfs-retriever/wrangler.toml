@@ -18,6 +18,7 @@ ENVIRONMENT = "dev"
 ORIGIN_CACHE_TTL = 86400
 CLIENT_CACHE_TTL = 31536000
 DNS_ROOT = ".localhost"
+BOT_TOKENS = ""
 ENFORCE_EGRESS_QUOTA = false
 
 [[env.dev.d1_databases]]
