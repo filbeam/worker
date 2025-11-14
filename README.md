@@ -21,6 +21,12 @@ Create `piece-retriever/.dev.vars` file with the following content:
 BOT_TOKENS="{\"secret\":\"dev\"}"
 ```
 
+Create `ipfs-retriever/.dev.vars` file with the following content:
+
+```
+BOT_TOKENS="{\"secret\":\"dev\"}"
+```
+
 Create `terminator/.dev.vars` file with the following content:
 
 ```

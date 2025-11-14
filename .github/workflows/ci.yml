@@ -66,6 +66,14 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           preCommands: ../db/deploy-${{ matrix.environment }}.sh
           environment: ${{ matrix.environment }}
+      - name: Deploy IPFS Retriever and Migrate Database
+        uses: cloudflare/wrangler-action@v3
+        with:
+          workingDirectory: ipfs-retriever
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          preCommands: ../db/deploy-${{ matrix.environment }}.sh
+          environment: ${{ matrix.environment }}
       - name: Deploy Indexer
         uses: cloudflare/wrangler-action@v3
         with:
