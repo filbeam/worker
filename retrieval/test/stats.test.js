@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { updateDataSetStats } from '../lib/stats'
+import { updateDataSetStats, logRetrievalResult } from '../lib/stats'
 import { withDataSet } from './test-helpers'
 import { env } from 'cloudflare:test'
 
@@ -179,5 +179,41 @@ describe('updateDataSetStats', () => {
     expect(quotaResult2.cache_miss_egress_quota).toBe(
       initialCacheMissQuota - EGRESS_BYTES,
     )
+  })
+})
+
+describe('logRetrievalResult', () => {
+  it('inserts a log into local D1 via logRetrievalResult and verifies it', async () => {
+    const DATA_SET_ID = '1'
+
+    await logRetrievalResult(env, {
+      dataSetId: DATA_SET_ID,
+      cacheMiss: false,
+      egressBytes: 1234,
+      responseStatus: 200,
+      timestamp: new Date().toISOString(),
+      requestCountryCode: 'US',
+    })
+
+    const readOutput = await env.DB.prepare(
+      `SELECT 
+        data_set_id,
+        response_status,
+        egress_bytes,
+        cache_miss,
+        request_country_code
+      FROM retrieval_logs 
+      WHERE data_set_id = '${DATA_SET_ID}'`,
+    ).all()
+    const result = readOutput.results
+    expect(result).toEqual([
+      {
+        data_set_id: DATA_SET_ID,
+        response_status: 200,
+        egress_bytes: 1234,
+        cache_miss: 0,
+        request_country_code: 'US',
+      },
+    ])
   })
 })
