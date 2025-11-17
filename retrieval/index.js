@@ -3,6 +3,7 @@ export * from './lib/bad-bits-util.js'
 export * from './lib/content-security-policy.js'
 export * from './lib/http-assert.js'
 export * from './lib/stats.js'
+export * from './lib/response.js'
 
 export default {
   /**

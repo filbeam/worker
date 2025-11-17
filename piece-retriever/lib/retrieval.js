@@ -56,25 +56,6 @@ export async function retrieveFile(
 }
 
 /**
- * Measures the egress of a request by reading from a readable stream and return
- * the total number of bytes transferred.
- *
- * @param {ReadableStreamDefaultReader<Uint8Array>} reader - The reader for the
- *   readable stream.
- * @returns {Promise<number>} - A promise that resolves to the total number of
- *   bytes transferred.
- */
-export async function measureStreamedEgress(reader) {
-  let total = 0
-  while (true) {
-    const { done, value } = await reader.read()
-    if (done) break
-    total += value.length
-  }
-  return total
-}
-
-/**
  * @param {string} serviceUrl
  * @param {string} pieceCid
  * @returns {string}
