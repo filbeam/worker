@@ -11,7 +11,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "viem": "^2.40.3"
+    "viem": "^2.41.2"
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "^0.10.12"
