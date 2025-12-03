@@ -180,6 +180,54 @@ describe('retrieveFile', () => {
     expect(result.response.status).toBe(206)
     expect(result.response.headers.get('content-range')).toBe('bytes 0-1/100')
   })
+
+  it('validates an invalid cache miss response', async () => {
+    cachesMock.match.mockResolvedValueOnce(null)
+    fetchMock
+      .get(baseUrl)
+      .intercept({ path: `/piece/${pieceCid}` })
+      .reply(200, 'invalid')
+    const ctx = createExecutionContext()
+    const result = await retrieveFile(
+      ctx,
+      baseUrl,
+      pieceCid,
+      new Request(baseUrl),
+    )
+    await waitOnExecutionContext(ctx)
+    expect(result.validate).toBeInstanceOf(Function)
+    expect(result.validate()).toBe(false)
+  })
+
+  it('validates a valid cache miss response', async () => {
+    // Hash of `'valid'`
+    const pieceCid =
+      'bafkzcibcpibpuevmzufhyt73qvctc7ndhfpl7peuihgkl6mepmrm3w3rzwnnofa'
+    cachesMock.match.mockResolvedValueOnce(null)
+    fetchMock
+      .get(baseUrl)
+      .intercept({
+        path: `/piece/${pieceCid}`,
+      })
+      .reply(200, 'valid')
+    const ctx = createExecutionContext()
+    const result = await retrieveFile(
+      ctx,
+      baseUrl,
+      pieceCid,
+      new Request(baseUrl),
+    )
+    const reader = result.response.body.getReader()
+    while (true) {
+      const { done } = await reader.read()
+      if (done) {
+        break
+      }
+    }
+    await waitOnExecutionContext(ctx)
+    expect(result.validate).toBeInstanceOf(Function)
+    expect(result.validate()).toBe(true)
+  })
 })
 
 describe('getRetrievalUrl', () => {

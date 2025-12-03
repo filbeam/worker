@@ -5,6 +5,7 @@
  * @param {number} params.egressBytes - The egress bytes used for the response.
  * @param {boolean} params.cacheMiss - Whether this was a cache miss (true) or
  *   cache hit (false).
+ * @param {boolean} [params.cacheMissResponseValid]
  * @param {boolean} [params.enforceEgressQuota=false] - Whether to decrement
  *   egress quotas. Default is `false`
  * @param {boolean} [params.isBotTraffic=false] - Whether the egress traffic
@@ -12,7 +13,13 @@
  */
 export async function updateDataSetStats(
   env,
-  { dataSetId, egressBytes, cacheMiss, enforceEgressQuota = false },
+  {
+    dataSetId,
+    egressBytes,
+    cacheMiss,
+    cacheMissResponseValid,
+    enforceEgressQuota = false,
+  },
 ) {
   await env.DB.prepare(
     `
@@ -33,7 +40,11 @@ export async function updateDataSetStats(
       WHERE data_set_id = ?
       `,
     )
-      .bind(egressBytes, cacheMiss ? egressBytes : 0, dataSetId)
+      .bind(
+        egressBytes,
+        cacheMiss && cacheMissResponseValid ? egressBytes : 0,
+        dataSetId,
+      )
       .run()
   }
 }
@@ -47,6 +58,7 @@ export async function updateDataSetStats(
  * @param {number} params.responseStatus - The HTTP response status code.
  * @param {boolean | null} params.cacheMiss - Whether the retrieval was a cache
  *   miss.
+ * @param {boolean | null} params.cacheMissResponseValid
  * @param {{
  *   fetchTtfb: number
  *   fetchTtlb: number
@@ -66,6 +78,7 @@ export async function updateDataSetStats(
 export async function logRetrievalResult(env, params) {
   const {
     cacheMiss,
+    cacheMissResponseValid,
     egressBytes,
     responseStatus,
     timestamp,
@@ -83,6 +96,7 @@ export async function logRetrievalResult(env, params) {
         response_status,
         egress_bytes,
         cache_miss,
+        cache_miss_response_valid,
         fetch_ttfb,
         fetch_ttlb,
         worker_ttfb,
@@ -90,7 +104,7 @@ export async function logRetrievalResult(env, params) {
         data_set_id,
         bot_name
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
     )
       .bind(
@@ -98,6 +112,7 @@ export async function logRetrievalResult(env, params) {
         responseStatus,
         egressBytes,
         cacheMiss,
+        cacheMissResponseValid,
         performanceStats?.fetchTtfb ?? null,
         performanceStats?.fetchTtlb ?? null,
         performanceStats?.workerTtfb ?? null,

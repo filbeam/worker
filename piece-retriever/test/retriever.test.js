@@ -154,10 +154,10 @@ describe('piece-retriever.fetch', () => {
     const res = await worker.fetch(req, env, ctx, {
       retrieveFile: mockRetrieveFile,
     })
-    await waitOnExecutionContext(ctx)
     expect(res.status).toBe(201)
     expect(await res.text()).toBe('hello')
     expect(res.headers.get('X-Test')).toBe('yes')
+    await waitOnExecutionContext(ctx)
   })
 
   it('sets Content-Control response header', async () => {
@@ -171,6 +171,7 @@ describe('piece-retriever.fetch', () => {
     const res = await worker.fetch(req, env, ctx, {
       retrieveFile: mockRetrieveFile,
     })
+    await res.text()
     await waitOnExecutionContext(ctx)
     const cacheControlHeaders = res.headers.get('Cache-Control')
     expect(cacheControlHeaders).toContain('public')
@@ -209,6 +210,7 @@ describe('piece-retriever.fetch', () => {
     const res = await worker.fetch(req, env, ctx, {
       retrieveFile: mockRetrieveFile,
     })
+    await res.text()
     await waitOnExecutionContext(ctx)
     const csp = res.headers.get('Content-Security-Policy')
     expect(csp).toMatch(/^default-src 'self'/)
@@ -221,12 +223,12 @@ describe('piece-retriever.fetch', () => {
     const ctx = createExecutionContext()
     const req = withRequest(defaultPayerAddress, realPieceCid)
     const res = await worker.fetch(req, env, ctx, { retrieveFile })
-    await waitOnExecutionContext(ctx)
     expect(res.status).toBe(200)
     // get the sha256 hash of the content
     const content = await res.bytes()
     const hash = createHash('sha256').update(content).digest('hex')
     expect(hash).toEqual(expectedHash)
+    await waitOnExecutionContext(ctx)
   })
   it('stores retrieval results with cache miss and content length set in D1', async () => {
     const body = 'file content'
@@ -246,6 +248,7 @@ describe('piece-retriever.fetch', () => {
     const res = await worker.fetch(req, env, ctx, {
       retrieveFile: mockRetrieveFile,
     })
+    await res.text()
     await waitOnExecutionContext(ctx)
     expect(res.status).toBe(200)
     const readOutput = await env.DB.prepare(
@@ -283,6 +286,7 @@ describe('piece-retriever.fetch', () => {
     const res = await worker.fetch(req, env, ctx, {
       retrieveFile: mockRetrieveFile,
     })
+    await res.text()
     await waitOnExecutionContext(ctx)
     expect(res.status).toBe(200)
     const readOutput = await env.DB.prepare(
@@ -322,6 +326,7 @@ describe('piece-retriever.fetch', () => {
     const res = await worker.fetch(req, env, ctx, {
       retrieveFile: mockRetrieveFile,
     })
+    await res.text()
     await waitOnExecutionContext(ctx)
     expect(res.status).toBe(200)
     const readOutput = await env.DB.prepare(
@@ -360,6 +365,7 @@ describe('piece-retriever.fetch', () => {
     const res = await worker.fetch(req, env, ctx, {
       retrieveFile: mockRetrieveFile,
     })
+    await res.text()
     await waitOnExecutionContext(ctx)
     expect(res.status).toBe(200)
     const { results } = await env.DB.prepare(
@@ -415,11 +421,12 @@ describe('piece-retriever.fetch', () => {
               const ctx = createExecutionContext()
               const req = withRequest(defaultPayerAddress, pieceCid)
               const res = await worker.fetch(req, env, ctx, { retrieveFile })
-              await waitOnExecutionContext(ctx)
 
               expect(res.status).toBe(200)
 
               const content = await res.arrayBuffer()
+              await waitOnExecutionContext(ctx)
+
               const actualBytes = content.byteLength
 
               const { results } = await env.DB.prepare(
@@ -479,8 +486,10 @@ describe('piece-retriever.fetch', () => {
     const res = await worker.fetch(req, env, ctx, {
       retrieveFile: mockRetrieveFile,
     })
-    await waitOnExecutionContext(ctx)
     expect(res.status).toBe(200)
+    await res.text()
+    await waitOnExecutionContext(ctx)
+
     const readOutput = await env.DB.prepare(
       'SELECT egress_bytes FROM retrieval_logs WHERE data_set_id = ?',
     )
@@ -547,11 +556,11 @@ describe('piece-retriever.fetch', () => {
     const res = await worker.fetch(req, env, ctx, {
       retrieveFile: mockRetrieveFile,
     })
-    await waitOnExecutionContext(ctx)
 
     // Check if the URL fetched is from the database
     expect(await res.text()).toBe(body)
     expect(res.status).toBe(200)
+    await waitOnExecutionContext(ctx)
   })
 
   it('throws an error if the providerAddress is not found in the database', async () => {
@@ -588,9 +597,9 @@ describe('piece-retriever.fetch', () => {
     const res = await worker.fetch(req, env, ctx, {
       retrieveFile: mockRetrieveFile,
     })
-    await waitOnExecutionContext(ctx)
     expect(await res.text()).toBe('hello')
     expect(res.headers.get('X-Data-Set-ID')).toBe(String(dataSetId))
+    await waitOnExecutionContext(ctx)
   })
 
   it('stores data set ID in retrieval logs', async () => {
@@ -604,8 +613,8 @@ describe('piece-retriever.fetch', () => {
     const res = await worker.fetch(req, env, ctx, {
       retrieveFile: mockRetrieveFile,
     })
-    await waitOnExecutionContext(ctx)
     expect(await res.text()).toBe('hello')
+    await waitOnExecutionContext(ctx)
 
     expect(res.status).toBe(200)
     const { results } = await env.DB.prepare(
@@ -653,8 +662,9 @@ describe('piece-retriever.fetch', () => {
     const res = await worker.fetch(req, env, ctx, {
       retrieveFile: mockRetrieveFile,
     })
-    await waitOnExecutionContext(ctx)
     expect(res.status).toBe(200)
+    await res.text()
+    await waitOnExecutionContext(ctx)
   })
 
   it('rejects retrieval requests for CIDs found in the Bad Bits denylist', async () => {
@@ -835,15 +845,19 @@ describe('piece-retriever.fetch', () => {
       { ...env, ENFORCE_EGRESS_QUOTA: true },
       ctx,
       {
-        retrieveFile: async () => ({ response: fakeResponse, cacheMiss: true }),
+        retrieveFile: async () => ({
+          response: fakeResponse,
+          cacheMiss: true,
+          validate: () => true,
+        }),
       },
     )
-    await waitOnExecutionContext(ctx)
 
     // Should get full content even when quota is exceeded
     // Response should be successful with all 500 bytes
     const body = await res.arrayBuffer()
     expect(body.byteLength).toBe(500)
+    await waitOnExecutionContext(ctx)
 
     // Check logs after execution context completes
     const { results } = await env.DB.prepare(
@@ -915,12 +929,12 @@ describe('piece-retriever.fetch', () => {
         }),
       },
     )
-    await waitOnExecutionContext(ctx)
 
     // Should succeed
     expect(res.status).toBe(200)
     const body = await res.arrayBuffer()
     expect(body.byteLength).toBe(100)
+    await waitOnExecutionContext(ctx)
 
     // Check that full content was logged
     const { results } = await env.DB.prepare(
@@ -993,8 +1007,9 @@ describe('piece-retriever.fetch', () => {
     const res = await worker.fetch(req, env, ctx, {
       retrieveFile: mockRetrieveFile,
     })
-    await waitOnExecutionContext(ctx)
     expect(res.status).toBe(200)
+    await res.text()
+    await waitOnExecutionContext(ctx)
 
     const result = await env.DB.prepare(
       'SELECT * FROM retrieval_logs WHERE data_set_id = ?',

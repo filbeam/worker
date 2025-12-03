@@ -1,3 +1,6 @@
+import assert from 'node:assert/strict'
+import { createPieceCIDStream } from './piece'
+
 /**
  * Retrieves the file under the pieceCID from the constructed URL.
  *
@@ -13,6 +16,7 @@
  *   response: Response
  *   cacheMiss: boolean
  *   url: string
+ *   validate: function | null
  * }>}
  *   - The response from the fetch request, the cache miss and the content length.
  */
@@ -29,13 +33,26 @@ export async function retrieveFile(
   const cacheKey = new Request(url, request)
   let response = await caches.default.match(cacheKey)
   let cacheMiss = true
+  let validate = null
 
   if (response) {
     cacheMiss = false
   } else {
     response = await fetch(url, { signal })
     if (response.ok) {
-      const [body1, body2] = response.body?.tee() ?? [null, null]
+      assert(response.body)
+      const { stream: pieceCidStream, getPieceCID } = createPieceCIDStream()
+      validate = () => {
+        const calculatedPieceCid = getPieceCID()
+        console.log({ calculatedPieceCid })
+        return (
+          calculatedPieceCid !== null &&
+          calculatedPieceCid.toString() === pieceCid
+        )
+      }
+      const pipelineStream = response.body.pipeThrough(pieceCidStream)
+      const [body1, body2] = pipelineStream.tee() ?? [null, null]
+
       ctx.waitUntil(
         caches.default.put(
           url,
@@ -48,30 +65,12 @@ export async function retrieveFile(
           }),
         ),
       )
+
       response = new Response(body2, response)
     }
   }
 
-  return { response, cacheMiss, url }
-}
-
-/**
- * Measures the egress of a request by reading from a readable stream and return
- * the total number of bytes transferred.
- *
- * @param {ReadableStreamDefaultReader<Uint8Array>} reader - The reader for the
- *   readable stream.
- * @returns {Promise<number>} - A promise that resolves to the total number of
- *   bytes transferred.
- */
-export async function measureStreamedEgress(reader) {
-  let total = 0
-  while (true) {
-    const { done, value } = await reader.read()
-    if (done) break
-    total += value.length
-  }
-  return total
+  return { response, cacheMiss, url, validate }
 }
 
 /**
