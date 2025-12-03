@@ -44,7 +44,6 @@ export async function retrieveFile(
       const { stream: pieceCidStream, getPieceCID } = createPieceCIDStream()
       validate = () => {
         const calculatedPieceCid = getPieceCID()
-        console.log({ calculatedPieceCid })
         return (
           calculatedPieceCid !== null &&
           calculatedPieceCid.toString() === pieceCid
