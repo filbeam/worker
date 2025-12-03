@@ -33,7 +33,6 @@ export function createPieceCIDStream() {
       /** @type {PieceCID} */
       pieceCid = Link.create(Raw.code, digest)
       finished = true
-      console.log('XXX FINISH')
     },
   })
 
