@@ -203,7 +203,8 @@ export default {
       /** @type {number | null} */
       let firstByteAt = null
 
-      const { promise: onFinish, resolve: onFinished } = Promise.withResolvers()
+      const { promise: responseFinishedPromise, resolve: responseFinished } =
+        Promise.withResolvers()
 
       const measureStream = new TransformStream({
         transform(chunk, controller) {
@@ -215,19 +216,18 @@ export default {
         },
       })
 
-      const onFinishStream = new TransformStream({
+      const responseFinishedStream = new TransformStream({
         flush() {
-          httpAssert(onFinished, 500, 'Should never happen')
-          onFinished(null)
+          responseFinished(null)
         },
       })
       const returnedStream = retrievalResult.response.body
         .pipeThrough(measureStream)
-        .pipeThrough(onFinishStream)
+        .pipeThrough(responseFinishedStream)
 
       ctx.waitUntil(
         (async () => {
-          await onFinish
+          await responseFinishedPromise
           const cacheMissResponseValid =
             typeof retrievalResult.validate === 'function'
               ? retrievalResult.validate()
