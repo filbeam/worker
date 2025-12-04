@@ -51,6 +51,7 @@ describe('usage report', () => {
           dataSetId: '1',
           egressBytes: 500,
           cacheMiss: 1,
+          cacheMissResponseValid: 1,
         })
 
         await withRetrievalLog(env, {
@@ -58,6 +59,7 @@ describe('usage report', () => {
           dataSetId: '2',
           egressBytes: 3000,
           cacheMiss: 1,
+          cacheMissResponseValid: 1,
         })
 
         await withRetrievalLog(env, {
@@ -129,6 +131,7 @@ describe('usage report', () => {
           responseStatus: 500,
           egressBytes: 300,
           cacheMiss: 1,
+          cacheMissResponseValid: 1,
         })
 
         const usageData = await aggregateUsageData(
@@ -226,6 +229,7 @@ describe('usage report', () => {
           dataSetId: '3',
           egressBytes: 500,
           cacheMiss: 1,
+          cacheMissResponseValid: 1,
         })
 
         const usageData = await aggregateUsageData(

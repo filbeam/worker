@@ -86,6 +86,7 @@ describe('usage reporter worker scheduled entrypoint', () => {
       dataSetId: '1',
       egressBytes: 500,
       cacheMiss: 1,
+      cacheMissResponseValid: 1,
     })
 
     await withRetrievalLog(mockEnv, {
@@ -99,6 +100,7 @@ describe('usage reporter worker scheduled entrypoint', () => {
       dataSetId: '2',
       egressBytes: 1000,
       cacheMiss: 1,
+      cacheMissResponseValid: 1,
     })
 
     await worker.scheduled(null, mockEnv, null, {
@@ -164,6 +166,7 @@ describe('usage reporter worker scheduled entrypoint', () => {
       dataSetId: '3',
       egressBytes: 2000,
       cacheMiss: 1,
+      cacheMissResponseValid: 1,
     })
 
     await worker.scheduled(null, mockEnv, null, {
@@ -275,6 +278,7 @@ describe('usage reporter worker scheduled entrypoint', () => {
         dataSetId: '1',
         egressBytes: 500,
         cacheMiss: 1,
+        cacheMissResponseValid: 1,
       })
     }
 
