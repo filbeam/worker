@@ -321,4 +321,34 @@ describe('usage reporter worker scheduled entrypoint', () => {
       },
     ])
   })
+
+  it('should not count invalid cache miss responses towards quota', async () => {
+    await withDataSet(mockEnv, { id: '1' })
+    await withRetrievalLog(mockEnv, {
+      timestamp: new Date(
+        epochToTimestampMs(
+          96,
+          BigInt(mockEnv.FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS),
+        ),
+      ).toISOString(),
+      dataSetId: '1',
+      egressBytes: 500,
+      cacheMiss: 1,
+      cacheMissResponseValid: 0,
+    })
+
+    await worker.scheduled(null, mockEnv, null, {
+      getChainClient: mockGetChainClient,
+    })
+
+    expect(simulateContractCalls).toStrictEqual([
+      {
+        account: mockAccount,
+        address: mockEnv.FILBEAM_OPERATOR_CONTRACT_ADDRESS,
+        abi: filbeamAbi,
+        functionName: 'recordUsageRollups',
+        args: [100n, ['1'], [500n], [0n]],
+      },
+    ])
+  })
 })
