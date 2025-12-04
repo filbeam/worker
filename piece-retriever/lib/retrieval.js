@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { createPieceCIDStream } from './piece'
+import { createPieceCIDStream } from './piece.js'
 
 /**
  * Retrieves the file under the pieceCID from the constructed URL.
