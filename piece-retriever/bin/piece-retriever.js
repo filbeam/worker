@@ -203,11 +203,7 @@ export default {
       /** @type {number | null} */
       let firstByteAt = null
 
-      /** @type {function | null} */
-      let onFinished
-      const onFinish = new Promise((resolve) => {
-        onFinished = resolve
-      })
+      const { promise: onFinish, resolve: onFinished } = Promise.withResolvers()
 
       const measureStream = new TransformStream({
         transform(chunk, controller) {
@@ -222,7 +218,7 @@ export default {
       const onFinishStream = new TransformStream({
         flush() {
           httpAssert(onFinished, 500, 'Should never happen')
-          onFinished()
+          onFinished(null)
         },
       })
       const returnedStream = retrievalResult.response.body
