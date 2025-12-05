@@ -210,6 +210,7 @@ export default {
       const measureStream = new TransformStream({
         transform(chunk, controller) {
           if (firstByteAt === null) {
+            console.log('First byte received')
             firstByteAt = performance.now()
           }
           egressBytes += chunk.length
@@ -219,6 +220,7 @@ export default {
 
       const responseFinishedStream = new TransformStream({
         flush() {
+          console.log('Response finished')
           responseFinished(null)
         },
       })
