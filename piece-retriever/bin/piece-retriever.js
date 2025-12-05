@@ -118,6 +118,7 @@ export default {
             { signal: request.signal },
           )
           if (retrievalResult.response.ok) {
+            console.log('Retrieval attempt succeeded')
             break
           }
           console.log(
