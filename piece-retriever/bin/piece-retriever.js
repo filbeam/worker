@@ -10,7 +10,7 @@ import {
 import { parseRequest } from '../lib/request.js'
 import {
   retrieveFile as defaultRetrieveFile,
-  measureStreamedEgress,
+  getRetrievalUrl,
 } from '../lib/retrieval.js'
 import { getRetrievalCandidatesAndValidatePayer } from '../lib/store.js'
 
@@ -145,6 +145,7 @@ export default {
         ctx.waitUntil(
           logRetrievalResult(env, {
             cacheMiss: retrievalResult?.cacheMiss || null,
+            cacheMissResponseValid: null,
             responseStatus: 502,
             egressBytes: 0,
             requestCountryCode,
@@ -175,6 +176,7 @@ export default {
         ctx.waitUntil(
           logRetrievalResult(env, {
             cacheMiss: retrievalResult.cacheMiss,
+            cacheMissResponseValid: false,
             responseStatus: retrievalResult.response.status,
             egressBytes: 0,
             requestCountryCode,
@@ -196,20 +198,52 @@ export default {
         return response
       }
 
-      // Stream and count bytes
-      // We create two identical streams, one for the egress measurement and the other for returning the response as soon as possible
-      const [returnedStream, egressMeasurementStream] =
-        retrievalResult.response.body.tee()
-      const reader = egressMeasurementStream.getReader()
-      const firstByteAt = performance.now()
+      // Stream, count bytes and validate (a cache miss)
+      let egressBytes = 0
+      /** @type {number | null} */
+      let firstByteAt = null
+
+      const { promise: responseFinishedPromise, resolve: responseFinished } =
+        Promise.withResolvers()
+
+      const measureStream = new TransformStream({
+        transform(chunk, controller) {
+          if (firstByteAt === null) {
+            firstByteAt = performance.now()
+          }
+          egressBytes += chunk.length
+          controller.enqueue(chunk)
+        },
+      })
+
+      const responseFinishedStream = new TransformStream({
+        flush() {
+          responseFinished(null)
+        },
+      })
+      const returnedStream = retrievalResult.response.body
+        .pipeThrough(measureStream)
+        .pipeThrough(responseFinishedStream)
 
       ctx.waitUntil(
         (async () => {
-          const egressBytes = await measureStreamedEgress(reader)
+          await responseFinishedPromise
+          const cacheMissResponseValid =
+            typeof retrievalResult.validate === 'function'
+              ? retrievalResult.validate()
+              : null
+          httpAssert(firstByteAt, 500, 'Should never happen')
           const lastByteFetchedAt = performance.now()
+
+          if (cacheMissResponseValid === false) {
+            await caches.default.delete(
+              getRetrievalUrl(retrievalCandidate.serviceUrl, pieceCid),
+            )
+          }
 
           await logRetrievalResult(env, {
             cacheMiss: retrievalResult.cacheMiss,
+            cacheMissResponseValid,
             responseStatus: retrievalResult.response.status,
             egressBytes,
             requestCountryCode,
@@ -227,6 +261,7 @@ export default {
             dataSetId: retrievalCandidate.dataSetId,
             egressBytes,
             cacheMiss: retrievalResult.cacheMiss,
+            cacheMissResponseValid,
             enforceEgressQuota: env.ENFORCE_EGRESS_QUOTA,
           })
         })(),
@@ -251,6 +286,7 @@ export default {
       ctx.waitUntil(
         logRetrievalResult(env, {
           cacheMiss: null,
+          cacheMissResponseValid: null,
           responseStatus: status,
           egressBytes: null,
           requestCountryCode,
