@@ -158,6 +158,7 @@ export async function getRetrievalCandidatesAndValidatePayer(
 
   console.log(
     `Looked up ${retrievalCandidates.length} retrieval candidates for piece_cid '${pieceCid}' and payer '${payerAddress}'`,
+    retrievalCandidates,
   )
 
   return retrievalCandidates
