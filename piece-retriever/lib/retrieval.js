@@ -12,8 +12,7 @@ import { createPieceCIDStream } from './piece.js'
  * @param {object} [options] - Optional parameters.
  * @param {AbortSignal} [options.signal] - An optional AbortSignal to cancel the
  *   fetch request.
- * @param {boolean} [options.validateCacheMissResponse=false] Default is
- *   `false`
+ * @param {boolean} [options.validateCacheMissResponse=false] Default is `false`
  * @returns {Promise<{
  *   response: Response
  *   cacheMiss: boolean
