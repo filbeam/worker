@@ -181,6 +181,23 @@ describe('retrieveFile', () => {
     expect(result.response.headers.get('content-range')).toBe('bytes 0-1/100')
   })
 
+  it("by default doesn't validate cache miss responses", async () => {
+    cachesMock.match.mockResolvedValueOnce(null)
+    fetchMock
+      .get(baseUrl)
+      .intercept({ path: `/piece/${pieceCid}` })
+      .reply(200, 'invalid')
+    const ctx = createExecutionContext()
+    const result = await retrieveFile(
+      ctx,
+      baseUrl,
+      pieceCid,
+      new Request(baseUrl),
+    )
+    await waitOnExecutionContext(ctx)
+    expect(result.validate).toBe(null)
+  })
+
   it('validates an invalid cache miss response', async () => {
     cachesMock.match.mockResolvedValueOnce(null)
     fetchMock
@@ -193,6 +210,8 @@ describe('retrieveFile', () => {
       baseUrl,
       pieceCid,
       new Request(baseUrl),
+      null,
+      { addCacheMissResponseValidation: true },
     )
     await waitOnExecutionContext(ctx)
     expect(result.validate).toBeInstanceOf(Function)
@@ -216,6 +235,8 @@ describe('retrieveFile', () => {
       baseUrl,
       pieceCid,
       new Request(baseUrl),
+      null,
+      { addCacheMissResponseValidation: true },
     )
     const reader = result.response.body.getReader()
     while (true) {
