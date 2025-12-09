@@ -59,7 +59,8 @@ export default {
     const workerStartedAt = performance.now()
     const requestCountryCode = request.headers.get('CF-IPCountry')
 
-    const { payerWalletAddress, pieceCid, botName } = parseRequest(request, env)
+    const { payerWalletAddress, pieceCid, botName, validateCacheMissResponse } =
+      parseRequest(request, env)
 
     httpAssert(payerWalletAddress && pieceCid, 400, 'Missing required fields')
     httpAssert(
@@ -115,7 +116,10 @@ export default {
             pieceCid,
             request,
             env.ORIGIN_CACHE_TTL,
-            { signal: request.signal },
+            {
+              signal: request.signal,
+              addCacheMissResponseValidation: validateCacheMissResponse,
+            },
           )
           if (retrievalResult.response.ok) {
             console.log('Retrieval attempt succeeded')

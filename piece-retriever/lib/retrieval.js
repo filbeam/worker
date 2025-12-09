@@ -12,6 +12,8 @@ import { createPieceCIDStream } from './piece.js'
  * @param {object} [options] - Optional parameters.
  * @param {AbortSignal} [options.signal] - An optional AbortSignal to cancel the
  *   fetch request.
+ * @param {boolean} [options.addCacheMissResponseValidation=false] Default is
+ *   `false`
  * @returns {Promise<{
  *   response: Response
  *   cacheMiss: boolean
@@ -26,7 +28,7 @@ export async function retrieveFile(
   pieceCid,
   request,
   cacheTtl = 86400,
-  { signal } = {},
+  { signal, addCacheMissResponseValidation = false } = {},
 ) {
   const url = getRetrievalUrl(baseUrl, pieceCid)
 
@@ -41,16 +43,21 @@ export async function retrieveFile(
     response = await fetch(url, { signal })
     if (response.ok) {
       assert(response.body)
-      const { stream: pieceCidStream, getPieceCID } = createPieceCIDStream()
-      validate = () => {
-        const calculatedPieceCid = getPieceCID()
-        return (
-          calculatedPieceCid !== null &&
-          calculatedPieceCid.toString() === pieceCid
-        )
+
+      let responseStream = response.body
+      if (addCacheMissResponseValidation) {
+        const { stream: pieceCidStream, getPieceCID } = createPieceCIDStream()
+        validate = () => {
+          const calculatedPieceCid = getPieceCID()
+          return (
+            calculatedPieceCid !== null &&
+            calculatedPieceCid.toString() === pieceCid
+          )
+        }
+        responseStream = responseStream.pipeThrough(pieceCidStream)
       }
-      const pipelineStream = response.body.pipeThrough(pieceCidStream)
-      const [body1, body2] = pipelineStream.tee() ?? [null, null]
+
+      const [body1, body2] = responseStream.tee() ?? [null, null]
 
       ctx.waitUntil(
         caches.default.put(

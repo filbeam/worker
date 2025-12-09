@@ -193,6 +193,8 @@ describe('retrieveFile', () => {
       baseUrl,
       pieceCid,
       new Request(baseUrl),
+      null,
+      { addCacheMissResponseValidation: true },
     )
     await waitOnExecutionContext(ctx)
     expect(result.validate).toBeInstanceOf(Function)
@@ -216,6 +218,8 @@ describe('retrieveFile', () => {
       baseUrl,
       pieceCid,
       new Request(baseUrl),
+      null,
+      { addCacheMissResponseValidation: true },
     )
     const reader = result.response.body.getReader()
     while (true) {
