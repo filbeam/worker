@@ -1,8 +1,9 @@
-import * as Hasher from '@web3-storage/data-segment/multihash'
+import * as Hasher from 'fr32-sha2-256-trunc254-padded-binary-tree-multihash/wasm-import'
 import * as Raw from 'multiformats/codecs/raw'
-import * as Link from 'multiformats/link'
+import * as Digest from 'multiformats/hashes/digest'
+import { CID } from 'multiformats/cid'
 
-/** @typedef {import('@web3-storage/data-segment').PieceLink} PieceCID */
+/** @typedef {CID} PieceCID */
 
 /**
  * @returns {{
@@ -29,9 +30,25 @@ export function createPieceCIDStream() {
 
     flush() {
       // Calculate final PieceCID when stream ends
-      const digest = hasher.digest()
-      /** @type {PieceCID} */
-      pieceCid = Link.create(Raw.code, digest)
+
+      // Allocate buffer to hold the multihash
+      // ⚠️ Calling hasher.write may affect bytes required for digest
+      // If you need to pre-allocate see next example
+      const digest = new Uint8Array(hasher.multihashByteLength())
+      // Write digest and capture end offset
+      hasher.digestInto(
+        // into provided buffer
+        digest,
+        // at 0 byte offset
+        0,
+        // and include multihash prefix
+        true,
+      )
+      // There's no GC (yet) in WASM so you should free up
+      // memory manually once you're done.
+      hasher.free()
+
+      pieceCid = CID.createV1(Raw.code, Digest.decode(digest))
       finished = true
     },
   })
