@@ -57,3 +57,6 @@ database_id = "e8de6418-2cb7-4413-9ba0-a9c8aacf9a66"
 [[env.mainnet.kv_namespaces]]
 binding = "BAD_BITS_KV"
 id = "7b03c39d53a041fdbe973c20285e16e9"
+
+[alias]
+"sync-multihash-sha2/sha256" = "../node_modules/sync-multihash-sha2/src/sha256/node.js"
