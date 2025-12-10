@@ -15,6 +15,6 @@
   },
   "dependencies": {
     "assert-ok-response": "^1.0.0",
-    "p-retry": "^7.1.0"
+    "p-retry": "^7.1.1"
   }
 }
