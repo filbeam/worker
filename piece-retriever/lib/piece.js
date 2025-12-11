@@ -32,8 +32,6 @@ export function createPieceCIDStream() {
       // Calculate final PieceCID when stream ends
 
       // Allocate buffer to hold the multihash
-      // ⚠️ Calling hasher.write may affect bytes required for digest
-      // If you need to pre-allocate see next example
       const digest = new Uint8Array(hasher.multihashByteLength())
       // Write digest and capture end offset
       hasher.digestInto(
