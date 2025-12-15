@@ -37,19 +37,20 @@ export async function insertDataSetPiece(
     return
   }
 
+  /** @type {{ payer_address: string | null } | null} */
   const dataSet = await env.DB.prepare(
     'SELECT payer_address FROM data_sets WHERE id = ?',
   )
     .bind(dataSetId)
     .first()
-  const payerAddress = /** @type {string | null} */ (dataSet?.payer_address)
+
+  const payerAddress = dataSet?.payer_address ?? null
 
   if (!payerAddress) return
 
   const key = `${payerAddress}:${pieceCid}`
-  const existing = /** @type {{ price: string; block: number } | null} */ (
-    await env.X402_METADATA_KV.get(key, 'json')
-  )
+  /** @type {{ price: string; block: number } | null} */
+  const existing = await env.X402_METADATA_KV.get(key, 'json')
 
   if (!existing || blockNumber > existing.block) {
     await env.X402_METADATA_KV.put(
@@ -82,23 +83,25 @@ export async function removeDataSetPieces(env, dataSetId, pieceIds) {
     .bind(...pieceIds.flatMap((pieceId) => [pieceId, dataSetId]))
     .all()
 
+  /** @type {{ payer_address: string | null } | null} */
   const dataSet = await env.DB.prepare(
     'SELECT payer_address FROM data_sets WHERE id = ?',
   )
     .bind(dataSetId)
     .first()
-  const payerAddress = /** @type {string | null} */ (dataSet?.payer_address)
+  const payerAddress = dataSet?.payer_address ?? null
 
   if (!payerAddress) return
 
   // For each piece, check if any non-deleted copies remain and delete KV if not
-  for (const piece of deletedPieces.results) {
-    const cid = /** @type {string | null} */ (piece.cid)
-
-    if (!cid) {
+  for (const piece of /** @type {{ cid?: string }[]} */ (
+    deletedPieces.results
+  )) {
+    if (!piece.cid) {
       continue
     }
 
+    /** @type {{ count: number } | null} */
     const remaining = await env.DB.prepare(
       `
         SELECT COUNT(*) as count FROM pieces p
@@ -106,11 +109,11 @@ export async function removeDataSetPieces(env, dataSetId, pieceIds) {
         WHERE p.cid = ? AND d.payer_address = ? AND p.is_deleted = FALSE
         `,
     )
-      .bind(cid, payerAddress)
+      .bind(piece.cid, payerAddress)
       .first()
 
-    if (remaining && /** @type {number} */ (remaining.count) === 0) {
-      await env.X402_METADATA_KV.delete(`${payerAddress}:${cid}`)
+    if (remaining?.count === 0) {
+      await env.X402_METADATA_KV.delete(`${payerAddress}:${piece.cid}`)
     }
   }
 }
