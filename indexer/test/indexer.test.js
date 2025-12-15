@@ -596,7 +596,7 @@ describe('piece-retriever.indexer', () => {
     it('inserts a piece with x402Price metadata', async () => {
       const dataSetId = randomId()
       const payerAddress = '0xPayerAddress'
-      const cid =
+      const pieceCid =
         'bafkzcibey3nqcc3d7ifp7bg6acsm3geafyb5dx26ughkimgdudg4qsxu7racjkzhcq'
       await withDataSet(env, {
         dataSetId,
@@ -630,12 +630,12 @@ describe('piece-retriever.indexer', () => {
       expect(pieces).toEqual([
         {
           id: '42',
-          cid,
+          cid: pieceCid,
           x402_price: x402Price,
         },
       ])
       const kv = await env.X402_METADATA_KV.get(
-        `${payerAddress}:${cid}`,
+        `${payerAddress}:${pieceCid}`,
         'json',
       )
       expect(kv).toEqual({
@@ -644,10 +644,57 @@ describe('piece-retriever.indexer', () => {
       })
     })
 
+    it('update x402 metadata only if block number is bigger', async () => {
+      const dataSetId = randomId()
+      const pieceId = randomId().toString()
+      const payerAddress = '0xPayerAddress'
+      const pieceCid =
+        'bafkzcibey3nqcc3d7ifp7bg6acsm3geafyb5dx26ughkimgdudg4qsxu7racjkzhcq'
+      await withDataSet(env, {
+        dataSetId,
+        payerAddress,
+        serviceProviderId: 'sp1',
+      })
+      await withPieces(env, dataSetId, [pieceId], [pieceCid])
+      await env.X402_METADATA_KV.put(
+        `${payerAddress}:${pieceCid}`,
+        JSON.stringify({ price: '420', block: '1337' }),
+      )
+
+      const x402Price = '1000000'
+      const req = new Request('https://host/fwss/piece-added', {
+        method: 'POST',
+        headers: {
+          [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+        },
+        body: JSON.stringify({
+          data_set_id: dataSetId.toString(),
+          piece_id: '42',
+          piece_cid: TEST_CID_HEX,
+          metadata_keys: ['x402Price'],
+          metadata_values: [x402Price],
+          block_number: 2000,
+        }),
+      })
+
+      const res = await workerImpl.fetch(req, env, CTX)
+      expect(res.status).toBe(200)
+      expect(await res.text()).toBe('OK')
+
+      const kv = await env.X402_METADATA_KV.get(
+        `${payerAddress}:${pieceCid}`,
+        'json',
+      )
+      expect(kv).toEqual({
+        price: x402Price,
+        block: '2000',
+      })
+    })
+
     it('rejects invalid x402Price (not a numeric string)', async () => {
       const dataSetId = randomId()
       const payerAddress = '0xPayerAddress'
-      const cid =
+      const pieceCid =
         'bafkzcibey3nqcc3d7ifp7bg6acsm3geafyb5dx26ughkimgdudg4qsxu7racjkzhcq'
       await withDataSet(env, {
         dataSetId,
@@ -686,7 +733,7 @@ describe('piece-retriever.indexer', () => {
       ])
 
       const kvResult = await env.X402_METADATA_KV.get(
-        `${payerAddress}:${cid}`,
+        `${payerAddress}:${pieceCid}`,
         'json',
       )
       expect(kvResult).toBeNull()
@@ -785,6 +832,74 @@ describe('piece-retriever.indexer', () => {
       for (const piece of pieces) {
         expect(piece.is_deleted).toBe(1)
       }
+    })
+
+    it('deletes x402 metadata only if all copies of the same piece are deleted', async () => {
+      const payerAddress = '0xPayerAddress'
+      const dataSetId1 = randomId()
+      const dataSetId2 = randomId()
+      const pieceId = randomId().toString()
+      const pieceCid = randomId()
+      await withDataSet(env, {
+        payerAddress,
+        dataSetId: dataSetId1,
+        serviceProviderId: 'sp1',
+      })
+      await withDataSet(env, {
+        payerAddress,
+        dataSetId: dataSetId2,
+        serviceProviderId: 'sp2',
+      })
+      await withPieces(env, dataSetId1, [pieceId], [pieceCid])
+      await withPieces(env, dataSetId2, [pieceId], [pieceCid])
+
+      await env.X402_METADATA_KV.put(
+        `${payerAddress}:${pieceCid}`,
+        JSON.stringify({ price: '1000', block: '1337' }),
+      )
+
+      const req = new Request('https://host/pdp-verifier/pieces-removed', {
+        method: 'POST',
+        headers: {
+          [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+        },
+        body: JSON.stringify({
+          data_set_id: dataSetId1,
+          piece_ids: [pieceId],
+        }),
+      })
+      const res = await workerImpl.fetch(req, env, CTX, {})
+      expect(res.status).toBe(200)
+      expect(await res.text()).toBe('OK')
+
+      const kvResult = await env.X402_METADATA_KV.get(
+        `${payerAddress}:${pieceCid}`,
+        'json',
+      )
+      expect(kvResult).toStrictEqual({
+        price: '1000',
+        block: '1337',
+      })
+
+      const req2 = new Request('https://host/pdp-verifier/pieces-removed', {
+        method: 'POST',
+        headers: {
+          [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+        },
+        body: JSON.stringify({
+          data_set_id: dataSetId2,
+          piece_ids: [pieceId],
+        }),
+      })
+      const res2 = await workerImpl.fetch(req2, env, CTX, {})
+      expect(res2.status).toBe(200)
+      expect(await res2.text()).toBe('OK')
+
+      const kvResult2 = await env.X402_METADATA_KV.get(
+        `${payerAddress}:${pieceCid}`,
+        'json',
+      )
+      expect(kvResult2).toBeNull()
     })
 
     it('marks as deleted when delete arrives before add (events out of order)', async () => {
