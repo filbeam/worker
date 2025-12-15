@@ -336,7 +336,7 @@ export default {
       alerts.push(
         `Can't access subgraph: ${subgraph.reason.stack ?? subgraph.reason.message ?? subgraph.reason}`,
       )
-    } else if (typeof subgraph.value?._meta !== 'object') {
+    } else if (typeof subgraph.value?._meta !== 'object' || subgraph.value?._meta === null) {
       console.warn(`Unexpected subgraph response: ${subgraph.value}`)
     } else if (subgraph.value._meta.hasIndexingErrors) {
       alerts.push('Goldsky has indexing errors')
