@@ -15,7 +15,7 @@ database_id = "8cc92155-16f6-426a-b782-2965e0daf100"
 
 [[kv_namespaces]]
 binding = "X402_METADATA_KV"
-id = "placeholder"
+id = "00000000000000000000000000000000"
 
 [vars]
 # Default rate: 7 USDFC per TiB (in 1e18 units)

@@ -595,6 +595,14 @@ describe('piece-retriever.indexer', () => {
 
     it('inserts a piece with x402Price metadata', async () => {
       const dataSetId = randomId()
+      const payerAddress = '0xPayerAddress'
+      const cid =
+        'bafkzcibey3nqcc3d7ifp7bg6acsm3geafyb5dx26ughkimgdudg4qsxu7racjkzhcq'
+      await withDataSet(env, {
+        dataSetId,
+        payerAddress,
+        serviceProviderId: 'sp1',
+      })
       const x402Price = '1000000'
       const req = new Request('https://host/fwss/piece-added', {
         method: 'POST',
@@ -607,6 +615,7 @@ describe('piece-retriever.indexer', () => {
           piece_cid: TEST_CID_HEX,
           metadata_keys: ['x402Price'],
           metadata_values: [x402Price],
+          block_number: 1337,
         }),
       })
       const res = await workerImpl.fetch(req, env, CTX)
@@ -621,14 +630,30 @@ describe('piece-retriever.indexer', () => {
       expect(pieces).toEqual([
         {
           id: '42',
-          cid: 'bafkzcibey3nqcc3d7ifp7bg6acsm3geafyb5dx26ughkimgdudg4qsxu7racjkzhcq',
+          cid,
           x402_price: x402Price,
         },
       ])
+      const kv = await env.X402_METADATA_KV.get(
+        `${payerAddress}:${cid}`,
+        'json',
+      )
+      expect(kv).toEqual({
+        price: x402Price,
+        block: '1337',
+      })
     })
 
     it('rejects invalid x402Price (not a numeric string)', async () => {
       const dataSetId = randomId()
+      const payerAddress = '0xPayerAddress'
+      const cid =
+        'bafkzcibey3nqcc3d7ifp7bg6acsm3geafyb5dx26ughkimgdudg4qsxu7racjkzhcq'
+      await withDataSet(env, {
+        dataSetId,
+        payerAddress,
+        serviceProviderId: 'sp1',
+      })
       const invalidPrice = 'not-a-number'
       const req = new Request('https://host/fwss/piece-added', {
         method: 'POST',
@@ -659,10 +684,24 @@ describe('piece-retriever.indexer', () => {
           x402_price: null,
         },
       ])
+
+      const kvResult = await env.X402_METADATA_KV.get(
+        `${payerAddress}:${cid}`,
+        'json',
+      )
+      expect(kvResult).toBeNull()
     })
 
     it('rejects x402Price with decimal values', async () => {
       const dataSetId = randomId()
+      const payerAddress = '0xPayerAddress'
+      const cid =
+        'bafkzcibey3nqcc3d7ifp7bg6acsm3geafyb5dx26ughkimgdudg4qsxu7racjkzhcq'
+      await withDataSet(env, {
+        dataSetId,
+        payerAddress,
+        serviceProviderId: 'sp1',
+      })
       const invalidPrice = '100.50'
       const req = new Request('https://host/fwss/piece-added', {
         method: 'POST',
@@ -693,6 +732,12 @@ describe('piece-retriever.indexer', () => {
           x402_price: null,
         },
       ])
+
+      const kvResult = await env.X402_METADATA_KV.get(
+        `${payerAddress}:${cid}`,
+        'json',
+      )
+      expect(kvResult).toBeNull()
     })
   })
 

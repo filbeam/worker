@@ -52,12 +52,12 @@ export async function insertDataSetPiece(
   /** @type {{ price: string; block: number } | null} */
   const existing = await env.X402_METADATA_KV.get(key, 'json')
 
-  if (!existing || blockNumber > existing.block) {
+  if (!existing || blockNumber > Number(existing.block)) {
     await env.X402_METADATA_KV.put(
       key,
       JSON.stringify({
         price: x402Price,
-        block: blockNumber,
+        block: String(blockNumber),
       }),
     )
   }
