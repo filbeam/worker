@@ -37,7 +37,6 @@ export async function insertDataSetPiece(
     return
   }
 
-  // Query payer_address from data_sets table
   const dataSet = await env.DB.prepare(
     'SELECT payer_address FROM data_sets WHERE id = ?',
   )
@@ -52,7 +51,6 @@ export async function insertDataSetPiece(
     await env.X402_METADATA_KV.get(key, 'json')
   )
 
-  // Only update if new block > existing block
   if (!existing || blockNumber > existing.block) {
     await env.X402_METADATA_KV.put(
       key,
