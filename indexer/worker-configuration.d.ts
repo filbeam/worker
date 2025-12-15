@@ -6,9 +6,10 @@ declare namespace Cloudflare {
 		mainModule: typeof import("./bin/indexer");
 	}
 	interface Env {
-		CDN_RATE_PER_TIB: "5000000000000000000";
-		CACHE_MISS_RATE_PER_TIB: "5000000000000000000";
+		CDN_RATE_PER_TIB: "7000000000000000000";
+		CACHE_MISS_RATE_PER_TIB: "7000000000000000000";
 		ENVIRONMENT: "dev" | "calibration" | "mainnet";
+        X402_METADATA_KV: KVNamespace;
 		WALLET_SCREENING_BATCH_SIZE: 1 | 10;
 		WALLET_SCREENING_STALE_THRESHOLD_MS: 86400000 | 21600000;
 		GOLDSKY_SUBGRAPH_URL: "https://api.goldsky.com/api/public/project_cmb91qc80slyu01wca6e2eupl/subgraphs/filbeam-alpha-calibnet/1.0.0/gn" | "https://api.goldsky.com/api/public/project_cmb91qc80slyu01wca6e2eupl/subgraphs/filbeam-alpha-mainnet/1.0.0/gn";

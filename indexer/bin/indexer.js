@@ -105,10 +105,20 @@ export default {
       const pieceCid = rootCidObj.toString()
 
       const ipfsRootCidIndex = payload.metadata_keys.indexOf('ipfsRootCID')
+
       const ipfsRootCid =
         ipfsRootCidIndex === -1
           ? null
           : payload.metadata_values[ipfsRootCidIndex]
+
+      const x402PriceIndex = payload.metadata_keys.indexOf('x402Price')
+      const x402PriceRaw =
+        x402PriceIndex === -1 ? null : payload.metadata_values[x402PriceIndex]
+      // Validate x402Price is a valid integer string (no decimals, no non-numeric)
+      const x402Price =
+        x402PriceRaw && /^\d+$/.test(x402PriceRaw) ? x402PriceRaw : null
+
+      const blockNumber = payload.block_number
 
       console.log(
         `New piece (piece_id=${pieceId}, piece_cid=${pieceCid}, data_set_id=${payload.data_set_id} metadata_keys=[${payload.metadata_keys.join(', ')}], metadata_values=[${payload.metadata_values.join(
@@ -122,6 +132,8 @@ export default {
         pieceId,
         pieceCid,
         ipfsRootCid,
+        x402Price,
+        blockNumber,
       )
 
       return new Response('OK', { status: 200 })
