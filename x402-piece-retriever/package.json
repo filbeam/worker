@@ -1,0 +1,18 @@
+{
+  "name": "@filbeam/x402-piece-retriever",
+  "version": "1.0.0",
+  "private": true,
+  "description": "FilBeam X402 Retrieval Worker",
+  "author": "Space Meridian <filbeam@meridian.space>",
+  "type": "module",
+  "main": "bin/x402-piece-retriever.js",
+  "scripts": {
+    "build:types": "wrangler types --env dev",
+    "deploy:calibration": "wrangler deploy --env calibration",
+    "start": "wrangler dev --env dev",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "x402": "^1.0.1"
+  }
+}

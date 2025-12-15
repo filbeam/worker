@@ -1,0 +1,43 @@
+name = "x402-filbeam-piece-retriever"
+main = "bin/x402-piece-retriever.js"
+compatibility_date = "2025-09-08"
+compatibility_flags = ["nodejs_compat"]
+logpush = true
+
+[env.dev.vars]
+ENVIRONMENT = "dev"
+DNS_ROOT = ".localhost"
+FACILITATOR_URL = "https://x402.org/facilitator"
+USDC_ADDRESS = "0x036CbD53842c5426634e7929541eC2318f3dCF7e"
+NETWORK = "base-sepolia"
+
+[env.calibration.vars]
+ENVIRONMENT = "calibration"
+DNS_ROOT = ".x402.calibration.filbeam.io"
+FACILITATOR_URL = "https://x402.org/facilitator"
+USDC_ADDRESS = "0x036CbD53842c5426634e7929541eC2318f3dCF7e"
+NETWORK = "base-sepolia"
+
+[[kv_namespaces]]
+binding = "X402_METADATA_KV"
+id = "00000000000000000000000000000000"
+
+[[env.dev.kv_namespaces]]
+binding = "X402_METADATA_KV"
+id = "00000000000000000000000000000000"
+
+[[env.calibration.kv_namespaces]]
+binding = "X402_METADATA_KV"
+id = "00000000000000000000000000000000"
+
+[[services]]
+binding = "PIECE_RETRIEVER"
+service = "filbeam-piece-retriever"
+
+[[env.dev.services]]
+binding = "PIECE_RETRIEVER"
+service = "filbeam-piece-retriever"
+
+[[env.calibration.services]]
+binding = "PIECE_RETRIEVER"
+service = "filbeam-piece-retriever"

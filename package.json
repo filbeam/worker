@@ -14,7 +14,8 @@
     "usage-reporter",
     "payment-settler",
     "retrieval",
-    "stats-api"
+    "stats-api",
+    "x402-piece-retriever"
   ],
   "scripts": {
     "build:types": "npm run build:types --workspaces --if-present",
