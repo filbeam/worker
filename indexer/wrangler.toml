@@ -34,7 +34,6 @@ binding = "DB"
 database_name = "dev-db"
 database_id = "8cc92155-16f6-426a-b782-2965e0daf101"
 
-
 [env.calibration.vars]
 ENVIRONMENT = "calibration"
 WALLET_SCREENING_BATCH_SIZE = 1
