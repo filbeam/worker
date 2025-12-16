@@ -45,30 +45,35 @@ export async function insertDataSetPiece(
     .first()
 
   const payerAddress = dataSet?.payer_address ?? null
-
   if (!payerAddress) return
 
-  const key = `${payerAddress}:${pieceCid}`
-  /** @type {{ price: string; block: number } | null} */
-  const existing = await env.X402_METADATA_KV.get(key, 'json')
+  const metadataKey = `${payerAddress}:${pieceCid}`
 
-  if (!existing || blockNumber > Number(existing.block)) {
-    await env.X402_METADATA_KV.put(
-      key,
-      JSON.stringify({
-        price: x402Price,
-        block: String(blockNumber),
-      }),
-    )
+  /** @type {{ price: string; blockNumber: number } | null} */
+  const existingMetadata = await env.X402_METADATA_KV.get(metadataKey, 'json')
+
+  if (existingMetadata && blockNumber < Number(existingMetadata.blockNumber)) {
+    return
   }
+
+  await env.X402_METADATA_KV.put(
+    metadataKey,
+    JSON.stringify({
+      price: x402Price,
+      blockNumber: String(blockNumber),
+    }),
+  )
 }
 
 /**
+ * Removes pieces from a dataset and cleans up orphaned KV metadata.
+ *
  * @param {{ DB: D1Database; X402_METADATA_KV: KVNamespace }} env
  * @param {number | string} dataSetId
  * @param {(number | string)[]} pieceIds
  */
 export async function removeDataSetPieces(env, dataSetId, pieceIds) {
+  /** @type{{ results: { cid: string }[] }} */
   const deletedPieces = await env.DB.prepare(
     `
     INSERT INTO pieces (id, data_set_id, is_deleted)
@@ -93,27 +98,27 @@ export async function removeDataSetPieces(env, dataSetId, pieceIds) {
 
   if (!payerAddress) return
 
-  // For each piece, check if any non-deleted copies remain and delete KV if not
-  for (const piece of /** @type {{ cid?: string }[]} */ (
-    deletedPieces.results
-  )) {
-    if (!piece.cid) {
-      continue
-    }
+  const deletedCids = [...new Set(deletedPieces.results.map((p) => p.cid))]
+  const remainingPieces = await env.DB.prepare(
+    `
+    SELECT DISTINCT p.cid FROM pieces p
+    JOIN data_sets d ON p.data_set_id = d.id
+    WHERE p.cid IN (${deletedCids.map(() => '?').join(', ')})
+      AND d.payer_address = ?
+      AND p.is_deleted = FALSE
+    `,
+  )
+    .bind(...deletedCids, payerAddress)
+    .all()
 
-    /** @type {{ count: number } | null} */
-    const remaining = await env.DB.prepare(
-      `
-        SELECT COUNT(*) as count FROM pieces p
-        JOIN data_sets d ON p.data_set_id = d.id
-        WHERE p.cid = ? AND d.payer_address = ? AND p.is_deleted = FALSE
-        `,
-    )
-      .bind(piece.cid, payerAddress)
-      .first()
+  const remainingPiecesCids = new Set(remainingPieces.results.map((r) => r.cid))
+  const orphanedCids = deletedCids.filter(
+    (cid) => !remainingPiecesCids.has(cid),
+  )
 
-    if (remaining?.count === 0) {
-      await env.X402_METADATA_KV.delete(`${payerAddress}:${piece.cid}`)
-    }
-  }
+  await Promise.all(
+    orphanedCids.map((cid) =>
+      env.X402_METADATA_KV.delete(`${payerAddress}:${cid}`),
+    ),
+  )
 }

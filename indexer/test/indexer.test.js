@@ -640,7 +640,7 @@ describe('piece-retriever.indexer', () => {
       )
       expect(kv).toEqual({
         price: x402Price,
-        block: '1337',
+        blockNumber: '1337',
       })
     })
 
@@ -658,7 +658,7 @@ describe('piece-retriever.indexer', () => {
       await withPieces(env, dataSetId, [pieceId], [pieceCid])
       await env.X402_METADATA_KV.put(
         `${payerAddress}:${pieceCid}`,
-        JSON.stringify({ price: '420', block: '1337' }),
+        JSON.stringify({ price: '420', blockNumber: '1337' }),
       )
 
       const x402Price = '1000000'
@@ -687,7 +687,7 @@ describe('piece-retriever.indexer', () => {
       )
       expect(kv).toEqual({
         price: x402Price,
-        block: '2000',
+        blockNumber: '2000',
       })
     })
 
@@ -855,7 +855,7 @@ describe('piece-retriever.indexer', () => {
 
       await env.X402_METADATA_KV.put(
         `${payerAddress}:${pieceCid}`,
-        JSON.stringify({ price: '1000', block: '1337' }),
+        JSON.stringify({ price: '1000', blockNumber: '1337' }),
       )
 
       const req = new Request('https://host/pdp-verifier/pieces-removed', {
@@ -878,7 +878,7 @@ describe('piece-retriever.indexer', () => {
       )
       expect(kvResult).toStrictEqual({
         price: '1000',
-        block: '1337',
+        blockNumber: '1337',
       })
 
       const req2 = new Request('https://host/pdp-verifier/pieces-removed', {
