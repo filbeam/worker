@@ -129,7 +129,6 @@ export default {
         pieceCid,
         ipfsRootCid,
         x402Price,
-        payload.block_number,
       )
 
       return new Response('OK', { status: 200 })
