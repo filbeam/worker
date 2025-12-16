@@ -73,6 +73,8 @@ export async function insertDataSetPiece(
  * @param {(number | string)[]} pieceIds
  */
 export async function removeDataSetPieces(env, dataSetId, pieceIds) {
+  if (pieceIds.length === 0) return
+
   /** @type{{ results: { cid: string }[] }} */
   const deletedPieces = await env.DB.prepare(
     `
@@ -94,11 +96,13 @@ export async function removeDataSetPieces(env, dataSetId, pieceIds) {
   )
     .bind(dataSetId)
     .first()
-  const payerAddress = dataSet?.payer_address ?? null
 
+  const payerAddress = dataSet?.payer_address ?? null
   if (!payerAddress) return
 
   const deletedCids = [...new Set(deletedPieces.results.map((p) => p.cid))]
+  if (deletedCids.length === 0) return
+
   const remainingPieces = await env.DB.prepare(
     `
     SELECT DISTINCT p.cid FROM pieces p
