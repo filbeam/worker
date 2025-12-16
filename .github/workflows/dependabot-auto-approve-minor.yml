@@ -22,6 +22,7 @@ jobs:
           - vite
           - '@npmcli/'
           - prettier
+          - multiformats
     steps:
       - name: Dependabot metadata
         id: metadata
