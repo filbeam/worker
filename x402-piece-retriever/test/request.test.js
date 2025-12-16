@@ -10,9 +10,11 @@ describe('parseRequest', () => {
   it('should parse payeeAddress and pieceCid from URL', () => {
     const request = new Request(`https://${TEST_PAYEE}${DNS_ROOT}/${TEST_CID}`)
     const result = parseRequest(request, { DNS_ROOT })
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       payeeAddress: TEST_PAYEE.toLowerCase(),
       pieceCid: TEST_CID,
+      payment: null,
+      isWebBrowser: false,
     })
   })
 
@@ -26,9 +28,11 @@ describe('parseRequest', () => {
   it('should handle URLs with leading slashes', () => {
     const request = new Request(`https://${TEST_PAYEE}${DNS_ROOT}//${TEST_CID}`)
     const result = parseRequest(request, { DNS_ROOT })
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       payeeAddress: TEST_PAYEE.toLowerCase(),
       pieceCid: TEST_CID,
+      payment: null,
+      isWebBrowser: false,
     })
   })
 
@@ -86,9 +90,11 @@ describe('parseRequest', () => {
       `https://${TEST_PAYEE}${DNS_ROOT}/${TEST_CID}?foo=bar`,
     )
     const result = parseRequest(request, { DNS_ROOT })
-    expect(result).toEqual({
+    expect(result).toStrictEqual({
       payeeAddress: TEST_PAYEE.toLowerCase(),
       pieceCid: TEST_CID,
+      payment: null,
+      isWebBrowser: false,
     })
   })
 })

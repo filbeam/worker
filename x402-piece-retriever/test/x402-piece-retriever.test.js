@@ -5,36 +5,15 @@ import {
   waitOnExecutionContext,
 } from 'cloudflare:test'
 import worker from '../bin/x402-piece-retriever.js'
-
-const DNS_ROOT = '.x402.calibration.filbeam.io'
-const TEST_PAYEE = '0xc83dbfdf61616778537211a7e5ca2e87ec6cf0ed'
-const TEST_CID =
-  'baga6ea4seaqaleibb6ud4xeemuzzpsyhl6cxlsymsnfco4cdjka5uzajo2x4ipa'
-const TEST_PRICE = '1000000' // 1 USDC (6 decimals)
-
-// Set test environment
-env.DNS_ROOT = DNS_ROOT
-env.NETWORK = 'base-sepolia'
-env.FACILITATOR_URL = 'https://x402.org/facilitator'
-env.USDC_ADDRESS = '0x036CbD53842c5426634e7929541eC2318f3dCF7e'
-
-/** Helper to create a request with the proper URL format */
-function createRequest(payeeAddress, pieceCid, options = {}) {
-  const { method = 'GET', headers = {} } = options
-  let url = 'https://'
-  if (payeeAddress) url += payeeAddress
-  url += DNS_ROOT
-  if (pieceCid) url += `/${pieceCid}`
-  return new Request(url, { method, headers })
-}
-
-/** Helper to add x402 metadata to KV */
-async function withX402Metadata(payeeAddress, pieceCid, price, block = '1000') {
-  await env.X402_METADATA_KV.put(
-    `${payeeAddress.toLowerCase()}:${pieceCid}`,
-    JSON.stringify({ price, block }),
-  )
-}
+import {
+  createMockUseFacilitator,
+  createTestPaymentHeader,
+  TEST_CID,
+  TEST_PAYEE,
+  TEST_PRICE,
+  withX402Metadata,
+  createRequest,
+} from './test-helpers.js'
 
 /** Helper to clear KV store */
 async function clearKV() {
@@ -56,9 +35,9 @@ describe('x402-piece-retriever', () => {
   })
 
   describe('free content (no x402 metadata)', () => {
-    it('proxies requests directly to piece-retriever when no metadata exists', async () => {
+    it('proxies requests to piece-retriever when no metadata exists', async () => {
       const ctx = createExecutionContext()
-      const req = createRequest(TEST_PAYEE, TEST_CID)
+      const req = createRequest(env, TEST_PAYEE, TEST_CID)
 
       // Mock piece-retriever response
       env.PIECE_RETRIEVER = {
@@ -75,6 +54,9 @@ describe('x402-piece-retriever', () => {
 
       expect(res.status).toBe(200)
       expect(await res.text()).toBe('piece content')
+
+      // Verify the request was forwarded to piece-retriever
+      expect(env.PIECE_RETRIEVER.fetch).toHaveBeenCalledTimes(1)
       expect(env.PIECE_RETRIEVER.fetch).toHaveBeenCalledWith(req)
     })
   })
@@ -86,25 +68,36 @@ describe('x402-piece-retriever', () => {
 
     it('returns 402 when no X-PAYMENT header is provided', async () => {
       const ctx = createExecutionContext()
-      const req = createRequest(TEST_PAYEE, TEST_CID)
+      const req = createRequest(env, TEST_PAYEE, TEST_CID)
 
       const res = await worker.fetch(req, env, ctx)
       await waitOnExecutionContext(ctx)
 
       expect(res.status).toBe(402)
       const body = await res.json()
-      expect(body.x402Version).toBe(1)
-      expect(body.error).toBe('Payment Required')
-      expect(body.accepts).toHaveLength(1)
-      expect(body.accepts[0].scheme).toBe('exact')
-      expect(body.accepts[0].network).toBe('base-sepolia')
-      expect(body.accepts[0].maxAmountRequired).toBe(TEST_PRICE)
-      expect(body.accepts[0].payTo).toBe(TEST_PAYEE.toLowerCase())
+      expect(body).toStrictEqual({
+        x402Version: 1,
+        error: 'Missing X-PAYMENT header',
+        accepts: [
+          {
+            scheme: 'exact',
+            network: 'base-sepolia',
+            maxAmountRequired: TEST_PRICE,
+            payTo: TEST_PAYEE.toLowerCase(),
+            resource: `https://${TEST_PAYEE}${env.DNS_ROOT}/${TEST_CID}`,
+            description: '',
+            mimeType: '',
+            maxTimeoutSeconds: 60,
+            asset: env.TOKEN_ADDRESS,
+            extra: {},
+          },
+        ],
+      })
     })
 
     it('returns 402 with HTML for browser requests', async () => {
       const ctx = createExecutionContext()
-      const req = createRequest(TEST_PAYEE, TEST_CID, {
+      const req = createRequest(env, TEST_PAYEE, TEST_CID, {
         headers: {
           Accept: 'text/html,application/xhtml+xml',
           'User-Agent':
@@ -121,7 +114,7 @@ describe('x402-piece-retriever', () => {
 
     it('returns 402 with JSON for API clients', async () => {
       const ctx = createExecutionContext()
-      const req = createRequest(TEST_PAYEE, TEST_CID, {
+      const req = createRequest(env, TEST_PAYEE, TEST_CID, {
         headers: {
           Accept: 'application/json',
         },
@@ -136,7 +129,7 @@ describe('x402-piece-retriever', () => {
 
     it('returns 402 for invalid payment header', async () => {
       const ctx = createExecutionContext()
-      const req = createRequest(TEST_PAYEE, TEST_CID, {
+      const req = createRequest(env, TEST_PAYEE, TEST_CID, {
         headers: {
           'X-PAYMENT': 'invalid-base64!!!',
         },
@@ -153,7 +146,7 @@ describe('x402-piece-retriever', () => {
   describe('request validation', () => {
     it('returns 405 for unsupported methods', async () => {
       const ctx = createExecutionContext()
-      const req = createRequest(TEST_PAYEE, TEST_CID, { method: 'POST' })
+      const req = createRequest(env, TEST_PAYEE, TEST_CID, { method: 'POST' })
 
       const res = await worker.fetch(req, env, ctx)
       await waitOnExecutionContext(ctx)
@@ -164,7 +157,7 @@ describe('x402-piece-retriever', () => {
 
     it('returns 400 for invalid payee address', async () => {
       const ctx = createExecutionContext()
-      const req = createRequest('invalid-address', TEST_CID)
+      const req = createRequest(env, 'invalid-address', TEST_CID)
 
       const res = await worker.fetch(req, env, ctx)
       await waitOnExecutionContext(ctx)
@@ -175,7 +168,7 @@ describe('x402-piece-retriever', () => {
 
     it('returns 404 for invalid piece CID', async () => {
       const ctx = createExecutionContext()
-      const req = createRequest(TEST_PAYEE, 'invalid-cid')
+      const req = createRequest(env, TEST_PAYEE, 'invalid-cid')
 
       const res = await worker.fetch(req, env, ctx)
       await waitOnExecutionContext(ctx)
@@ -185,7 +178,7 @@ describe('x402-piece-retriever', () => {
 
     it('allows HEAD requests', async () => {
       const ctx = createExecutionContext()
-      const req = createRequest(TEST_PAYEE, TEST_CID, { method: 'HEAD' })
+      const req = createRequest(env, TEST_PAYEE, TEST_CID, { method: 'HEAD' })
 
       // Mock piece-retriever response
       env.PIECE_RETRIEVER = {
@@ -196,6 +189,239 @@ describe('x402-piece-retriever', () => {
       await waitOnExecutionContext(ctx)
 
       expect(res.status).toBe(200)
+    })
+  })
+
+  describe('payment verification and settlement', () => {
+    beforeEach(async () => {
+      await withX402Metadata(TEST_PAYEE, TEST_CID, TEST_PRICE)
+    })
+
+    it('returns 402 when payment cannot be decoded', async () => {
+      const ctx = createExecutionContext()
+      const req = createRequest(env, TEST_PAYEE, TEST_CID, {
+        headers: { 'X-PAYMENT': 'not-valid-base64-payment!!!' },
+      })
+
+      const mockUseFacilitator = createMockUseFacilitator()
+
+      const res = await worker.fetch(req, env, ctx, {
+        useFacilitator: mockUseFacilitator,
+      })
+      await waitOnExecutionContext(ctx)
+
+      expect(res.status).toBe(402)
+      const body = await res.json()
+      expect(body).toStrictEqual({
+        x402Version: 1,
+        error: expect.any(String),
+        accepts: expect.any(Object),
+      })
+    })
+
+    it('verifies payment, proxies request, and settles on success', async () => {
+      const ctx = createExecutionContext()
+      const paymentHeader = createTestPaymentHeader()
+
+      env.PIECE_RETRIEVER = {
+        fetch: vi.fn().mockResolvedValue(
+          new Response('piece content', {
+            status: 200,
+            headers: { 'Content-Type': 'application/octet-stream' },
+          }),
+        ),
+      }
+
+      const mockUseFacilitator = createMockUseFacilitator()
+
+      const req = createRequest(env, TEST_PAYEE, TEST_CID, {
+        headers: { 'X-PAYMENT': paymentHeader },
+      })
+
+      const res = await worker.fetch(req, env, ctx, {
+        useFacilitator: mockUseFacilitator,
+      })
+      await waitOnExecutionContext(ctx)
+
+      expect(res.status).toBe(200)
+      expect(await res.text()).toBe('piece content')
+      expect(env.PIECE_RETRIEVER.fetch).toHaveBeenCalledTimes(1)
+    })
+
+    it('returns 402 when payment verification fails', async () => {
+      const ctx = createExecutionContext()
+      const paymentHeader = createTestPaymentHeader()
+
+      const mockUseFacilitator = createMockUseFacilitator({
+        verifyResult: { isValid: false, invalidReason: 'Insufficient funds' },
+      })
+
+      const req = createRequest(env, TEST_PAYEE, TEST_CID, {
+        headers: { 'X-PAYMENT': paymentHeader },
+      })
+
+      const res = await worker.fetch(req, env, ctx, {
+        useFacilitator: mockUseFacilitator,
+      })
+      await waitOnExecutionContext(ctx)
+
+      expect(res.status).toBe(402)
+    })
+
+    it('returns content with X-PAYMENT-RESPONSE header when settlement succeeds', async () => {
+      const ctx = createExecutionContext()
+      const paymentHeader = createTestPaymentHeader()
+
+      env.PIECE_RETRIEVER = {
+        fetch: vi
+          .fn()
+          .mockResolvedValue(new Response('piece content', { status: 200 })),
+      }
+
+      const mockUseFacilitator = createMockUseFacilitator({
+        settleResult: {
+          success: true,
+          transaction: '0xdef456',
+          network: 'base-sepolia',
+        },
+      })
+
+      const req = createRequest(env, TEST_PAYEE, TEST_CID, {
+        headers: { 'X-PAYMENT': paymentHeader },
+      })
+
+      const res = await worker.fetch(req, env, ctx, {
+        useFacilitator: mockUseFacilitator,
+      })
+      await waitOnExecutionContext(ctx)
+
+      expect(res.status).toBe(200)
+      expect(await res.text()).toBe('piece content')
+      expect(res.headers.has('X-PAYMENT-RESPONSE')).toBe(true)
+
+      // Decode and verify the settlement response
+      const paymentResponse = res.headers.get('X-PAYMENT-RESPONSE')
+      const decoded = JSON.parse(atob(paymentResponse))
+      expect(decoded).toStrictEqual({
+        success: true,
+        transaction: '0xdef456',
+        network: 'base-sepolia',
+      })
+    })
+
+    it('returns 402 when settlement fails', async () => {
+      const ctx = createExecutionContext()
+      const paymentHeader = createTestPaymentHeader()
+
+      env.PIECE_RETRIEVER = {
+        fetch: vi
+          .fn()
+          .mockResolvedValue(new Response('piece content', { status: 200 })),
+      }
+
+      const mockUseFacilitator = createMockUseFacilitator({
+        settleResult: {
+          success: false,
+          errorReason: 'Settlement failed',
+        },
+      })
+
+      const req = createRequest(env, TEST_PAYEE, TEST_CID, {
+        headers: { 'X-PAYMENT': paymentHeader },
+      })
+
+      const res = await worker.fetch(req, env, ctx, {
+        useFacilitator: mockUseFacilitator,
+      })
+      await waitOnExecutionContext(ctx)
+
+      expect(res.status).toBe(402)
+      const body = await res.json()
+      expect(body.error).toContain('Settlement failed')
+    })
+
+    it('does not attempt settlement when piece-retriever returns error status', async () => {
+      const ctx = createExecutionContext()
+      const paymentHeader = createTestPaymentHeader()
+
+      env.PIECE_RETRIEVER = {
+        fetch: vi
+          .fn()
+          .mockResolvedValue(new Response('Not Found', { status: 404 })),
+      }
+
+      let settleCalled = false
+      const mockUseFacilitator = () => ({
+        verify: async () => ({ isValid: true, payer: TEST_PAYEE }),
+        settle: async () => {
+          settleCalled = true
+          return { success: true, transaction: '0x123' }
+        },
+      })
+
+      const req = createRequest(env, TEST_PAYEE, TEST_CID, {
+        headers: { 'X-PAYMENT': paymentHeader },
+      })
+
+      const res = await worker.fetch(req, env, ctx, {
+        useFacilitator: mockUseFacilitator,
+      })
+      await waitOnExecutionContext(ctx)
+
+      expect(res.status).toBe(404)
+      expect(settleCalled).toBe(false)
+    })
+
+    it('returns 402 when verify function throws an error', async () => {
+      const ctx = createExecutionContext()
+      const paymentHeader = createTestPaymentHeader()
+
+      const mockUseFacilitator = () => ({
+        verify: async () => {
+          throw new Error('Verification service unavailable')
+        },
+        settle: async () => ({ success: true }),
+      })
+
+      const req = createRequest(env, TEST_PAYEE, TEST_CID, {
+        headers: { 'X-PAYMENT': paymentHeader },
+      })
+
+      const res = await worker.fetch(req, env, ctx, {
+        useFacilitator: mockUseFacilitator,
+      })
+      await waitOnExecutionContext(ctx)
+
+      expect(res.status).toBe(402)
+    })
+
+    it('returns 402 when settle function throws an error', async () => {
+      const ctx = createExecutionContext()
+      const paymentHeader = createTestPaymentHeader()
+
+      env.PIECE_RETRIEVER = {
+        fetch: vi
+          .fn()
+          .mockResolvedValue(new Response('piece content', { status: 200 })),
+      }
+
+      const mockUseFacilitator = () => ({
+        verify: async () => ({ isValid: true, payer: TEST_PAYEE }),
+        settle: async () => {
+          throw new Error('Settlement service unavailable')
+        },
+      })
+
+      const req = createRequest(env, TEST_PAYEE, TEST_CID, {
+        headers: { 'X-PAYMENT': paymentHeader },
+      })
+
+      const res = await worker.fetch(req, env, ctx, {
+        useFacilitator: mockUseFacilitator,
+      })
+      await waitOnExecutionContext(ctx)
+
+      expect(res.status).toBe(402)
     })
   })
 })

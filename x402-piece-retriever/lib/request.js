@@ -58,3 +58,15 @@ export function parseRequest(request, env) {
     isWebBrowser,
   }
 }
+
+/**
+ * Build the URL for forwarding requests to piece-retriever.
+ *
+ * @param {Env} env - Environment bindings
+ * @param {string} payerAddress - The payee's Ethereum address
+ * @param {string} pieceCid - The CID of the requested piece
+ * @returns {string} The transformed URL for piece-retriever
+ */
+export function buildForwardUrl(env, payerAddress, pieceCid) {
+  return `https://${payerAddress}.${env.PIECE_RETRIEVER_DNS_ROOT}/${pieceCid}`
+}

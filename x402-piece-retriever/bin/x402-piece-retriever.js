@@ -1,15 +1,14 @@
 import { httpAssert } from '@filbeam/retrieval'
 import { parseRequest } from '../lib/request.js'
-// import { useFacilitator } from 'x402/verify'
+import { useFacilitator as defaultUseFacilitator } from 'x402/verify'
 import {
   buildPaymentRequirements,
-  // extractPaymentFromRequest,
   verifyPayment,
   settlePayment,
   encodeSettleResponse,
   buildPaymentRequiredResponse,
+  decodePayment,
 } from '../lib/x402.js'
-import { exact } from 'x402/schemes'
 
 const x402Version = 1
 
@@ -18,11 +17,18 @@ export default {
    * @param {Request} request
    * @param {Env} env
    * @param {ExecutionContext} ctx
+   * @param {object} options
+   * @param {typeof defaultUseFacilitator} [options.useFacilitator]
    * @returns {Promise<Response>}
    */
-  async fetch(request, env, ctx) {
+  async fetch(
+    request,
+    env,
+    ctx,
+    { useFacilitator = defaultUseFacilitator } = {},
+  ) {
     try {
-      return await this._fetch(request, env, ctx)
+      return await this._fetch(request, env, ctx, { useFacilitator })
     } catch (error) {
       return this._handleError(error)
     }
@@ -32,26 +38,25 @@ export default {
    * @param {Request} request
    * @param {Env} env
    * @param {ExecutionContext} ctx
+   * @param {object} options
+   * @param {Function} options.useFacilitator
    * @returns {Promise<Response>}
    */
-  async _fetch(request, env, ctx) {
-    // Only support GET and HEAD methods
+  async _fetch(request, env, ctx, { useFacilitator }) {
     httpAssert(
       ['GET', 'HEAD'].includes(request.method),
       405,
       'Method Not Allowed',
     )
-    // const { verify, settle } = useFacilitator({ url: env.FACILITATOR_URL })
+    const { verify, settle } = useFacilitator({ url: env.FACILITATOR_URL })
 
-    // Parse request to extract payee address and piece CID
     const { payeeAddress, pieceCid, payment, isWebBrowser } = parseRequest(
       request,
       env,
     )
 
-    // Lookup x402 metadata in KV store
     const x402Metadata =
-      /** @type {{ price: string; block: string } | null} */
+      /** @type {{ price: string; blockNumber: string } | null} */
       (
         await env.X402_METADATA_KV.get(`${payeeAddress}:${pieceCid}`, {
           type: 'json',
@@ -76,44 +81,37 @@ export default {
 
     if (!payment) {
       return buildPaymentRequiredResponse(
+        env,
         isWebBrowser,
         requirements,
         'Missing X-PAYMENT header',
       )
     }
 
-    // Extract payment from request headers
-    // const payment = extractPaymentFromRequest(request)
-
-    // Verify payment
-    /** @type {import('x402/types').PaymentPayload} */
     let decodedPayment
     try {
-      decodedPayment = exact.evm.decodePayment(payment)
-      decodedPayment.x402Version = x402Version
+      decodedPayment = decodePayment(payment, x402Version)
     } catch (err) {
-      const response = {
-        error:
-          err instanceof Error
-            ? err.message
-            : 'Invalid or malformed payment header',
-        accepts: requirements,
-        x402Version,
-      }
-      return new Response(JSON.stringify(response), {
-        status: 402,
-        headers: { 'Content-Type': 'application/json' },
-      })
+      return buildPaymentRequiredResponse(
+        env,
+        false,
+        requirements,
+        'Invalid or malformed payment header',
+      )
     }
 
-    // Verify payment with facilitator
     console.log('Verifying payment...')
-    const verifyResult = await verifyPayment(decodedPayment, requirements, env)
+    const verifyResult = await verifyPayment(
+      decodedPayment,
+      requirements,
+      verify,
+    )
 
     if (!verifyResult.isValid) {
       console.log('Payment invalid:', verifyResult.invalidReason)
       return buildPaymentRequiredResponse(
-        isWebBrowser,
+        env,
+        false,
         requirements,
         verifyResult.invalidReason,
       )
@@ -121,7 +119,6 @@ export default {
 
     console.log('Payment verified, proxying to piece-retriever')
 
-    // Payment verified - proxy to piece-retriever
     const response = await env.PIECE_RETRIEVER.fetch(request)
 
     // Only settle payment on successful responses
@@ -130,7 +127,7 @@ export default {
       const settleResult = await settlePayment(
         decodedPayment,
         requirements,
-        env,
+        settle,
       )
 
       if (settleResult.success) {
@@ -143,9 +140,12 @@ export default {
         )
         return newResponse
       } else {
-        console.error('Settlement failed:', settleResult.errorReason)
-        // Still return the response even if settlement failed
-        // The payment was verified, so the user should get the content
+        return buildPaymentRequiredResponse(
+          env,
+          false,
+          requirements,
+          `Payment settlement failed: ${settleResult.errorReason}`,
+        )
       }
     }
 
