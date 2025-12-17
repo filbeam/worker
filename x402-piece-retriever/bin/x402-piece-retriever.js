@@ -50,7 +50,7 @@ export default {
     )
     const { verify, settle } = useFacilitator({ url: env.FACILITATOR_URL })
 
-    const { payeeAddress, pieceCid, payment, isWebBrowser } = parseRequest(
+    const { payerAddress, pieceCid, payment, isWebBrowser } = parseRequest(
       request,
       env,
     )
@@ -68,7 +68,7 @@ export default {
         pieces.is_deleted IS FALSE AND
         data_sets.payer_address = ?`,
     )
-      .bind(pieceCid, payeeAddress)
+      .bind(pieceCid, payerAddress)
       .first()
 
     if (!x402Metadata?.price) {
@@ -78,12 +78,12 @@ export default {
     httpAssert(
       !x402Metadata.is_sanctioned,
       403,
-      `Wallet '${payeeAddress}' is sanctioned and cannot retrieve piece_cid '${pieceCid}'.`,
+      `Wallet '${payerAddress}' is sanctioned and cannot retrieve piece_cid '${pieceCid}'.`,
     )
 
     // Build payment requirements from metadata
     const requirements = buildPaymentRequirements(
-      payeeAddress,
+      payerAddress,
       x402Metadata.price,
       request,
       env,

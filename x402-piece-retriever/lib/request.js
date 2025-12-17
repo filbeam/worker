@@ -2,12 +2,12 @@ import { httpAssert, isValidEthereumAddress } from '@filbeam/retrieval'
 
 /**
  * Parse params found in path of the request URL URL format:
- * https://{payee_address}.x402.calibration.filbeam.io/{piece_cid}
+ * https://{payer_address}.x402.calibration.filbeam.io/{piece_cid}
  *
  * @param {Request} request
  * @param {Env} env
  * @returns {{
- *   payeeAddress: string
+ *   payerAddress: string
  *   pieceCid: string
  *   payment: string | null
  *   isWebBrowser: boolean
@@ -52,7 +52,7 @@ export function parseRequest(request, env) {
     acceptHeader.includes('text/html') && userAgent.includes('Mozilla')
 
   return {
-    payeeAddress: payeeAddress.toLowerCase(),
+    payerAddress: payeeAddress.toLowerCase(),
     pieceCid,
     payment,
     isWebBrowser,
