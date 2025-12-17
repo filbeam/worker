@@ -110,6 +110,12 @@ export default {
           ? null
           : payload.metadata_values[ipfsRootCidIndex]
 
+      const x402PriceIndex = payload.metadata_keys.indexOf('x402Price')
+      const x402PriceRaw =
+        x402PriceIndex === -1 ? null : payload.metadata_values[x402PriceIndex]
+      const x402Price =
+        x402PriceRaw && /^\d+$/.test(x402PriceRaw) ? x402PriceRaw : null
+
       console.log(
         `New piece (piece_id=${pieceId}, piece_cid=${pieceCid}, data_set_id=${payload.data_set_id} metadata_keys=[${payload.metadata_keys.join(', ')}], metadata_values=[${payload.metadata_values.join(
           ', ',
@@ -122,6 +128,7 @@ export default {
         pieceId,
         pieceCid,
         ipfsRootCid,
+        x402Price,
       )
 
       return new Response('OK', { status: 200 })

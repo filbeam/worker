@@ -592,6 +592,117 @@ describe('piece-retriever.indexer', () => {
         },
       ])
     })
+
+    it('inserts a piece with x402Price metadata', async () => {
+      const dataSetId = randomId()
+      const pieceCid =
+        'bafkzcibey3nqcc3d7ifp7bg6acsm3geafyb5dx26ughkimgdudg4qsxu7racjkzhcq'
+      const x402Price = '1000000'
+      const req = new Request('https://host/fwss/piece-added', {
+        method: 'POST',
+        headers: {
+          [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+        },
+        body: JSON.stringify({
+          data_set_id: dataSetId.toString(),
+          piece_id: '42',
+          piece_cid: TEST_CID_HEX,
+          metadata_keys: ['x402Price'],
+          metadata_values: [x402Price],
+          block_number: 1337,
+        }),
+      })
+      const res = await workerImpl.fetch(req, env, CTX)
+      expect(res.status).toBe(200)
+      expect(await res.text()).toBe('OK')
+
+      const { results: pieces } = await env.DB.prepare(
+        'SELECT id, cid, x402_price FROM pieces WHERE data_set_id = ? AND is_deleted IS FALSE ORDER BY id',
+      )
+        .bind(dataSetId)
+        .all()
+      expect(pieces).toEqual([
+        {
+          id: '42',
+          cid: pieceCid,
+          x402_price: x402Price,
+        },
+      ])
+    })
+
+    it('rejects invalid x402Price (not a numeric string)', async () => {
+      const dataSetId = randomId()
+      const cid =
+        'bafkzcibey3nqcc3d7ifp7bg6acsm3geafyb5dx26ughkimgdudg4qsxu7racjkzhcq'
+      const invalidPrice = 'not-a-number'
+      const req = new Request('https://host/fwss/piece-added', {
+        method: 'POST',
+        headers: {
+          [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+        },
+        body: JSON.stringify({
+          data_set_id: dataSetId.toString(),
+          piece_id: '42',
+          piece_cid: TEST_CID_HEX,
+          metadata_keys: ['x402Price'],
+          metadata_values: [invalidPrice],
+        }),
+      })
+      const res = await workerImpl.fetch(req, env, CTX)
+      expect(res.status).toBe(200)
+      expect(await res.text()).toBe('OK')
+
+      const { results: pieces } = await env.DB.prepare(
+        'SELECT id, cid, x402_price FROM pieces WHERE data_set_id = ? AND is_deleted IS FALSE ORDER BY id',
+      )
+        .bind(dataSetId)
+        .all()
+      // Invalid price should result in null
+      expect(pieces).toEqual([
+        {
+          id: '42',
+          cid,
+          x402_price: null,
+        },
+      ])
+    })
+
+    it('rejects x402Price with decimal values', async () => {
+      const dataSetId = randomId()
+      const cid =
+        'bafkzcibey3nqcc3d7ifp7bg6acsm3geafyb5dx26ughkimgdudg4qsxu7racjkzhcq'
+      const invalidPrice = '100.50'
+      const req = new Request('https://host/fwss/piece-added', {
+        method: 'POST',
+        headers: {
+          [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+        },
+        body: JSON.stringify({
+          data_set_id: dataSetId.toString(),
+          piece_id: '42',
+          piece_cid: TEST_CID_HEX,
+          metadata_keys: ['x402Price'],
+          metadata_values: [invalidPrice],
+        }),
+      })
+      const res = await workerImpl.fetch(req, env, CTX)
+      expect(res.status).toBe(200)
+      expect(await res.text()).toBe('OK')
+
+      const { results: pieces } = await env.DB.prepare(
+        'SELECT id, cid, x402_price FROM pieces WHERE data_set_id = ? AND is_deleted IS FALSE ORDER BY id',
+      )
+        .bind(dataSetId)
+        .all()
+      // Invalid price should result in null
+      expect(pieces).toEqual([
+        {
+          id: '42',
+          cid,
+          x402_price: null,
+        },
+      ])
+    })
   })
 
   describe('POST /pdp-verifier/pieces-removed', () => {
