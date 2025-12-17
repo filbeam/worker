@@ -10,5 +10,5 @@ export default defineWorkspace([
   'payment-settler',
   'retrieval',
   'stats-api',
-  'x402-piece-retriever',
+  'x402-piece-gateway',
 ])

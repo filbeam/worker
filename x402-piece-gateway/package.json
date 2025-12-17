@@ -1,11 +1,11 @@
 {
-  "name": "@filbeam/x402-piece-retriever",
+  "name": "@filbeam/x402-piece-gateway",
   "version": "1.0.0",
   "private": true,
-  "description": "FilBeam X402 Retrieval Worker",
+  "description": "FilBeam X402 Gateway Worker",
   "author": "Space Meridian <filbeam@meridian.space>",
   "type": "module",
-  "main": "bin/x402-piece-retriever.js",
+  "main": "bin/x402-piece-gateway.js",
   "scripts": {
     "build:types": "wrangler types --env dev",
     "deploy:calibration": "wrangler deploy --env calibration",

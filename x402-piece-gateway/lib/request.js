@@ -26,14 +26,14 @@ export function parseRequest(request, env) {
     `Invalid hostname: ${url.hostname}. It must end with ${env.DNS_ROOT}.`,
   )
 
-  const payeeAddress = url.hostname.slice(0, -env.DNS_ROOT.length)
+  const payerAddress = url.hostname.slice(0, -env.DNS_ROOT.length)
 
-  httpAssert(payeeAddress, 400, 'Missing payee address in hostname')
+  httpAssert(payerAddress, 400, 'Missing payee address in hostname')
 
   httpAssert(
-    isValidEthereumAddress(payeeAddress),
+    isValidEthereumAddress(payerAddress),
     400,
-    `Invalid payee address: ${payeeAddress}. Must be a valid Ethereum address.`,
+    `Invalid payer address: ${payerAddress}. Must be a valid Ethereum address.`,
   )
 
   const [pieceCid] = url.pathname.split('/').filter(Boolean)
@@ -52,7 +52,7 @@ export function parseRequest(request, env) {
     acceptHeader.includes('text/html') && userAgent.includes('Mozilla')
 
   return {
-    payerAddress: payeeAddress.toLowerCase(),
+    payerAddress: payerAddress.toLowerCase(),
     pieceCid,
     payment,
     isWebBrowser,

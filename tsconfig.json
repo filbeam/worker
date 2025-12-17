@@ -34,7 +34,7 @@
       "path": "stats-api/tsconfig.json"
     },
     {
-      "path": "x402-piece-retriever/tsconfig.json"
+      "path": "x402-piece-gateway/tsconfig.json"
     }
   ],
   "include": ["bin/*.js"]

@@ -4,7 +4,7 @@ import {
   createExecutionContext,
   waitOnExecutionContext,
 } from 'cloudflare:test'
-import worker from '../bin/x402-piece-retriever.js'
+import worker from '../bin/x402-piece-gateway.js'
 import {
   createMockUseFacilitator,
   createTestPaymentHeader,
@@ -147,7 +147,7 @@ describe('x402-piece-retriever', () => {
       expect(await res.text()).toBe('Method Not Allowed')
     })
 
-    it('returns 400 for invalid payee address', async () => {
+    it('returns 400 for invalid payer address', async () => {
       const ctx = createExecutionContext()
       const req = createRequest(env, 'invalid-address', TEST_CID)
 
@@ -155,7 +155,7 @@ describe('x402-piece-retriever', () => {
       await waitOnExecutionContext(ctx)
 
       expect(res.status).toBe(400)
-      expect(await res.text()).toContain('Invalid payee address')
+      expect(await res.text()).toContain('Invalid payer address')
     })
 
     it('returns 404 for invalid piece CID', async () => {

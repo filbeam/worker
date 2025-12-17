@@ -1,5 +1,5 @@
-name = "x402-filbeam-piece-retriever"
-main = "bin/x402-piece-retriever.js"
+name = "x402-filbeam-piece-gateway"
+main = "bin/x402-piece-gateway.js"
 compatibility_date = "2025-09-08"
 compatibility_flags = ["nodejs_compat"]
 logpush = true
