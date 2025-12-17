@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { parseRequest } from '../lib/request.js'
+import { buildForwardUrl, parseRequest } from '../lib/request.js'
 
-const DNS_ROOT = '.x402.calibration.filbeam.io'
+const DNS_ROOT = '.calibration.x402.filbeam.io'
 const TEST_PAYER = '0xc83dbfdf61616778537211a7e5ca2e87ec6cf0ed'
 const TEST_CID =
   'baga6ea4seaqaleibb6ud4xeemuzzpsyhl6cxlsymsnfco4cdjka5uzajo2x4ipa'
@@ -96,5 +96,21 @@ describe('parseRequest', () => {
       payment: null,
       isWebBrowser: false,
     })
+  })
+})
+
+describe('buildForwardUrl', () => {
+  it('should build forward url with PIECE_RETRIEVER_DNS_ROOT', () => {
+    const pieceRetrieverDnsRoot = '.calibration.filbeam.io'
+    const payerAddress = '0xPayer'
+    const pieceCid = 'bafy'
+    const result = buildForwardUrl(
+      {
+        PIECE_RETRIEVER_DNS_ROOT: pieceRetrieverDnsRoot,
+      },
+      payerAddress,
+      pieceCid,
+    )
+    expect(result).toBe('https://0xPayer.calibration.filbeam.io/bafy')
   })
 })

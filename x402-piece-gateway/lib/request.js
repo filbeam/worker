@@ -62,5 +62,5 @@ export function parseRequest(request, env) {
  * @returns {string} The transformed URL for piece-retriever
  */
 export function buildForwardUrl(env, payerAddress, pieceCid) {
-  return `https://${payerAddress}.${env.PIECE_RETRIEVER_DNS_ROOT}/${pieceCid}`
+  return `https://${payerAddress}${env.PIECE_RETRIEVER_DNS_ROOT}/${pieceCid}`
 }

@@ -1,5 +1,5 @@
 import { httpAssert } from '@filbeam/retrieval'
-import { parseRequest } from '../lib/request.js'
+import { buildForwardUrl, parseRequest } from '../lib/request.js'
 import { useFacilitator as defaultUseFacilitator } from 'x402/verify'
 import {
   buildPaymentRequirements,
@@ -71,8 +71,10 @@ export default {
       .bind(pieceCid, payerAddress)
       .first()
 
+    const forwardUrl = buildForwardUrl(env, payerAddress, pieceCid)
+    const forwardRequest = new Request(forwardUrl, request)
     if (!x402Metadata?.price) {
-      return env.PIECE_RETRIEVER.fetch(request)
+      return env.PIECE_RETRIEVER.fetch(forwardRequest)
     }
 
     httpAssert(
@@ -129,7 +131,7 @@ export default {
 
     console.log('Payment verified, proxying to piece-retriever')
 
-    const response = await env.PIECE_RETRIEVER.fetch(request)
+    const response = await env.PIECE_RETRIEVER.fetch(forwardRequest)
 
     // Only settle payment on successful responses
     if (response.ok) {
