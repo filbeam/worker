@@ -15,11 +15,6 @@ import { httpAssert, isValidEthereumAddress } from '@filbeam/retrieval'
  */
 export function parseRequest(request, env) {
   const url = new URL(request.url)
-  console.log('x402 retrieval request', {
-    DNS_ROOT: env.DNS_ROOT,
-    url: url.href,
-  })
-
   httpAssert(
     url.hostname.endsWith(env.DNS_ROOT),
     400,
