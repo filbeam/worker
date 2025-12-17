@@ -4,27 +4,21 @@ import { exact } from 'x402/schemes'
 /** @import {PaymentRequirements, PaymentPayload, SettleResponse, VerifyResponse} from 'x402/types' */
 
 /**
- * @typedef {Object} X402Metadata
- * @property {string} price - Price in smallest token units
- * @property {string} blockNumber - Block number when price was set
- */
-
-/**
  * Build payment requirements from x402 metadata
  *
  * @param {string} payeeAddress - Ethereum address to receive payment
- * @param {X402Metadata} metadata - Price and block info from KV
+ * @param {string} price - Price and sanctioned status from database
  * @param {Request} request - Original request for resource URL
  * @param {Env} env - Worker environment
  * @returns {PaymentRequirements}
  */
-export function buildPaymentRequirements(payeeAddress, metadata, request, env) {
+export function buildPaymentRequirements(payeeAddress, price, request, env) {
   const url = new URL(request.url)
 
   return {
     scheme: 'exact',
     network: env.NETWORK || 'base-sepolia',
-    maxAmountRequired: metadata.price,
+    maxAmountRequired: price,
     resource: url.href,
     description: '',
     mimeType: '',
@@ -39,7 +33,7 @@ export function buildPaymentRequirements(payeeAddress, metadata, request, env) {
  * Decode payment from X-PAYMENT header
  *
  * @param {string} payment - Base64-encoded payment string
- * @param {number} [x402Version=1] - x402 version
+ * @param {number} [x402Version=1] - X402 version. Default is `1`
  * @returns {PaymentPayload}
  */
 export function decodePayment(payment, x402Version = 1) {

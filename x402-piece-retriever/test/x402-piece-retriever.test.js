@@ -11,26 +11,18 @@ import {
   TEST_CID,
   TEST_PAYEE,
   TEST_PRICE,
-  withX402Metadata,
+  withX402Piece,
+  withWalletDetails,
   createRequest,
 } from './test-helpers.js'
 
-/** Helper to clear KV store */
-async function clearKV() {
-  let cursor
-  do {
-    const list = await env.X402_METADATA_KV.list({ cursor })
-    for (const key of list.keys) {
-      await env.X402_METADATA_KV.delete(key.name)
-    }
-    cursor = list.list_complete ? undefined : list.cursor
-  } while (cursor)
-}
-
 describe('x402-piece-retriever', () => {
   beforeEach(async () => {
-    await clearKV()
-    // Reset mock
+    await env.DB.batch([
+      env.DB.prepare('DELETE FROM pieces'),
+      env.DB.prepare('DELETE FROM data_sets'),
+      env.DB.prepare('DELETE FROM wallet_details'),
+    ])
     vi.clearAllMocks()
   })
 
@@ -63,7 +55,7 @@ describe('x402-piece-retriever', () => {
 
   describe('paid content (x402 metadata exists)', () => {
     beforeEach(async () => {
-      await withX402Metadata(TEST_PAYEE, TEST_CID, TEST_PRICE)
+      await withX402Piece(env)
     })
 
     it('returns 402 when no X-PAYMENT header is provided', async () => {
@@ -192,9 +184,72 @@ describe('x402-piece-retriever', () => {
     })
   })
 
+  describe('sanctioned wallet', () => {
+    it('returns 403 when payer wallet is sanctioned', async () => {
+      await withX402Piece(env)
+      await withWalletDetails(env, TEST_PAYEE, true)
+
+      const ctx = createExecutionContext()
+      const req = createRequest(env, TEST_PAYEE, TEST_CID)
+
+      const res = await worker.fetch(req, env, ctx)
+      await waitOnExecutionContext(ctx)
+
+      expect(res.status).toBe(403)
+      const body = await res.text()
+      expect(body).toContain('sanctioned')
+      expect(body).toContain(TEST_PAYEE)
+    })
+
+    it('returns 403 for sanctioned wallet even with valid payment header', async () => {
+      await withX402Piece(env)
+      await withWalletDetails(env, TEST_PAYEE, true)
+
+      const ctx = createExecutionContext()
+      const paymentHeader = createTestPaymentHeader()
+      const req = createRequest(env, TEST_PAYEE, TEST_CID, {
+        headers: { 'X-PAYMENT': paymentHeader },
+      })
+
+      const res = await worker.fetch(req, env, ctx)
+      await waitOnExecutionContext(ctx)
+
+      expect(res.status).toBe(403)
+      expect(await res.text()).toContain('sanctioned')
+    })
+
+    it('allows retrieval when wallet is not sanctioned', async () => {
+      await withX402Piece(env)
+      await withWalletDetails(env, TEST_PAYEE, false)
+
+      const ctx = createExecutionContext()
+      const req = createRequest(env, TEST_PAYEE, TEST_CID)
+
+      const res = await worker.fetch(req, env, ctx)
+      await waitOnExecutionContext(ctx)
+
+      // Should return 402 (payment required), not 403
+      expect(res.status).toBe(402)
+    })
+
+    it('allows retrieval when wallet has no screening record', async () => {
+      await withX402Piece(env)
+      // No wallet_details entry for TEST_PAYEE
+
+      const ctx = createExecutionContext()
+      const req = createRequest(env, TEST_PAYEE, TEST_CID)
+
+      const res = await worker.fetch(req, env, ctx)
+      await waitOnExecutionContext(ctx)
+
+      // Should return 402 (payment required), not 403
+      expect(res.status).toBe(402)
+    })
+  })
+
   describe('payment verification and settlement', () => {
     beforeEach(async () => {
-      await withX402Metadata(TEST_PAYEE, TEST_CID, TEST_PRICE)
+      await withX402Piece(env)
     })
 
     it('returns 402 when payment cannot be decoded', async () => {

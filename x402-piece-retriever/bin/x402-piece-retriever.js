@@ -55,26 +55,36 @@ export default {
       env,
     )
 
-    const x402Metadata =
-      /** @type {{ price: string; blockNumber: string } | null} */
-      (
-        await env.X402_METADATA_KV.get(`${payeeAddress}:${pieceCid}`, {
-          type: 'json',
-        })
-      )
+    /** @type {{ price: string; is_sanctioned: boolean } | null} */
+    const x402Metadata = await env.DB.prepare(
+      `SELECT
+        MAX(pieces.x402_price) price,
+        wallet_details.is_sanctioned
+      FROM pieces
+      LEFT JOIN data_sets ON pieces.data_set_id = data_sets.id
+      LEFT JOIN wallet_details ON data_sets.payer_address = wallet_details.address
+      WHERE
+        pieces.cid = ? AND
+        pieces.is_deleted IS FALSE AND
+        data_sets.payer_address = ?`,
+    )
+      .bind(pieceCid, payeeAddress)
+      .first()
 
-    // No metadata = free content, proxy directly to piece-retriever
-    if (!x402Metadata) {
-      console.log('No x402 metadata found, proxying to piece-retriever')
+    if (!x402Metadata?.price) {
       return env.PIECE_RETRIEVER.fetch(request)
     }
 
-    console.log('x402 metadata found:', x402Metadata)
+    httpAssert(
+      !x402Metadata.is_sanctioned,
+      403,
+      `Wallet '${payeeAddress}' is sanctioned and cannot retrieve piece_cid '${pieceCid}'.`,
+    )
 
     // Build payment requirements from metadata
     const requirements = buildPaymentRequirements(
       payeeAddress,
-      x402Metadata,
+      x402Metadata.price,
       request,
       env,
     )
