@@ -15,7 +15,7 @@ NETWORK = "base-sepolia"
 
 [env.calibration.vars]
 ENVIRONMENT = "calibration"
-DNS_ROOT = ".x402.calibration.filbeam.io"
+DNS_ROOT = ".x402-calibration.filbeam.io"
 PIECE_RETRIEVER_DNS_ROOT = ".calibration.filbeam.io"
 FACILITATOR_URL = "https://x402.org/facilitator"
 TOKEN_ADDRESS = "0x036CbD53842c5426634e7929541eC2318f3dCF7e"

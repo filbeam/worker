@@ -1,8 +1,7 @@
 import { httpAssert, isValidEthereumAddress } from '@filbeam/retrieval'
 
 /**
- * Parse params found in path of the request URL URL format:
- * https://{payer_address}.x402.calibration.filbeam.io/{piece_cid}
+ * Parse params found in path of the request URL
  *
  * @param {Request} request
  * @param {Env} env
