@@ -47,4 +47,4 @@ service = "filbeam-piece-retriever"
 
 [[env.calibration.services]]
 binding = "PIECE_RETRIEVER"
-service = "filbeam-piece-retriever"
+service = "filbeam-piece-retriever-calibration"
