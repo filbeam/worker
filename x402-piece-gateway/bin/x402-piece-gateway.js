@@ -9,6 +9,7 @@ import {
   buildPaymentRequiredResponse,
   decodePayment,
 } from '../lib/x402.js'
+import { getPieceX402Metadata } from '../lib/store.js'
 
 const x402Version = 1
 
@@ -55,21 +56,7 @@ export default {
       env,
     )
 
-    /** @type {{ price: string; is_sanctioned: boolean } | null} */
-    const x402Metadata = await env.DB.prepare(
-      `SELECT
-        MAX(pieces.x402_price) price,
-        wallet_details.is_sanctioned
-      FROM pieces
-      LEFT JOIN data_sets ON pieces.data_set_id = data_sets.id
-      LEFT JOIN wallet_details ON data_sets.payer_address = wallet_details.address
-      WHERE
-        pieces.cid = ? AND
-        pieces.is_deleted IS FALSE AND
-        data_sets.payer_address = ?`,
-    )
-      .bind(pieceCid, payerAddress)
-      .first()
+    const x402Metadata = await getPieceX402Metadata(env, pieceCid, payerAddress)
 
     const forwardUrl = buildForwardUrl(env, payerAddress, pieceCid)
     const forwardRequest = new Request(forwardUrl, request)
@@ -83,7 +70,6 @@ export default {
       `Wallet '${payerAddress}' is sanctioned and cannot retrieve piece_cid '${pieceCid}'.`,
     )
 
-    // Build payment requirements from metadata
     const requirements = buildPaymentRequirements(
       payerAddress,
       x402Metadata.price,
@@ -144,7 +130,6 @@ export default {
 
       if (settleResult.success) {
         console.log('Payment settled:', settleResult.transaction)
-        // Create new response with settlement header
         const newResponse = new Response(response.body, response)
         newResponse.headers.set(
           'X-PAYMENT-RESPONSE',
