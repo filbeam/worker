@@ -1,6 +1,6 @@
 import { exact } from 'x402/schemes'
 
-export const TEST_PAYEE = '0xc83dbfdf61616778537211a7e5ca2e87ec6cf0ed'
+export const TEST_PAYEE = '0xc83dBFDf61616778537211A7E5CA2e87ec6cF0ed'
 export const TEST_CID =
   'baga6ea4seaqaleibb6ud4xeemuzzpsyhl6cxlsymsnfco4cdjka5uzajo2x4ipa'
 export const TEST_PRICE = '1000000' // 1 USDC (6 decimals)

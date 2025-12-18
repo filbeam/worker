@@ -9,8 +9,7 @@ ENVIRONMENT = "dev"
 DNS_ROOT = ".x402.localhost"
 PIECE_RETRIEVER_DNS_ROOT = ".localhost"
 FACILITATOR_URL = "https://x402.org/facilitator"
-TOKEN_ADDRESS = "0x036CbD53842c5426634e7929541eC2318f3dCF7e"
-TOKEN_DECIMALS = 6
+TOKEN = { ADDRESS = "0x036CbD53842c5426634e7929541eC2318f3dCF7e", DECIMALS = 6, NAME = "USDC", VERSION = "2" }
 NETWORK = "base-sepolia"
 
 [env.calibration.vars]
@@ -18,8 +17,7 @@ ENVIRONMENT = "calibration"
 DNS_ROOT = ".calibration.x402.filbeam.io"
 PIECE_RETRIEVER_DNS_ROOT = ".calibration.filbeam.io"
 FACILITATOR_URL = "https://x402.org/facilitator"
-TOKEN_ADDRESS = "0x036CbD53842c5426634e7929541eC2318f3dCF7e"
-TOKEN_DECIMALS = 6
+TOKEN = { ADDRESS = "0x036CbD53842c5426634e7929541eC2318f3dCF7e", DECIMALS = 6, NAME = "USDC", VERSION = "2" }
 NETWORK = "base-sepolia"
 
 [[d1_databases]]

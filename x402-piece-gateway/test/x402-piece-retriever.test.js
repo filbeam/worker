@@ -75,13 +75,16 @@ describe('x402-piece-retriever', () => {
             scheme: 'exact',
             network: 'base-sepolia',
             maxAmountRequired: TEST_PRICE,
-            payTo: TEST_PAYEE.toLowerCase(),
-            resource: `https://${TEST_PAYEE}${env.DNS_ROOT}/${TEST_CID}`,
+            payTo: TEST_PAYEE,
+            resource: `https://${TEST_PAYEE.toLowerCase()}${env.DNS_ROOT}/${TEST_CID}`,
             description: '',
             mimeType: '',
-            maxTimeoutSeconds: 60,
-            asset: env.TOKEN_ADDRESS,
-            extra: {},
+            maxTimeoutSeconds: 300,
+            asset: env.TOKEN.ADDRESS,
+            extra: {
+              name: env.TOKEN.NAME,
+              version: env.TOKEN.VERSION,
+            },
           },
         ],
       })
@@ -198,7 +201,7 @@ describe('x402-piece-retriever', () => {
       expect(res.status).toBe(403)
       const body = await res.text()
       expect(body).toContain('sanctioned')
-      expect(body).toContain(TEST_PAYEE)
+      expect(body).toContain(TEST_PAYEE.toLowerCase())
     })
 
     it('returns 403 for sanctioned wallet even with valid payment header', async () => {

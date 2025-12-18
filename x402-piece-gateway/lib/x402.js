@@ -1,6 +1,7 @@
 import { toJsonSafe } from 'x402/shared'
 import { getPaywallHtml } from 'x402/paywall'
 import { exact } from 'x402/schemes'
+import { getAddress } from 'viem'
 /** @import {PaymentRequirements, PaymentPayload, SettleResponse, VerifyResponse} from 'x402/types' */
 
 /**
@@ -22,10 +23,13 @@ export function buildPaymentRequirements(payeeAddress, price, request, env) {
     resource: url.href,
     description: '',
     mimeType: '',
-    asset: env.TOKEN_ADDRESS,
-    payTo: payeeAddress,
-    maxTimeoutSeconds: 60, // default timeout
-    extra: {},
+    asset: getAddress(env.TOKEN?.ADDRESS),
+    payTo: getAddress(payeeAddress),
+    maxTimeoutSeconds: 300,
+    extra: {
+      name: env.TOKEN?.NAME,
+      version: env.TOKEN?.VERSION,
+    },
   }
 }
 
@@ -53,7 +57,7 @@ export function decodePayment(payment, x402Version = 1) {
  */
 export async function verifyPayment(paymentPayload, requirements, verify) {
   try {
-    return await verify(paymentPayload, [requirements])
+    return await verify(paymentPayload, requirements)
   } catch (error) {
     console.error('Payment verification error:', error)
     return {
@@ -73,7 +77,7 @@ export async function verifyPayment(paymentPayload, requirements, verify) {
  */
 export async function settlePayment(paymentPayload, requirements, settle) {
   try {
-    return await settle(paymentPayload, [requirements])
+    return await settle(paymentPayload, requirements)
   } catch (error) {
     console.error('Payment settlement error:', error)
     return {
@@ -83,17 +87,6 @@ export async function settlePayment(paymentPayload, requirements, settle) {
       errorReason: 'unexpected_settle_error',
     }
   }
-}
-
-/**
- * Encode settlement response for X-PAYMENT-RESPONSE header
- *
- * @param {SettleResponse} settleResult
- * @returns {string}
- */
-export function encodeSettleResponse(settleResult) {
-  const payload = toJsonSafe(settleResult)
-  return btoa(JSON.stringify(payload))
 }
 
 /**
@@ -122,7 +115,7 @@ export function buildPaymentRequiredResponse(
   if (isWebBrowser) {
     const displayAmount =
       parseInt(requirements.maxAmountRequired) /
-      Math.pow(10, env.TOKEN_DECIMALS)
+      Math.pow(10, env.TOKEN?.DECIMALS)
 
     const html = getPaywallHtml({
       amount: displayAmount,

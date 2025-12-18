@@ -1,11 +1,11 @@
 import { httpAssert } from '@filbeam/retrieval'
 import { buildForwardUrl, parseRequest } from '../lib/request.js'
 import { useFacilitator as defaultUseFacilitator } from 'x402/verify'
+import { settleResponseHeader } from 'x402/types'
 import {
   buildPaymentRequirements,
   verifyPayment,
   settlePayment,
-  encodeSettleResponse,
   buildPaymentRequiredResponse,
   decodePayment,
 } from '../lib/x402.js'
@@ -148,7 +148,7 @@ export default {
         const newResponse = new Response(response.body, response)
         newResponse.headers.set(
           'X-PAYMENT-RESPONSE',
-          encodeSettleResponse(settleResult),
+          settleResponseHeader(settleResult),
         )
         return newResponse
       } else {
