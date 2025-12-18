@@ -52,7 +52,12 @@ export function decodePayment(payment, x402Version = 1) {
  * @param {PaymentPayload} paymentPayload - Decoded payment from X-PAYMENT
  *   header
  * @param {PaymentRequirements} requirements - Payment requirements
- * @param {Function} verify - Function to verify payment
+ * @param {(
+ *   payload: PaymentPayload,
+ *   paymentRequirements: PaymentRequirements,
+ * ) => Promise<VerifyResponse>} verify
+ *   - Function to verify payment
+ *
  * @returns {Promise<VerifyResponse>}
  */
 export async function verifyPayment(paymentPayload, requirements, verify) {
@@ -70,9 +75,15 @@ export async function verifyPayment(paymentPayload, requirements, verify) {
 /**
  * Settle a verified payment with the facilitator
  *
- * @param {object} paymentPayload - Decoded payment from X-PAYMENT header
+ * @param {PaymentPayload} paymentPayload - Decoded payment from X-PAYMENT
+ *   header
  * @param {PaymentRequirements} requirements - Payment requirements
- * @param {Function} settle - Function to settle payment
+ * @param {(
+ *   payload: PaymentPayload,
+ *   paymentRequirements: PaymentRequirements,
+ * ) => Promise<SettleResponse>} settle
+ *   - Function to settle payment
+ *
  * @returns {Promise<SettleResponse>}
  */
 export async function settlePayment(paymentPayload, requirements, settle) {
