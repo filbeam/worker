@@ -58,17 +58,17 @@ export default {
 
     const x402Metadata = await getPieceX402Metadata(env, pieceCid, payerAddress)
 
+    httpAssert(
+      !x402Metadata?.is_sanctioned,
+      403,
+      `Wallet '${payerAddress}' is sanctioned and cannot retrieve piece_cid '${pieceCid}'.`,
+    )
+
     const forwardUrl = buildForwardUrl(env, payerAddress, pieceCid)
     const forwardRequest = new Request(forwardUrl, request)
     if (!x402Metadata?.price) {
       return env.PIECE_RETRIEVER.fetch(forwardRequest)
     }
-
-    httpAssert(
-      !x402Metadata.is_sanctioned,
-      403,
-      `Wallet '${payerAddress}' is sanctioned and cannot retrieve piece_cid '${pieceCid}'.`,
-    )
 
     const requirements = buildPaymentRequirements(
       payerAddress,
