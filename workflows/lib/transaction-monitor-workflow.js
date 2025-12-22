@@ -29,42 +29,45 @@ export class TransactionMonitorWorkflow extends WorkflowEntrypoint {
    * }>} event
    * @param {WorkflowStep} step
    */
-  async run({ payload }, step) {
-    const { transactionHash, metadata } = payload
-
+  async run(event, step) {
     try {
       // Wait for transaction receipt with timeout
       await step.do(
-        `wait for transaction receipt ${transactionHash}`,
+        `wait for transaction receipt ${event.payload.transactionHash}`,
         {
-          timeout: `5 minutes`,
+          timeout: '10 minutes',
           retries: {
+            limit: 5,
             delay: '10 seconds',
-            limit: 3,
+            backoff: 'exponential',
           },
         },
         async () => {
           const { publicClient } = getChainClient(this.env)
           return await publicClient.waitForTransactionReceipt({
-            hash: transactionHash,
+            hash: event.payload.transactionHash,
+            retryCount: 5,
+            retryDelay: 10_000,
+            timeout: 600_000,
+            pollingInterval: 5_000,
           })
         },
       )
 
       // Handle success if onSuccess message type is provided
-      if (metadata?.onSuccess) {
+      if (event.payload.metadata?.onSuccess) {
         await step.do(
           'send confirmation to queue',
           { timeout: '30 seconds' },
           async () => {
             await this.env.TRANSACTION_QUEUE.send({
-              type: metadata.onSuccess,
-              transactionHash,
-              ...metadata?.successData,
+              type: event.payload.metadata?.onSuccess,
+              transactionHash: event.payload.transactionHash,
+              ...event.payload.metadata?.successData,
             })
 
             console.log(
-              `Sent ${metadata.onSuccess} message to queue for transaction ${transactionHash}`,
+              `Sent ${event.payload.metadata?.onSuccess} message to queue for transaction ${event.payload.transactionHash}`,
             )
           },
         )
@@ -77,22 +80,15 @@ export class TransactionMonitorWorkflow extends WorkflowEntrypoint {
         async () => {
           await this.env.TRANSACTION_QUEUE.send({
             type: 'transaction-retry',
-            transactionHash,
-            ...metadata?.retryData,
+            transactionHash: event.payload.transactionHash,
+            ...event.payload.metadata?.retryData,
           })
 
           console.log(
-            `Sent retry message to queue for transaction ${transactionHash}`,
+            `Sent retry message to queue for transaction ${event.payload.transactionHash}`,
           )
         },
       )
     }
   }
 }
-
-// Suppress the following warning when running `wrangler types`:
-//
-// The entrypoint lib/transaction-monitor-workflow.js has exports like an ES Module,
-// but hasn't defined a default export like a module worker normally would.
-// Building the worker using "service-worker" format...
-export default {}
