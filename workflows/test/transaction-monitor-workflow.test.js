@@ -58,8 +58,8 @@ describe('TransactionMonitorWorkflow', () => {
       expect(mockStep.do).toHaveBeenCalledWith(
         `wait for transaction receipt ${transactionHash}`,
         {
-          timeout: '5 minutes',
-          retries: { delay: '10 seconds', limit: 3 },
+          timeout: '10 minutes',
+          retries: { delay: '10 seconds', limit: 5, backoff: 'exponential' },
         },
         expect.any(Function),
       )
@@ -260,8 +260,8 @@ describe('TransactionMonitorWorkflow', () => {
 
       const firstCall = mockStep.do.mock.calls[0]
       expect(firstCall[1]).toEqual({
-        timeout: '5 minutes',
-        retries: { delay: '10 seconds', limit: 3 },
+        timeout: '10 minutes',
+        retries: { delay: '10 seconds', limit: 5, backoff: 'exponential' },
       })
     })
 
