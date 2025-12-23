@@ -43,8 +43,7 @@ export default {
 
       const batches = []
       for (let i = 0; i < dataSetIds.length; i += env.SETTLEMENT_BATCH_SIZE) {
-        const batch = dataSetIds.slice(i, i + env.SETTLEMENT_BATCH_SIZE)
-        batches.push(batch)
+        batches.push(dataSetIds.slice(i, i + env.SETTLEMENT_BATCH_SIZE))
       }
 
       console.log(`Prepared ${batches.length} batches for settlement`)
