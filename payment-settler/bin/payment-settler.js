@@ -1,6 +1,8 @@
 import { getChainClient as defaultGetChainClient } from '../lib/chain.js'
-import filbeamAbi from '../lib/FilBeamOperator.abi.json'
-import { getDataSetsForSettlement } from '../lib/rail-settlement.js'
+import {
+  getDataSetsForSettlement,
+  settleDataSets,
+} from '../lib/rail-settlement.js'
 import { TransactionMonitorWorkflow } from '@filbeam/workflows'
 import { handleTransactionRetryQueueMessage as defaultHandleTransactionRetryQueueMessage } from '../lib/queue-handlers.js'
 
@@ -27,8 +29,6 @@ export default {
     console.log('Starting rail settlement worker')
 
     try {
-      const { publicClient, walletClient, account } = getChainClient(env)
-
       const dataSetIds = await getDataSetsForSettlement(env.DB)
 
       if (dataSetIds.length === 0) {
@@ -41,33 +41,34 @@ export default {
         dataSetIds,
       )
 
-      const { request } = await publicClient.simulateContract({
-        account,
-        abi: filbeamAbi,
-        address: env.FILBEAM_OPERATOR_CONTRACT_ADDRESS,
-        functionName: 'settleCDNPaymentRails',
-        args: [dataSetIds.map((id) => BigInt(id))],
-      })
+      const batches = []
+      for (let i = 0; i < dataSetIds.length; i += env.SETTLEMENT_BATCH_SIZE) {
+        const batch = dataSetIds.slice(i, i + env.SETTLEMENT_BATCH_SIZE)
+        batches.push(batch)
+      }
 
-      const hash = await walletClient.writeContract(request)
+      console.log(`Prepared ${batches.length} batches for settlement`)
 
-      console.log(`Settlement transaction sent: ${hash}`)
+      const chainClient = getChainClient(env)
 
-      // Start transaction monitor workflow
-      await env.TRANSACTION_MONITOR_WORKFLOW.create({
-        id: `payment-settler-${hash}-${Date.now()}`,
-        params: {
-          transactionHash: hash,
-          metadata: {
-            // Only retry data, no success handling needed since we don't store in DB
-            retryData: {},
-          },
-        },
-      })
-
-      console.log(
-        `Started transaction monitor workflow for settlement transaction: ${hash}`,
+      const transactionHashes = await Promise.all(
+        batches.map((batch) =>
+          settleDataSets({ env, dataSetIds: batch, ...chainClient }),
+        ),
       )
+
+      console.log(`Settlement transactions sent: ${transactionHashes}`)
+
+      await env.TRANSACTION_MONITOR_WORKFLOW.createBatch(
+        transactionHashes.map((transactionHash) => ({
+          id: `payment-settler-${transactionHash}-${Date.now()}`,
+          params: {
+            transactionHash,
+            metadata: {},
+          },
+        })),
+      )
+
       console.log(`Settled ${dataSetIds.length} data sets`)
     } catch (error) {
       console.error('Settlement process failed:', error)
