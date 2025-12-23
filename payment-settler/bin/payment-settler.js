@@ -1,7 +1,7 @@
 import { getChainClient as defaultGetChainClient } from '../lib/chain.js'
 import {
   getDataSetsForSettlement,
-  settleDataSets,
+  settleCDNPaymentRails,
 } from '../lib/rail-settlement.js'
 import { TransactionMonitorWorkflow } from '@filbeam/workflows'
 import { handleTransactionRetryQueueMessage as defaultHandleTransactionRetryQueueMessage } from '../lib/queue-handlers.js'
@@ -53,7 +53,7 @@ export default {
 
       const transactionHashes = await Promise.all(
         batches.map((batch) =>
-          settleDataSets({ env, dataSetIds: batch, ...chainClient }),
+          settleCDNPaymentRails({ env, dataSetIds: batch, ...chainClient }),
         ),
       )
 

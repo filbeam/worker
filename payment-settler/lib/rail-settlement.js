@@ -41,7 +41,7 @@ export async function getDataSetsForSettlement(db) {
  * @param {string[]} args.dataSetIds
  * @returns {Promise<`0x${string}`>}
  */
-export async function settleDataSets({
+export async function settleCDNPaymentRails({
   env,
   publicClient,
   walletClient,
