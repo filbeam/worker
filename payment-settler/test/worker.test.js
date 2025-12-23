@@ -35,10 +35,12 @@ describe('payment settler scheduled handler', () => {
 
   const mockWorkflow = {
     create: vi.fn().mockResolvedValue(undefined),
+    createBatch: vi.fn().mockResolvedValue(undefined),
   }
 
   const mockEnv = {
     ...env,
+    SETTLEMENT_BATCH_SIZE: 1,
     FILBEAM_OPERATOR_CONTRACT_ADDRESS: '0xTestContractAddress',
     FILBEAM_OPERATOR_PAYMENT_SETTLER_PRIVATE_KEY:
       '0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
@@ -87,7 +89,14 @@ describe('payment settler scheduled handler', () => {
         abi: expect.any(Array),
         address: '0xTestContractAddress',
         functionName: 'settleCDNPaymentRails',
-        args: [[expect.any(BigInt), expect.any(BigInt)]],
+        args: [[expect.any(BigInt)]],
+      },
+      {
+        account: mockAccount,
+        abi: expect.any(Array),
+        address: '0xTestContractAddress',
+        functionName: 'settleCDNPaymentRails',
+        args: [[expect.any(BigInt)]],
       },
     ])
 
@@ -97,20 +106,39 @@ describe('payment settler scheduled handler', () => {
         abi: expect.any(Array),
         address: '0xTestContractAddress',
         functionName: 'settleCDNPaymentRails',
-        args: [[expect.any(BigInt), expect.any(BigInt)]],
+        args: [[expect.any(BigInt)]],
+        mockedRequest: true,
+      },
+      {
+        account: mockAccount,
+        abi: expect.any(Array),
+        address: '0xTestContractAddress',
+        functionName: 'settleCDNPaymentRails',
+        args: [[expect.any(BigInt)]],
         mockedRequest: true,
       },
     ])
 
-    expect(mockWorkflow.create).toHaveBeenCalledWith({
-      id: expect.stringMatching(/^payment-settler-0xMockTransactionHash-\d+$/),
-      params: {
-        transactionHash: '0xMockTransactionHash',
-        metadata: {
-          retryData: {},
+    expect(mockWorkflow.createBatch).toHaveBeenCalledWith([
+      {
+        id: expect.stringMatching(
+          /^payment-settler-0xMockTransactionHash-\d+$/,
+        ),
+        params: {
+          transactionHash: '0xMockTransactionHash',
+          metadata: {},
         },
       },
-    })
+      {
+        id: expect.stringMatching(
+          /^payment-settler-0xMockTransactionHash-\d+$/,
+        ),
+        params: {
+          transactionHash: '0xMockTransactionHash',
+          metadata: {},
+        },
+      },
+    ])
   })
 
   it('should handle no active data sets gracefully', async () => {
@@ -161,7 +189,14 @@ describe('payment settler scheduled handler', () => {
         abi: expect.any(Array),
         address: '0xTestContractAddress',
         functionName: 'settleCDNPaymentRails',
-        args: [[expect.any(BigInt), expect.any(BigInt)]],
+        args: [[expect.any(BigInt)]],
+      },
+      {
+        account: mockAccount,
+        abi: expect.any(Array),
+        address: '0xTestContractAddress',
+        functionName: 'settleCDNPaymentRails',
+        args: [[expect.any(BigInt)]],
       },
     ])
     expect(writeContractCalls).toStrictEqual([
@@ -170,7 +205,15 @@ describe('payment settler scheduled handler', () => {
         abi: expect.any(Array),
         address: '0xTestContractAddress',
         functionName: 'settleCDNPaymentRails',
-        args: [[expect.any(BigInt), expect.any(BigInt)]],
+        args: [[expect.any(BigInt)]],
+        mockedRequest: true,
+      },
+      {
+        account: mockAccount,
+        abi: expect.any(Array),
+        address: '0xTestContractAddress',
+        functionName: 'settleCDNPaymentRails',
+        args: [[expect.any(BigInt)]],
         mockedRequest: true,
       },
     ])
