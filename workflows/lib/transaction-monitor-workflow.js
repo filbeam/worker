@@ -31,65 +31,55 @@ export class TransactionMonitorWorkflow extends WorkflowEntrypoint {
    */
   async run({ payload }, step) {
     const { transactionHash, metadata } = payload
-    try {
-      // Wait for transaction receipt with timeout
-      await step.do(
-        `wait for transaction receipt ${transactionHash}`,
-        {
-          timeout: '10 minutes',
-          retries: {
-            limit: 5,
-            delay: '10 seconds',
-            backoff: 'exponential',
-          },
-        },
-        async () => {
+
+    const transactionResult = await step.do(
+      `wait for transaction receipt ${transactionHash}`,
+      async () => {
+        try {
           const { publicClient } = getChainClient(this.env)
-          return await publicClient.waitForTransactionReceipt({
+          const receipt = await publicClient.waitForTransactionReceipt({
             hash: transactionHash,
             retryCount: 5,
             retryDelay: 10_000,
             timeout: 600_000,
             pollingInterval: 5_000,
           })
-        },
-      )
+          return { success: true, receipt }
+        } catch (error) {
+          const errorMessage =
+            error instanceof Error ? error.message : String(error)
+          console.error(`Transaction ${transactionHash} failed:`, error)
+          return { success: false, error: errorMessage }
+        }
+      },
+    )
 
-      // Handle success if onSuccess message type is provided
-      if (metadata?.onSuccess) {
-        await step.do(
-          'send confirmation to queue',
-          { timeout: '30 seconds' },
-          async () => {
-            await this.env.TRANSACTION_QUEUE.send({
-              type: metadata?.onSuccess,
-              transactionHash,
-              ...metadata?.successData,
-            })
+    if (transactionResult.success && metadata?.onSuccess) {
+      await step.do('send confirmation to queue', async () => {
+        await this.env.TRANSACTION_QUEUE.send({
+          type: metadata.onSuccess,
+          transactionHash,
+          ...metadata.successData,
+        })
 
-            console.log(
-              `Sent ${metadata?.onSuccess} message to queue for transaction ${transactionHash}`,
-            )
-          },
+        console.log(
+          `Sent ${metadata.onSuccess} message to queue for transaction ${transactionHash}`,
         )
-      }
-    } catch (error) {
-      // Handle failure - always send retry
-      await step.do(
-        'send to retry queue',
-        { timeout: '30 seconds' },
-        async () => {
-          await this.env.TRANSACTION_QUEUE.send({
-            type: 'transaction-retry',
-            transactionHash,
-            ...metadata?.retryData,
-          })
+      })
+    }
 
-          console.log(
-            `Sent retry message to queue for transaction ${transactionHash}`,
-          )
-        },
-      )
+    if (!transactionResult.success) {
+      await step.do('send to retry queue', async () => {
+        await this.env.TRANSACTION_QUEUE.send({
+          type: 'transaction-retry',
+          transactionHash,
+          ...metadata?.retryData,
+        })
+
+        console.log(
+          `Sent retry message to queue for transaction ${transactionHash}`,
+        )
+      })
     }
   }
 }

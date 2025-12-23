@@ -124,9 +124,6 @@ describe('TransactionMonitorWorkflow', () => {
       const error = new Error('Transaction failed')
 
       mockStep.do.mockImplementation(async (name, options, callback) => {
-        if (name.includes('wait for transaction receipt')) {
-          throw error
-        }
         if (callback) return await callback()
         return options
       })
@@ -171,9 +168,6 @@ describe('TransactionMonitorWorkflow', () => {
       const timeoutError = new Error('Timeout waiting for transaction')
 
       mockStep.do.mockImplementation(async (name, options, callback) => {
-        if (name.includes('wait for transaction receipt')) {
-          throw timeoutError
-        }
         if (callback) return await callback()
         return options
       })
@@ -320,11 +314,15 @@ describe('TransactionMonitorWorkflow', () => {
       const error = new Error('Network error')
 
       mockStep.do.mockImplementation(async (name, options, callback) => {
-        if (name.includes('wait for transaction receipt')) {
-          throw error
-        }
         if (callback) return await callback()
         return options
+      })
+
+      const { getChainClient } = await import('../lib/chain.js')
+      getChainClient.mockReturnValue({
+        publicClient: {
+          waitForTransactionReceipt: vi.fn().mockRejectedValue(error),
+        },
       })
 
       await workflow.run(
