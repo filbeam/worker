@@ -1,8 +1,6 @@
 import { toJsonSafe } from 'x402/shared'
 import { getPaywallHtml } from 'x402/paywall'
-import { exact } from 'x402/schemes'
 import { getAddress } from 'viem'
-/** @import {PaymentRequirements, PaymentPayload, SettleResponse, VerifyResponse} from 'x402/types' */
 
 /**
  * Build payment requirements from x402 metadata
@@ -11,7 +9,7 @@ import { getAddress } from 'viem'
  * @param {string} price - Price and sanctioned status from database
  * @param {Request} request - Original request for resource URL
  * @param {Env} env - Worker environment
- * @returns {PaymentRequirements}
+ * @returns {import('x402/types').PaymentRequirements}
  */
 export function buildPaymentRequirements(payeeAddress, price, request, env) {
   const url = new URL(request.url)
@@ -34,78 +32,11 @@ export function buildPaymentRequirements(payeeAddress, price, request, env) {
 }
 
 /**
- * Decode payment from X-PAYMENT header
- *
- * @param {string} payment - Base64-encoded payment string
- * @param {number} [x402Version=1] - X402 version. Default is `1`
- * @returns {PaymentPayload}
- */
-export function decodePayment(payment, x402Version = 1) {
-  const decoded = exact.evm.decodePayment(payment)
-  decoded.x402Version = x402Version
-  return decoded
-}
-
-/**
- * Verify a payment with the facilitator
- *
- * @param {PaymentPayload} paymentPayload - Decoded payment from X-PAYMENT
- *   header
- * @param {PaymentRequirements} requirements - Payment requirements
- * @param {(
- *   payload: PaymentPayload,
- *   paymentRequirements: PaymentRequirements,
- * ) => Promise<VerifyResponse>} verify
- *   - Function to verify payment
- *
- * @returns {Promise<VerifyResponse>}
- */
-export async function verifyPayment(paymentPayload, requirements, verify) {
-  try {
-    return await verify(paymentPayload, requirements)
-  } catch (error) {
-    console.error('Payment verification error:', error)
-    return {
-      isValid: false,
-      invalidReason: 'unexpected_verify_error',
-    }
-  }
-}
-
-/**
- * Settle a verified payment with the facilitator
- *
- * @param {PaymentPayload} paymentPayload - Decoded payment from X-PAYMENT
- *   header
- * @param {PaymentRequirements} requirements - Payment requirements
- * @param {(
- *   payload: PaymentPayload,
- *   paymentRequirements: PaymentRequirements,
- * ) => Promise<SettleResponse>} settle
- *   - Function to settle payment
- *
- * @returns {Promise<SettleResponse>}
- */
-export async function settlePayment(paymentPayload, requirements, settle) {
-  try {
-    return await settle(paymentPayload, requirements)
-  } catch (error) {
-    console.error('Payment settlement error:', error)
-    return {
-      transaction: '',
-      network: requirements.network,
-      success: false,
-      errorReason: 'unexpected_settle_error',
-    }
-  }
-}
-
-/**
  * Build HTTP 402 Payment Required response
  *
  * @param {Env} env
  * @param {boolean} isWebBrowser
- * @param {PaymentRequirements} requirements
+ * @param {import('x402/types').PaymentRequirements} requirements
  * @param {string} [errorMessage]
  * @returns {Response}
  */

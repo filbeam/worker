@@ -4,12 +4,10 @@ import { useFacilitator as defaultUseFacilitator } from 'x402/verify'
 import { settleResponseHeader } from 'x402/types'
 import {
   buildPaymentRequirements,
-  verifyPayment,
-  settlePayment,
   buildPaymentRequiredResponse,
-  decodePayment,
 } from '../lib/x402.js'
 import { getPieceX402Metadata } from '../lib/store.js'
+import { exact } from 'x402/schemes'
 
 const x402Version = 1
 
@@ -86,9 +84,11 @@ export default {
       )
     }
 
+    /** @type {import('x402/types').PaymentPayload} */
     let decodedPayment
     try {
-      decodedPayment = decodePayment(payment, x402Version)
+      decodedPayment = exact.evm.decodePayment(payment)
+      decodedPayment.x402Version = x402Version
     } catch (err) {
       return buildPaymentRequiredResponse(
         env,
@@ -99,19 +99,25 @@ export default {
     }
 
     console.log('Verifying payment...')
-    const verifyResult = await verifyPayment(
-      decodedPayment,
-      requirements,
-      verify,
-    )
+    try {
+      const verifyResult = await verify(decodedPayment, requirements)
 
-    if (!verifyResult.isValid) {
-      console.log('Payment verification failed:', verifyResult)
+      if (!verifyResult.isValid) {
+        console.log('Payment verification failed:', verifyResult)
+        return buildPaymentRequiredResponse(
+          env,
+          false,
+          requirements,
+          verifyResult.invalidReason,
+        )
+      }
+    } catch (error) {
+      console.error('Payment verification failed:', error)
       return buildPaymentRequiredResponse(
         env,
         false,
         requirements,
-        verifyResult.invalidReason,
+        error instanceof Error ? error.message : 'Payment verification failed',
       )
     }
 
@@ -119,14 +125,13 @@ export default {
 
     const response = await env.PIECE_RETRIEVER.fetch(forwardRequest)
 
-    // Only settle payment on successful responses
-    if (response.ok) {
-      console.log('Response OK, settling payment...')
-      const settleResult = await settlePayment(
-        decodedPayment,
-        requirements,
-        settle,
-      )
+    if (!response.ok) {
+      return response
+    }
+
+    console.log('Response OK, settling payment...')
+    try {
+      const settleResult = await settle(decodedPayment, requirements)
 
       if (settleResult.success) {
         console.log('Payment settled:', settleResult.transaction)
@@ -145,9 +150,15 @@ export default {
           `Payment settlement failed: ${settleResult.errorReason}`,
         )
       }
+    } catch (error) {
+      console.error('Payment settlement failed:', error)
+      return buildPaymentRequiredResponse(
+        env,
+        false,
+        requirements,
+        error instanceof Error ? error.message : 'Failed to settle payment',
+      )
     }
-
-    return response
   },
 
   /**
