@@ -49,27 +49,27 @@ export default {
     )
     const { verify, settle } = useFacilitator({ url: env.FACILITATOR_URL })
 
-    const { payerAddress, pieceCid, payment, isWebBrowser } = parseRequest(
+    const { payeeAddress, pieceCid, payment, isWebBrowser } = parseRequest(
       request,
       env,
     )
 
-    const x402Metadata = await getPieceX402Metadata(env, pieceCid, payerAddress)
+    const x402Metadata = await getPieceX402Metadata(env, pieceCid, payeeAddress)
 
     httpAssert(
       !x402Metadata?.is_sanctioned,
       403,
-      `The wallet ${payerAddress} paying for storage of Piece CID ${pieceCid} is sanctioned.`,
+      `The wallet ${payeeAddress} paying for storage of Piece CID ${pieceCid} is sanctioned.`,
     )
 
-    const forwardUrl = buildForwardUrl(env, payerAddress, pieceCid)
+    const forwardUrl = buildForwardUrl(env, payeeAddress, pieceCid)
     const forwardRequest = new Request(forwardUrl, request)
     if (!x402Metadata?.price) {
       return env.PIECE_RETRIEVER.fetch(forwardRequest)
     }
 
     const requirements = buildPaymentRequirements(
-      payerAddress,
+      payeeAddress,
       x402Metadata.price,
       request,
       env,

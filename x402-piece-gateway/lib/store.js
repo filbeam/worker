@@ -1,10 +1,10 @@
 /**
  * @param {Env} env
  * @param {string} pieceCid
- * @param {string} payerAddress
+ * @param {string} payeeAddress
  * @returns {Promise<{ price: string; is_sanctioned: boolean } | null>}
  */
-export async function getPieceX402Metadata(env, pieceCid, payerAddress) {
+export async function getPieceX402Metadata(env, pieceCid, payeeAddress) {
   return await env.DB.prepare(
     `SELECT
         MAX(pieces.x402_price) price,
@@ -17,6 +17,6 @@ export async function getPieceX402Metadata(env, pieceCid, payerAddress) {
         pieces.is_deleted IS FALSE AND
         data_sets.payer_address = ?`,
   )
-    .bind(pieceCid, payerAddress)
+    .bind(pieceCid, payeeAddress)
     .first()
 }

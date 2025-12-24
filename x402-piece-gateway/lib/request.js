@@ -6,7 +6,7 @@ import { httpAssert, isValidEthereumAddress } from '@filbeam/retrieval'
  * @param {Request} request
  * @param {Env} env
  * @returns {{
- *   payerAddress: string
+ *   payeeAddress: string
  *   pieceCid: string
  *   payment: string | null
  *   isWebBrowser: boolean
@@ -20,14 +20,14 @@ export function parseRequest(request, env) {
     `Invalid hostname: ${url.hostname}. It must end with ${env.DNS_ROOT}.`,
   )
 
-  const payerAddress = url.hostname.slice(0, -env.DNS_ROOT.length)
+  const payeeAddress = url.hostname.slice(0, -env.DNS_ROOT.length)
 
-  httpAssert(payerAddress, 400, 'Missing payee address in hostname')
+  httpAssert(payeeAddress, 400, 'Missing payee address in hostname')
 
   httpAssert(
-    isValidEthereumAddress(payerAddress),
+    isValidEthereumAddress(payeeAddress),
     400,
-    `Invalid payer address: ${payerAddress}. Must be a valid Ethereum address.`,
+    `Invalid payee address: ${payeeAddress}. Must be a valid Ethereum address.`,
   )
 
   const [pieceCid] = url.pathname.split('/').filter(Boolean)
@@ -46,7 +46,7 @@ export function parseRequest(request, env) {
     acceptHeader.includes('text/html') && userAgent.includes('Mozilla')
 
   return {
-    payerAddress: payerAddress.toLowerCase(),
+    payeeAddress: payeeAddress.toLowerCase(),
     pieceCid,
     payment,
     isWebBrowser,
@@ -57,10 +57,10 @@ export function parseRequest(request, env) {
  * Build the URL for forwarding requests to piece-retriever.
  *
  * @param {Env} env - Environment bindings
- * @param {string} payerAddress - The payee's Ethereum address
+ * @param {string} payeeAddress - The payee's Ethereum address
  * @param {string} pieceCid - The CID of the requested piece
  * @returns {string} The transformed URL for piece-retriever
  */
-export function buildForwardUrl(env, payerAddress, pieceCid) {
-  return `https://${payerAddress}${env.PIECE_RETRIEVER_DNS_ROOT}/${pieceCid}`
+export function buildForwardUrl(env, payeeAddress, pieceCid) {
+  return `https://${payeeAddress}${env.PIECE_RETRIEVER_DNS_ROOT}/${pieceCid}`
 }

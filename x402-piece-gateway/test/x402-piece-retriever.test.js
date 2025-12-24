@@ -150,7 +150,7 @@ describe('x402-piece-retriever', () => {
       expect(await res.text()).toBe('Method Not Allowed')
     })
 
-    it('returns 400 for invalid payer address', async () => {
+    it('returns 400 for invalid payee address', async () => {
       const ctx = createExecutionContext()
       const req = createRequest(env, 'invalid-address', TEST_CID)
 
@@ -158,7 +158,7 @@ describe('x402-piece-retriever', () => {
       await waitOnExecutionContext(ctx)
 
       expect(res.status).toBe(400)
-      expect(await res.text()).toContain('Invalid payer address')
+      expect(await res.text()).toContain('Invalid payee address')
     })
 
     it('returns 404 for invalid piece CID', async () => {
@@ -188,7 +188,7 @@ describe('x402-piece-retriever', () => {
   })
 
   describe('sanctioned wallet', () => {
-    it('returns 403 when payer wallet is sanctioned', async () => {
+    it('returns 403 when payee wallet is sanctioned', async () => {
       await withX402Piece(env)
       await withWalletDetails(env, TEST_PAYEE, true)
 
@@ -410,7 +410,7 @@ describe('x402-piece-retriever', () => {
 
       let settleCalled = false
       const mockUseFacilitator = () => ({
-        verify: async () => ({ isValid: true, payer: TEST_PAYEE }),
+        verify: async () => ({ isValid: true, payee: TEST_PAYEE }),
         settle: async () => {
           settleCalled = true
           return { success: true, transaction: '0x123' }
@@ -464,7 +464,7 @@ describe('x402-piece-retriever', () => {
       }
 
       const mockUseFacilitator = () => ({
-        verify: async () => ({ isValid: true, payer: TEST_PAYEE }),
+        verify: async () => ({ isValid: true, payee: TEST_PAYEE }),
         settle: async () => {
           throw new Error('Settlement service unavailable')
         },
