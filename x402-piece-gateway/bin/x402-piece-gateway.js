@@ -90,6 +90,7 @@ export default {
       decodedPayment = exact.evm.decodePayment(payment)
       decodedPayment.x402Version = x402Version
     } catch (err) {
+      console.error('Cannot decode x402 payment:', err)
       return buildPaymentRequiredResponse(
         env,
         false,
