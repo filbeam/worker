@@ -137,6 +137,7 @@ export default {
         )
         return newResponse
       } else {
+        console.error('Payment settlement failed:', settleResult)
         return buildPaymentRequiredResponse(
           env,
           false,
