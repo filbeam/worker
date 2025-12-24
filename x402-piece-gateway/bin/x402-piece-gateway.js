@@ -106,7 +106,7 @@ export default {
     )
 
     if (!verifyResult.isValid) {
-      console.log('Payment invalid:', verifyResult.invalidReason)
+      console.log('Payment verification failed:', verifyResult)
       return buildPaymentRequiredResponse(
         env,
         false,
