@@ -61,7 +61,7 @@ export default {
     httpAssert(
       !x402Metadata?.is_sanctioned,
       403,
-      `Wallet '${payerAddress}' is sanctioned and cannot retrieve piece_cid '${pieceCid}'.`,
+      `The wallet ${payerAddress} paying for storage of Piece CID ${pieceCid} is sanctioned.`,
     )
 
     const forwardUrl = buildForwardUrl(env, payerAddress, pieceCid)
