@@ -45,6 +45,9 @@ export async function retrieveFile(
       assert(response.body)
 
       let responseStream = response.body
+      console.log(
+        `Cache miss response validation is ${addCacheMissResponseValidation ? 'enabled' : 'disabled'}`,
+      )
       if (addCacheMissResponseValidation) {
         const { stream: pieceCidStream, getPieceCID } = createPieceCIDStream()
         validate = () => {

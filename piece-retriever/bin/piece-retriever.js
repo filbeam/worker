@@ -122,7 +122,9 @@ export default {
             },
           )
           if (retrievalResult.response.ok) {
-            console.log('Retrieval attempt succeeded')
+            console.log(
+              `Retrieval attempt succeeded (cache ${retrievalResult.cacheMiss ? 'miss' : 'hit'})`,
+            )
             break
           }
           console.log(
