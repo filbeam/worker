@@ -40,7 +40,6 @@ export async function retrieveFile(
   if (response) {
     cacheMiss = false
   } else {
-    console.log(`Cache miss for URL: ${url}`)
     response = await fetch(url, {
       cf: {
         cacheEverything: true,
