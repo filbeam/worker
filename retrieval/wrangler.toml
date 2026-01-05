@@ -2,6 +2,7 @@ name = "filbeam-retrieval"
 main = "index.js"
 compatibility_date = "2025-09-08"
 compatibility_flags = ["nodejs_compat"]
+upload_source_maps = true
 
 [env.dev.vars]
 RPC_URL = "https://api.calibration.node.glif.io/rpc/v0"
