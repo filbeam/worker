@@ -1,5 +1,6 @@
 name = "filcdn-db"
 compatibility_date = "2025-09-08"
+upload_source_maps = true
 
 [[d1_databases]]
 binding = "DB"
