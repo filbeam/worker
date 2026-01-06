@@ -42,8 +42,12 @@ export async function retrieveFile(
   } else {
     response = await fetch(url, {
       cf: {
+        cacheTtlByStatus: {
+          '200-299': cacheTtl,
+          404: 0,
+          '500-599': 0,
+        },
         cacheEverything: true,
-        cacheTtl,
       },
       signal,
     })

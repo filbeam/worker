@@ -61,8 +61,12 @@ describe('retrieveFile', () => {
     await retrieveFile(ctx, baseUrl, pieceCid, new Request(baseUrl))
     await waitOnExecutionContext(ctx)
     expect(requestedCfOptions).toEqual({
+      cacheTtlByStatus: {
+        '200-299': 86400,
+        404: 0,
+        '500-599': 0,
+      },
       cacheEverything: true,
-      cacheTtl: 86400,
     })
   })
 
@@ -76,8 +80,12 @@ describe('retrieveFile', () => {
     await retrieveFile(ctx, baseUrl, pieceCid, new Request(baseUrl), 1234)
     await waitOnExecutionContext(ctx)
     expect(requestedCfOptions).toEqual({
+      cacheTtlByStatus: {
+        '200-299': 1234,
+        404: 0,
+        '500-599': 0,
+      },
       cacheEverything: true,
-      cacheTtl: 1234,
     })
   })
 
