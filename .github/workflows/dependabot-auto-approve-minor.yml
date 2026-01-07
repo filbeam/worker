@@ -23,6 +23,7 @@ jobs:
           - '@npmcli/'
           - prettier
           - multiformats
+          - validator
     steps:
       - name: Dependabot metadata
         id: metadata
