@@ -3,6 +3,7 @@ main = "bin/api.js"
 compatibility_date = "2025-09-08"
 compatibility_flags = ["nodejs_compat"]
 logpush = true
+upload_source_maps = true
 
 [[d1_databases]]
 binding = "DB"

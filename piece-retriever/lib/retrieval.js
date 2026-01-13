@@ -40,12 +40,25 @@ export async function retrieveFile(
   if (response) {
     cacheMiss = false
   } else {
-    response = await fetch(url, { signal })
+    response = await fetch(url, {
+      cf: {
+        cacheTtlByStatus: {
+          '200-299': cacheTtl,
+          404: 0,
+          '500-599': 0,
+        },
+        cacheEverything: true,
+      },
+      signal,
+    })
     if (response.ok) {
       assert(response.body)
 
-      let responseStream = response.body
+      console.log(
+        `Cache miss response validation is ${addCacheMissResponseValidation ? 'enabled' : 'disabled'}`,
+      )
       if (addCacheMissResponseValidation) {
+        const responseStream = response.body
         const { stream: pieceCidStream, getPieceCID } = createPieceCIDStream()
         validate = () => {
           const calculatedPieceCid = getPieceCID()
@@ -54,25 +67,11 @@ export async function retrieveFile(
             calculatedPieceCid.toString() === pieceCid
           )
         }
-        responseStream = responseStream.pipeThrough(pieceCidStream)
+        response = new Response(
+          responseStream.pipeThrough(pieceCidStream),
+          response,
+        )
       }
-
-      const [body1, body2] = responseStream.tee() ?? [null, null]
-
-      ctx.waitUntil(
-        caches.default.put(
-          url,
-          new Response(body1, {
-            ...response,
-            headers: {
-              ...Object.fromEntries(response.headers),
-              'Cache-Control': `public, max-age=${cacheTtl}`,
-            },
-          }),
-        ),
-      )
-
-      response = new Response(body2, response)
     }
   }
 
