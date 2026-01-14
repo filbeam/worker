@@ -30,7 +30,7 @@
     "@checkernetwork/prettier-config": "^1.0.1",
     "@cloudflare/vitest-pool-workers": "^0.12.1",
     "@npmcli/map-workspaces": "^5.0.3",
-    "@types/node": "^25.0.7",
+    "@types/node": "^25.0.8",
     "neostandard": "^0.12.1",
     "prettier": "^3.7.4",
     "typescript": "^5.9.3",
