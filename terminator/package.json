@@ -15,10 +15,10 @@
   },
   "dependencies": {
     "@filbeam/workflows": "^1.0.0",
-    "viem": "^2.44.1"
+    "viem": "^2.44.2"
   },
   "devDependencies": {
-    "@cloudflare/vitest-pool-workers": "^0.12.1",
+    "@cloudflare/vitest-pool-workers": "^0.12.3",
     "@types/validator": "^13.15.10"
   }
 }
