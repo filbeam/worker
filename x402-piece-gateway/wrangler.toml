@@ -1,0 +1,48 @@
+name = "x402-filbeam-piece-gateway"
+main = "bin/x402-piece-gateway.js"
+compatibility_date = "2025-09-08"
+compatibility_flags = ["nodejs_compat"]
+logpush = true
+
+[env.dev.vars]
+ENVIRONMENT = "dev"
+DNS_ROOT = ".x402.localhost"
+PIECE_RETRIEVER_DNS_ROOT = ".localhost"
+FACILITATOR_URL = "https://x402.org/facilitator"
+TOKEN = { ADDRESS = "0x036CbD53842c5426634e7929541eC2318f3dCF7e", DECIMALS = 6, NAME = "USDC", VERSION = "2" }
+NETWORK = "base-sepolia"
+
+[env.calibration.vars]
+ENVIRONMENT = "calibration"
+DNS_ROOT = ".calibration.x402.filbeam.io"
+PIECE_RETRIEVER_DNS_ROOT = ".calibration.filbeam.io"
+FACILITATOR_URL = "https://x402.org/facilitator"
+TOKEN = { ADDRESS = "0x036CbD53842c5426634e7929541eC2318f3dCF7e", DECIMALS = 6, NAME = "USDC", VERSION = "2" }
+NETWORK = "base-sepolia"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "test-db"
+database_id = "8cc92155-16f6-426a-b782-2965e0daf100"
+
+[[env.dev.d1_databases]]
+binding = "DB"
+database_name = "dev-db"
+database_id = "8cc92155-16f6-426a-b782-2965e0daf101"
+
+[[env.calibration.d1_databases]]
+binding = "DB"
+database_name = "filcdn-calibration-db"
+database_id = "78f15bbb-391f-4797-9016-a6cb86c0b9b8"
+
+[[services]]
+binding = "PIECE_RETRIEVER"
+service = "filbeam-piece-retriever"
+
+[[env.dev.services]]
+binding = "PIECE_RETRIEVER"
+service = "filbeam-piece-retriever"
+
+[[env.calibration.services]]
+binding = "PIECE_RETRIEVER"
+service = "filbeam-piece-retriever-calibration"

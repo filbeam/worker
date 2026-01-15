@@ -1,0 +1,19 @@
+{
+  "name": "@filbeam/x402-piece-gateway",
+  "version": "1.0.0",
+  "private": true,
+  "description": "FilBeam X402 Gateway Worker",
+  "author": "Space Meridian <filbeam@meridian.space>",
+  "type": "module",
+  "main": "bin/x402-piece-gateway.js",
+  "scripts": {
+    "build:types": "wrangler types --env dev",
+    "deploy:calibration": "wrangler deploy --env calibration",
+    "start": "wrangler dev --env dev",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "viem": "^2.43.1",
+    "x402": "^1.0.1"
+  }
+}
