@@ -1,3 +1,5 @@
+# AGENTS
+
 Filecoin Beam is the incentivized data delivery layer for Filecoin. FilBeam is implemented as a Cloudflare Workers monorepo that retrieves and caches content from Filecoin PDP (Proof of Data Possession) Service Providers. All traffic coming to and from Filecoin Beam is paid for on-chain.
 
 ## Common Commands
@@ -75,6 +77,7 @@ Migrations are in `@./db/migrations/`. Applied automatically during deployment a
 ### Testing
 
 Each worker has its own `vitest.config.js` that:
+
 - Uses `@cloudflare/vitest-pool-workers` for Workers runtime simulation
 - Loads D1 migrations from `db/migrations/` via setup files
 - Runs with `singleWorker: true` to avoid parallel test isolation issues
