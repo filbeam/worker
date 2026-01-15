@@ -47,6 +47,7 @@ npm run deploy:mainnet
 - @./retrieval - Shared library (address validation, bad-bits, http-assert, stats)
 - @./db - Shared D1 database migrations
 - @./subgraph - GraphQL subgraph definitions for Goldsky/The Graph
+- @./x402-piece-gateway - x402 gateway worker for pieces with enabled x402 payments
 
 ### Data Flow
 
