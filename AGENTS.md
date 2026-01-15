@@ -1,5 +1,3 @@
-# CLAUDE.md
-
 Filecoin Beam is the incentivized data delivery layer for Filecoin. FilBeam is implemented as a Cloudflare Workers monorepo that retrieves and caches content from Filecoin PDP (Proof of Data Possession) Service Providers. All traffic coming to and from Filecoin Beam is paid for on-chain.
 
 ## Common Commands
