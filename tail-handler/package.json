@@ -1,5 +1,5 @@
 {
-  "name": "@filbeam/piece-retriever-tail",
+  "name": "@filbeam/tail-handler",
   "version": "1.0.0",
   "private": true,
   "type": "module",

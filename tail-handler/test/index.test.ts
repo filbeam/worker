@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { env, createExecutionContext } from 'cloudflare:test'
 import worker from '../src/index.ts'
 
-describe('piece-retriever-tail worker', () => {
+describe('tail-handler worker', () => {
   it('processes tail events without errors', async () => {
     const mockEvents: TraceItem[] = [buildTraceItem()]
 

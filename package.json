@@ -9,7 +9,7 @@
     "bad-bits",
     "indexer",
     "piece-retriever",
-    "piece-retriever-tail",
+    "tail-handler",
     "terminator",
     "workflows",
     "usage-reporter",

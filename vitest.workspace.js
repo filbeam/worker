@@ -3,7 +3,7 @@ import { defineWorkspace } from 'vitest/config'
 export default defineWorkspace([
   'indexer',
   'piece-retriever',
-  'piece-retriever-tail',
+  'tail-handler',
   'bad-bits',
   'terminator',
   'workflows',

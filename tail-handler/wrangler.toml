@@ -1,4 +1,4 @@
-name = "filbeam-piece-retriever-tail"
+name = "filbeam-tail-handler"
 main = "src/index.ts"
 compatibility_date = "2025-09-08"
 compatibility_flags = ["nodejs_compat"]
