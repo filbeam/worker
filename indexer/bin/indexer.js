@@ -16,6 +16,7 @@ import {
 } from '../lib/pdp-verifier-handlers.js'
 import { screenWallets } from '../lib/wallet-screener.js'
 import { CID } from 'multiformats/cid'
+import { assertOkResponse } from 'assert-ok-response'
 
 export default {
   /**
@@ -333,12 +334,7 @@ export default {
             `,
           }),
         })
-        if (!res.ok) {
-          const text = await res.text()
-          throw new Error(
-            `Goldsky API returned ${res.status} ${res.statusText}: ${text}`,
-          )
-        }
+        await assertOkResponse(res)
         const { data } = await res.json()
         return data
       })(),

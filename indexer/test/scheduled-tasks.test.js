@@ -86,7 +86,7 @@ describe('scheduled monitoring', () => {
           checkIfAddressIsSanctioned: async () => false,
         },
       ),
-    ).rejects.toThrow('Goldsky API returned 502 Bad Gateway: error code: 502')
+    ).rejects.toThrow('Cannot fetch  (502): error code: 502')
     expect(mockFetch).toHaveBeenCalledTimes(1)
   })
 
@@ -109,7 +109,7 @@ describe('scheduled monitoring', () => {
           checkIfAddressIsSanctioned: async () => false,
         },
       ),
-    ).rejects.toThrow('Goldsky API returned 503 Service Unavailable')
+    ).rejects.toThrow('Cannot fetch  (503): Service Unavailable')
     expect(mockFetch).toHaveBeenCalledTimes(1)
   })
 
@@ -132,9 +132,7 @@ describe('scheduled monitoring', () => {
           checkIfAddressIsSanctioned: async () => false,
         },
       ),
-    ).rejects.toThrow(
-      'Goldsky API returned 500 Internal Server Error: Not JSON response',
-    )
+    ).rejects.toThrow('Cannot fetch  (500): Not JSON response')
     expect(mockFetch).toHaveBeenCalledTimes(1)
   })
 })
