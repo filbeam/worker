@@ -1,0 +1,21 @@
+{
+  "name": "@filbeam/piece-retriever-tail",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "build:types": "wrangler types --env dev",
+    "deploy:calibration": "wrangler deploy --env calibration",
+    "deploy:mainnet": "wrangler deploy --env mainnet",
+    "start": "wrangler d1 migrations apply dev-db --local --cwd ../db && wrangler dev --env dev",
+    "test": "wrangler d1 migrations apply test-db --local --cwd ../db && vitest run"
+  },
+  "dependencies": {
+    "@filbeam/retrieval": "^1.0.0"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "^0.12.4",
+    "vitest": "^3.2.1"
+  }
+}
