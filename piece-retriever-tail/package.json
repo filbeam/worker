@@ -13,9 +13,5 @@
   },
   "dependencies": {
     "@filbeam/retrieval": "^1.0.0"
-  },
-  "devDependencies": {
-    "@cloudflare/vitest-pool-workers": "^0.12.4",
-    "vitest": "^3.2.1"
   }
 }
