@@ -341,8 +341,6 @@ export default {
           return data
         },
         {
-          retries: 3,
-          minTimeout: 0,
           onFailedAttempt: ({ error, attemptNumber, retriesLeft }) => {
             console.log(
               `Goldsky request failed (attempt ${attemptNumber}/${retriesLeft + attemptNumber}): ${error.message}`,
