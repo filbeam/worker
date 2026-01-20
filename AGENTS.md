@@ -130,8 +130,7 @@ Create a new directory `<worker-name>/` with:
        "allowImportingTsExtensions": true
      },
      "include": ["src/**/*.ts", "test/**/*.ts", "*.d.ts"],
-     "exclude": ["dist"],
-     "references": [{ "path": "../retrieval/tsconfig.json" }]
+     "exclude": ["dist"]
    }
    ```
 

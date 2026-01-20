@@ -10,8 +10,5 @@
     "deploy:mainnet": "wrangler deploy --env mainnet",
     "start": "wrangler d1 migrations apply dev-db --local --cwd ../db && wrangler dev --env dev",
     "test": "wrangler d1 migrations apply test-db --local --cwd ../db && vitest run"
-  },
-  "dependencies": {
-    "@filbeam/retrieval": "^1.0.0"
   }
 }
