@@ -333,6 +333,12 @@ export default {
             `,
           }),
         })
+        if (!res.ok) {
+          const text = await res.text()
+          throw new Error(
+            `Goldsky API returned ${res.status} ${res.statusText}: ${text}`,
+          )
+        }
         const { data } = await res.json()
         return data
       })(),
