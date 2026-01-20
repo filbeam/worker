@@ -16,7 +16,7 @@ import {
 } from '../lib/pdp-verifier-handlers.js'
 import { screenWallets } from '../lib/wallet-screener.js'
 import { CID } from 'multiformats/cid'
-import { assertOkResponse } from 'assert-ok-response'
+import pRetry from 'p-retry'
 
 export default {
   /**
@@ -318,11 +318,12 @@ export default {
    */
   async checkGoldskyStatus(env, { fetch }) {
     const [subgraph] = await Promise.allSettled([
-      (async () => {
-        const res = await fetch(env.GOLDSKY_SUBGRAPH_URL, {
-          method: 'POST',
-          body: JSON.stringify({
-            query: `
+      pRetry(
+        async () => {
+          const res = await fetch(env.GOLDSKY_SUBGRAPH_URL, {
+            method: 'POST',
+            body: JSON.stringify({
+              query: `
               query {
                 _meta {
                   hasIndexingErrors
@@ -332,12 +333,32 @@ export default {
                 }
               }
             `,
-          }),
-        })
-        await assertOkResponse(res)
-        const { data } = await res.json()
-        return data
-      })(),
+            }),
+          })
+          if (!res.ok) {
+            const error = new Error(
+              `Cannot fetch  (${res.status}): ${res.statusText}`,
+            )
+            error.statusCode = res.status
+            throw error
+          }
+          const { data } = await res.json()
+          return data
+        },
+        {
+          retries: 3,
+          minTimeout: 0,
+          onFailedAttempt: ({ error, attemptNumber, retriesLeft }) => {
+            console.log(
+              `Goldsky request failed (attempt ${attemptNumber}/${retriesLeft + attemptNumber}): ${error.message}`,
+            )
+          },
+          shouldRetry: ({ error }) => {
+            // Retry on 5xx errors
+            return error.statusCode >= 500 && error.statusCode < 600
+          },
+        },
+      ),
       // (placeholder for more data-fetching steps)
     ])
     const alerts = []

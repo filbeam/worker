@@ -67,9 +67,10 @@ describe('scheduled monitoring', () => {
     expect(mockFetch).toHaveBeenCalledTimes(1)
   })
 
-  it('handles 502 error from Goldsky gracefully', async () => {
+  it('retries on 502 error from Goldsky and eventually fails', async () => {
     const mockFetch = vi.fn()
-    mockFetch.mockImplementationOnce((url, opts) => {
+    // Mock 4 consecutive failures (initial + 3 retries)
+    mockFetch.mockImplementation((url, opts) => {
       expect(url).toMatch('goldsky')
       return new Response('error code: 502', {
         status: 502,
@@ -86,17 +87,57 @@ describe('scheduled monitoring', () => {
           checkIfAddressIsSanctioned: async () => false,
         },
       ),
-    ).rejects.toThrow('Cannot fetch  (502): error code: 502')
-    expect(mockFetch).toHaveBeenCalledTimes(1)
+    ).rejects.toThrow('Cannot fetch  (502): Bad Gateway')
+    // Should have been called 4 times (initial + 3 retries)
+    expect(mockFetch).toHaveBeenCalledTimes(4)
   })
 
-  it('handles 503 error from Goldsky gracefully', async () => {
+  it('retries on 503 error and succeeds on retry', async () => {
+    const mockFetch = vi.fn()
+    // First call fails with 503, second call succeeds
+    mockFetch
+      .mockImplementationOnce((url, opts) => {
+        expect(url).toMatch('goldsky')
+        return new Response('Service Unavailable', {
+          status: 503,
+          statusText: 'Service Unavailable',
+        })
+      })
+      .mockImplementationOnce((url, opts) => {
+        expect(url).toMatch('goldsky')
+        return new Response(
+          JSON.stringify({
+            data: {
+              _meta: {
+                hasIndexingErrors: false,
+                block: {
+                  number: 100,
+                },
+              },
+            },
+          }),
+        )
+      })
+    await workerImpl.scheduled(
+      createScheduledController(),
+      env,
+      createExecutionContext(),
+      {
+        fetch: mockFetch,
+        checkIfAddressIsSanctioned: async () => false,
+      },
+    )
+    // Should have been called twice (initial failure + 1 retry success)
+    expect(mockFetch).toHaveBeenCalledTimes(2)
+  })
+
+  it('does not retry on 4xx errors', async () => {
     const mockFetch = vi.fn()
     mockFetch.mockImplementationOnce((url, opts) => {
       expect(url).toMatch('goldsky')
-      return new Response('Service Unavailable', {
-        status: 503,
-        statusText: 'Service Unavailable',
+      return new Response('Bad Request', {
+        status: 400,
+        statusText: 'Bad Request',
       })
     })
     await expect(
@@ -109,30 +150,8 @@ describe('scheduled monitoring', () => {
           checkIfAddressIsSanctioned: async () => false,
         },
       ),
-    ).rejects.toThrow('Cannot fetch  (503): Service Unavailable')
-    expect(mockFetch).toHaveBeenCalledTimes(1)
-  })
-
-  it('handles non-JSON response from Goldsky gracefully', async () => {
-    const mockFetch = vi.fn()
-    mockFetch.mockImplementationOnce((url, opts) => {
-      expect(url).toMatch('goldsky')
-      return new Response('Not JSON response', {
-        status: 500,
-        statusText: 'Internal Server Error',
-      })
-    })
-    await expect(
-      workerImpl.scheduled(
-        createScheduledController(),
-        env,
-        createExecutionContext(),
-        {
-          fetch: mockFetch,
-          checkIfAddressIsSanctioned: async () => false,
-        },
-      ),
-    ).rejects.toThrow('Cannot fetch  (500): Not JSON response')
+    ).rejects.toThrow('Cannot fetch  (400): Bad Request')
+    // Should only be called once (no retries for 4xx)
     expect(mockFetch).toHaveBeenCalledTimes(1)
   })
 })
