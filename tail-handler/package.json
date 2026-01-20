@@ -8,7 +8,7 @@
     "build:types": "wrangler types --env dev",
     "deploy:calibration": "wrangler deploy --env calibration",
     "deploy:mainnet": "wrangler deploy --env mainnet",
-    "start": "wrangler d1 migrations apply dev-db --local --cwd ../db && wrangler dev --env dev",
-    "test": "wrangler d1 migrations apply test-db --local --cwd ../db && vitest run"
+    "start": "wrangler dev --env dev",
+    "test": "vitest run"
   }
 }
