@@ -118,7 +118,7 @@ Create a new directory `<worker-name>/` with:
 
 3. **`vitest.config.ts`** (or `.js`) - Use `defineWorkersProject` from `@cloudflare/vitest-pool-workers/config`, load migrations via `readD1Migrations`.
 
-4. **`tsconfig.json`** - Extends `../tsconfig.base.json` with:
+4. **`tsconfig.json`** - Extends `../tsconfig.base.json` (test files have separate config):
 
    ```json
    {
@@ -126,10 +126,9 @@ Create a new directory `<worker-name>/` with:
      "compilerOptions": {
        "composite": true,
        "outDir": "dist",
-       "types": ["@cloudflare/vitest-pool-workers"],
        "allowImportingTsExtensions": true
      },
-     "include": ["src/**/*.ts", "test/**/*.ts", "*.d.ts"],
+     "include": ["src/**/*.ts", "*.d.ts"],
      "exclude": ["dist"]
    }
    ```
@@ -143,10 +142,23 @@ Create a new directory `<worker-name>/` with:
    await applyD1Migrations(env.DB, env.TEST_MIGRATIONS)
    ```
 
-7. **`test/cloudflare-test.d.ts`** - Type declarations for test environment:
+7. **`test/tsconfig.json`** - Separate TypeScript config for test files:
+
+   ```json
+   {
+     "extends": "../tsconfig.json",
+     "compilerOptions": {
+       "types": ["@cloudflare/vitest-pool-workers"]
+     },
+     "include": ["**/*.ts"]
+   }
+   ```
+
+8. **`test/cloudflare-test.d.ts`** - Type declarations for test environment:
 
    ```typescript
    import type { D1Migration } from 'cloudflare:test'
+
    declare module 'cloudflare:test' {
      interface ProvidedEnv extends Cloudflare.Env {
        TEST_MIGRATIONS: D1Migration[]
@@ -154,7 +166,7 @@ Create a new directory `<worker-name>/` with:
    }
    ```
 
-8. **`test/index.test.ts`** - Tests importing worker with `.ts` extension
+9. **`test/index.test.ts`** - Tests importing worker with `.ts` extension
 
 ### Files to Update
 

@@ -3,9 +3,8 @@
   "compilerOptions": {
     "composite": true,
     "outDir": "dist",
-    "types": ["@cloudflare/vitest-pool-workers"],
     "allowImportingTsExtensions": true
   },
-  "include": ["src/**/*.ts", "test/**/*.ts", "*.d.ts"],
+  "include": ["src/**/*.ts", "*.d.ts"],
   "exclude": ["dist"]
 }
