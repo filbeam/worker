@@ -10,6 +10,9 @@ binding = "DB"
 database_name = "test-db"
 database_id = "8cc92155-16f6-426a-b782-2965e0daf100"
 
+[env.dev]
+tail_consumers = [{ service = "filbeam-piece-retriever-tail-dev" }]
+
 [env.dev.vars]
 ENVIRONMENT = "dev"
 ORIGIN_CACHE_TTL = 86400
@@ -27,6 +30,9 @@ database_id = "8cc92155-16f6-426a-b782-2965e0daf101"
 binding = "BAD_BITS_KV"
 id = "2f2e5486ea0c48e993f6dff87a4aa102"
 
+[env.calibration]
+tail_consumers = [{ service = "filbeam-piece-retriever-tail-calibration" }]
+
 [env.calibration.vars]
 ENVIRONMENT = "calibration "
 ORIGIN_CACHE_TTL = 86400
@@ -42,6 +48,9 @@ database_id = "78f15bbb-391f-4797-9016-a6cb86c0b9b8"
 [[env.calibration.kv_namespaces]]
 binding = "BAD_BITS_KV"
 id = "178592ee0a3b4b00894a23186b3a0179"
+
+[env.mainnet]
+tail_consumers = [{ service = "filbeam-piece-retriever-tail-mainnet" }]
 
 [env.mainnet.vars]
 ENVIRONMENT = "mainnet"
