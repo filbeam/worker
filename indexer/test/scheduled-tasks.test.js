@@ -87,7 +87,7 @@ describe('scheduled monitoring', () => {
           checkIfAddressIsSanctioned: async () => false,
         },
       ),
-    ).rejects.toThrow('Cannot fetch  (502): Bad Gateway')
+    ).rejects.toThrow('Cannot fetch  (502): error code: 502')
     // Should have been called 4 times (initial + 3 retries)
     expect(mockFetch).toHaveBeenCalledTimes(4)
   })

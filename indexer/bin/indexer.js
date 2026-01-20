@@ -17,6 +17,7 @@ import {
 import { screenWallets } from '../lib/wallet-screener.js'
 import { CID } from 'multiformats/cid'
 import pRetry from 'p-retry'
+import { assertOkResponse } from 'assert-ok-response'
 
 export default {
   /**
@@ -335,13 +336,7 @@ export default {
             `,
             }),
           })
-          if (!res.ok) {
-            const error = new Error(
-              `Cannot fetch  (${res.status}): ${res.statusText}`,
-            )
-            error.statusCode = res.status
-            throw error
-          }
+          await assertOkResponse(res)
           const { data } = await res.json()
           return data
         },
