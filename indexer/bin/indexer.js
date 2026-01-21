@@ -346,10 +346,7 @@ export default {
               `Goldsky request failed (attempt ${attemptNumber}/${retriesLeft + attemptNumber}): ${error.message}`,
             )
           },
-          shouldRetry: ({ error }) => {
-            // Retry on 5xx errors
-            return error.statusCode >= 500 && error.statusCode < 600
-          },
+          shouldRetry: ({ error }) => error.statusCode >= 500,
         },
       ),
       // (placeholder for more data-fetching steps)
