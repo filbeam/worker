@@ -8,8 +8,20 @@ upload_source_maps = true
 [env.dev.vars]
 ENVIRONMENT = "dev"
 
+[[env.dev.analytics_engine_datasets]]
+binding = "RETRIEVAL_STATS"
+dataset = "filbeam-retrieval-stats-dev"
+
 [env.calibration.vars]
 ENVIRONMENT = "calibration"
 
+[[env.calibration.analytics_engine_datasets]]
+binding = "RETRIEVAL_STATS"
+dataset = "filbeam-retrieval-stats-calibration"
+
 [env.mainnet.vars]
 ENVIRONMENT = "mainnet"
+
+[[env.mainnet.analytics_engine_datasets]]
+binding = "RETRIEVAL_STATS"
+dataset = "filbeam-retrieval-stats-mainnet"

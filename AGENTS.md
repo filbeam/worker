@@ -100,6 +100,7 @@ Tests are colocated in `test/` directories within each worker.
 - Always follow existing code style
 - When testing object values always test them as a whole, not just individual properties
 - When testing array values always test them against the full array, not just individual items
+- Use partial matches (e.g., `expect.objectContaining()`, `expect.arrayContaining()`) when testing only relevant parts of the data; use `expect.any(Number)` for dynamic values like timestamps or IDs. This makes tests easier to understand by not relying on default values and avoids broken tests when defaults change
 
 ## Adding a New Worker
 
