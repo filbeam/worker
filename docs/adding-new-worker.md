@@ -51,6 +51,7 @@ Create a new directory `<worker-name>/` with:
 1. **Root `package.json`** - Add worker to `workspaces` array
 2. **Root `vitest.workspace.js`** - Add worker name to the array
 3. Run `npm run update-ts-project` - Updates root `tsconfig.json` references
+4. **`.github/workflows/ci.yml`** - Add deployment step in the `deploy` job
 
 ## Verification Steps
 
