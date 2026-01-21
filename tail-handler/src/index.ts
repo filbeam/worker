@@ -1,5 +1,5 @@
 export default {
-  tail(events: TraceItem[], env: Env, ctx: ExecutionContext) {
+  async tail(events: TraceItem[], env: Env, ctx: ExecutionContext) {
     for (const event of events) {
       const serviceName = extractServiceName(event.scriptTags, event.scriptName)
       const responseStatus = extractResponseStatus(event)

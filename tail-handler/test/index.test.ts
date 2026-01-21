@@ -14,7 +14,7 @@ describe('tail-handler worker', () => {
     ]
     const writeDataPointSpy = vi.spyOn(env.RETRIEVAL_STATS, 'writeDataPoint')
 
-    worker.tail(events, env, createExecutionContext())
+    await worker.tail(events, env, createExecutionContext())
 
     expect(writeDataPointSpy).toHaveBeenCalledTimes(2)
   })
@@ -25,7 +25,7 @@ describe('tail-handler worker', () => {
     ]
     const writeDataPointSpy = vi.spyOn(env.RETRIEVAL_STATS, 'writeDataPoint')
 
-    worker.tail(events, env, createExecutionContext())
+    await worker.tail(events, env, createExecutionContext())
 
     expect(writeDataPointSpy).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -38,7 +38,7 @@ describe('tail-handler worker', () => {
     const events = [buildTraceItem({ scriptTags: undefined })]
     const writeDataPointSpy = vi.spyOn(env.RETRIEVAL_STATS, 'writeDataPoint')
 
-    worker.tail(events, env, createExecutionContext())
+    await worker.tail(events, env, createExecutionContext())
 
     expect(writeDataPointSpy).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -51,7 +51,7 @@ describe('tail-handler worker', () => {
     const events = [buildTraceItem({ scriptTags: ['cf:environment=dev'] })]
     const writeDataPointSpy = vi.spyOn(env.RETRIEVAL_STATS, 'writeDataPoint')
 
-    worker.tail(events, env, createExecutionContext())
+    await worker.tail(events, env, createExecutionContext())
 
     expect(writeDataPointSpy).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -64,7 +64,7 @@ describe('tail-handler worker', () => {
     const events = [buildTraceItem({ scriptTags: undefined, scriptName: null })]
     const writeDataPointSpy = vi.spyOn(env.RETRIEVAL_STATS, 'writeDataPoint')
 
-    worker.tail(events, env, createExecutionContext())
+    await worker.tail(events, env, createExecutionContext())
 
     expect(writeDataPointSpy).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -77,7 +77,7 @@ describe('tail-handler worker', () => {
     const events = [buildTraceItem({ responseStatus: 404 })]
     const writeDataPointSpy = vi.spyOn(env.RETRIEVAL_STATS, 'writeDataPoint')
 
-    worker.tail(events, env, createExecutionContext())
+    await worker.tail(events, env, createExecutionContext())
 
     expect(writeDataPointSpy).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -96,7 +96,7 @@ describe('tail-handler worker', () => {
     ]
     const writeDataPointSpy = vi.spyOn(env.RETRIEVAL_STATS, 'writeDataPoint')
 
-    worker.tail(events, env, createExecutionContext())
+    await worker.tail(events, env, createExecutionContext())
 
     expect(writeDataPointSpy).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -109,7 +109,7 @@ describe('tail-handler worker', () => {
     const events = [buildTraceItem({ event: null })]
     const writeDataPointSpy = vi.spyOn(env.RETRIEVAL_STATS, 'writeDataPoint')
 
-    worker.tail(events, env, createExecutionContext())
+    await worker.tail(events, env, createExecutionContext())
 
     expect(writeDataPointSpy).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -122,7 +122,7 @@ describe('tail-handler worker', () => {
     const events = [buildTraceItem({ outcome: 'exception' })]
     const writeDataPointSpy = vi.spyOn(env.RETRIEVAL_STATS, 'writeDataPoint')
 
-    worker.tail(events, env, createExecutionContext())
+    await worker.tail(events, env, createExecutionContext())
 
     expect(writeDataPointSpy).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -135,7 +135,7 @@ describe('tail-handler worker', () => {
     const events = [buildTraceItem({ wallTime: 100, cpuTime: 25 })]
     const writeDataPointSpy = vi.spyOn(env.RETRIEVAL_STATS, 'writeDataPoint')
 
-    worker.tail(events, env, createExecutionContext())
+    await worker.tail(events, env, createExecutionContext())
 
     expect(writeDataPointSpy).toHaveBeenCalledWith(
       expect.objectContaining({
