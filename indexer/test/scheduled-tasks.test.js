@@ -67,15 +67,12 @@ describe('scheduled monitoring', () => {
     expect(mockFetch).toHaveBeenCalledTimes(1)
   })
 
-  it(
-    'retries on 502 error from Goldsky and eventually fails',
-    async () => {
+  it('retries on 502 error from Goldsky and eventually fails', async () => {
+    vi.useFakeTimers()
+    try {
       const mockFetch = vi.fn()
-      let callCount = 0
-      // Mock failures for first 3 attempts, then let it continue forever
-      // This tests that retries happen without waiting for all 10 retries
+      // Mock consecutive failures
       mockFetch.mockImplementation((url, opts) => {
-        callCount++
         expect(url).toMatch('goldsky')
         return new Response('error code: 502', {
           status: 502,
@@ -83,7 +80,6 @@ describe('scheduled monitoring', () => {
         })
       })
 
-      // Start the test but don't wait for completion
       const promise = workerImpl.scheduled(
         createScheduledController(),
         env,
@@ -94,17 +90,20 @@ describe('scheduled monitoring', () => {
         },
       )
 
-      // Wait a bit to ensure some retries happen
-      await new Promise((resolve) => setTimeout(resolve, 3000))
+      // Fast-forward through all retries
+      // With 10 retries and exponential backoff (1s, 2s, 4s, 8s, 16s, 32s, 64s, 128s, 256s, 512s)
+      // Total time would be 1023 seconds, so we advance more than that
+      await vi.advanceTimersByTimeAsync(1100000)
 
-      // Verify that retries happened
-      expect(callCount).toBeGreaterThanOrEqual(2)
-
-      // The promise will eventually reject, but we don't need to wait for it
-      promise.catch(() => {})
-    },
-    { timeout: 5000 },
-  )
+      await expect(promise).rejects.toThrow(
+        'Cannot fetch  (502): error code: 502',
+      )
+      // Should have been called 11 times (initial + 10 retries)
+      expect(mockFetch).toHaveBeenCalledTimes(11)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
 
   it('retries on 503 error and succeeds on retry', async () => {
     const mockFetch = vi.fn()
