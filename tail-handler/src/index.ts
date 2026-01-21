@@ -4,11 +4,15 @@ export default {
       const serviceName = extractServiceName(event.scriptTags, event.scriptName)
       const responseStatus = extractResponseStatus(event)
 
-      env.RETRIEVAL_STATS.writeDataPoint({
-        indexes: [serviceName],
-        doubles: [event.wallTime, event.cpuTime, responseStatus],
-        blobs: [event.outcome],
-      })
+      try {
+        env.RETRIEVAL_STATS.writeDataPoint({
+          indexes: [serviceName],
+          doubles: [event.wallTime, event.cpuTime, responseStatus],
+          blobs: [event.outcome],
+        })
+      } catch (error) {
+        console.error('Failed to write data point for event', error)
+      }
     }
   },
 } satisfies ExportedHandler<Env>

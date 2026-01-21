@@ -143,6 +143,30 @@ describe('tail-handler worker', () => {
       }),
     )
   })
+
+  it('continues processing events when writeDataPoint throws', async () => {
+    const events = [
+      buildTraceItem({ serviceName: 'first-service' }),
+      buildTraceItem({ serviceName: 'second-service' }),
+      buildTraceItem({ serviceName: 'third-service' }),
+    ]
+    const writeDataPointSpy = vi
+      .spyOn(env.RETRIEVAL_STATS, 'writeDataPoint')
+      .mockImplementationOnce(() => {
+        throw new Error('Simulated writeDataPoint failure')
+      })
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => {})
+
+    await worker.tail(events, env, createExecutionContext())
+
+    expect(writeDataPointSpy).toHaveBeenCalledTimes(3)
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      'Failed to write data point for event',
+      expect.any(Error),
+    )
+  })
 })
 
 interface TraceItemOptions {
