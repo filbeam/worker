@@ -95,7 +95,12 @@ Tests are colocated in `test/` directories within each worker.
 
 - Make sure to add or change tests when adding new or changing existing code
 - Always run `npm run lint:fix` and `npm test` after adding new code
+- Run `npm install` to update `package-lock.json` whenever you add, remove, or change dependencies
 - Use comments sparingly. Only comment complex code.
 - Always follow existing code style
 - When testing object values always test them as a whole, not just individual properties
 - When testing array values always test them against the full array, not just individual items
+
+## Adding a New Worker
+
+See [docs/adding-new-worker.md](docs/adding-new-worker.md) for detailed instructions.

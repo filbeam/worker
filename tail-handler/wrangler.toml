@@ -1,0 +1,15 @@
+name = "filbeam-tail-handler"
+main = "src/index.ts"
+compatibility_date = "2025-09-08"
+compatibility_flags = ["nodejs_compat"]
+logpush = true
+upload_source_maps = true
+
+[env.dev.vars]
+ENVIRONMENT = "dev"
+
+[env.calibration.vars]
+ENVIRONMENT = "calibration"
+
+[env.mainnet.vars]
+ENVIRONMENT = "mainnet"

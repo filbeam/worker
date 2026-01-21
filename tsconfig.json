@@ -16,6 +16,9 @@
       "path": "piece-retriever/tsconfig.json"
     },
     {
+      "path": "tail-handler/tsconfig.json"
+    },
+    {
       "path": "terminator/tsconfig.json"
     },
     {
