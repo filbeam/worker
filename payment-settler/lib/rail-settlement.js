@@ -48,12 +48,21 @@ export async function settleCDNPaymentRails({
   account,
   dataSetIds,
 }) {
-  const { request } = await publicClient.simulateContract({
+  const contractParams = {
     account,
     abi: filbeamAbi,
     address: env.FILBEAM_OPERATOR_CONTRACT_ADDRESS,
     functionName: 'settleCDNPaymentRails',
     args: [dataSetIds.map((id) => BigInt(id))],
+  }
+
+  const estimatedGas = await publicClient.estimateContractGas(contractParams)
+  // Add 20% buffer to avoid SysErrOutOfGas errors
+  const gasLimit = (estimatedGas * 120n) / 100n
+
+  const { request } = await publicClient.simulateContract({
+    ...contractParams,
+    gas: gasLimit,
   })
 
   return await walletClient.writeContract(request)
