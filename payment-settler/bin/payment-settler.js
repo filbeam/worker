@@ -51,8 +51,13 @@ export default {
       const chainClient = getChainClient(env)
 
       const results = await Promise.allSettled(
-        batches.map((batch) =>
-          settleCDNPaymentRails({ env, dataSetIds: batch, ...chainClient }),
+        batches.map((batch, ix) =>
+          settleCDNPaymentRails({
+            env,
+            batchId: `batch-${ix}`,
+            dataSetIds: batch,
+            ...chainClient,
+          }),
         ),
       )
 
@@ -70,7 +75,6 @@ export default {
         }
       }
 
-      console.log(`Settlement transactions sent: ${transactionHashes}`)
       if (transactionHashes.length > 0) {
         await env.TRANSACTION_MONITOR_WORKFLOW.createBatch(
           transactionHashes.map((transactionHash) => ({
