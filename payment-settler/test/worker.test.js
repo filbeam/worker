@@ -17,7 +17,6 @@ describe('payment settler scheduled handler', () => {
 
   const mockPublicClient = {
     simulateContract: vi.fn(),
-    estimateContractGas: vi.fn(),
   }
   beforeEach(() => {
     mockPublicClient.simulateContract.mockImplementation((params) => {
@@ -26,9 +25,6 @@ describe('payment settler scheduled handler', () => {
         request: { ...params, mockedRequest: true },
       })
     })
-  })
-  beforeEach(() => {
-    mockPublicClient.estimateContractGas.mockResolvedValue(1_000_000n)
   })
 
   const mockWalletClient = {
@@ -107,7 +103,6 @@ describe('payment settler scheduled handler', () => {
         address: '0xTestContractAddress',
         functionName: 'settleCDNPaymentRails',
         args: [[expect.any(BigInt)]],
-        gas: expect.any(BigInt),
       },
       {
         account: mockAccount,
@@ -115,7 +110,6 @@ describe('payment settler scheduled handler', () => {
         address: '0xTestContractAddress',
         functionName: 'settleCDNPaymentRails',
         args: [[expect.any(BigInt)]],
-        gas: expect.any(BigInt),
       },
     ])
 
@@ -127,7 +121,6 @@ describe('payment settler scheduled handler', () => {
         functionName: 'settleCDNPaymentRails',
         args: [[expect.any(BigInt)]],
         mockedRequest: true,
-        gas: expect.any(BigInt),
       },
       {
         account: mockAccount,
@@ -136,7 +129,6 @@ describe('payment settler scheduled handler', () => {
         functionName: 'settleCDNPaymentRails',
         args: [[expect.any(BigInt)]],
         mockedRequest: true,
-        gas: expect.any(BigInt),
       },
     ])
 
@@ -211,7 +203,6 @@ describe('payment settler scheduled handler', () => {
         address: '0xTestContractAddress',
         functionName: 'settleCDNPaymentRails',
         args: [[expect.any(BigInt)]],
-        gas: expect.any(BigInt),
       },
       {
         account: mockAccount,
@@ -219,7 +210,6 @@ describe('payment settler scheduled handler', () => {
         address: '0xTestContractAddress',
         functionName: 'settleCDNPaymentRails',
         args: [[expect.any(BigInt)]],
-        gas: expect.any(BigInt),
       },
     ])
     expect(writeContractCalls).toStrictEqual([
@@ -230,7 +220,6 @@ describe('payment settler scheduled handler', () => {
         functionName: 'settleCDNPaymentRails',
         args: [[expect.any(BigInt)]],
         mockedRequest: true,
-        gas: expect.any(BigInt),
       },
       {
         account: mockAccount,
@@ -239,7 +228,6 @@ describe('payment settler scheduled handler', () => {
         functionName: 'settleCDNPaymentRails',
         args: [[expect.any(BigInt)]],
         mockedRequest: true,
-        gas: expect.any(BigInt),
       },
     ])
   })
@@ -342,27 +330,6 @@ describe('payment settler scheduled handler', () => {
 
     expect(simulateContractCalls).toStrictEqual([])
     expect(writeContractCalls).toStrictEqual([])
-  })
-
-  it('should set gas limit to 120% of estimated gas', async () => {
-    const id1 = nextId()
-    await withDataSet(env, {
-      id: id1,
-      withCDN: true,
-      usageReportedUntil: getDaysAgo(5),
-    })
-
-    mockPublicClient.estimateContractGas.mockResolvedValue(1_000_000n)
-
-    await worker.scheduled(
-      undefined,
-      mockEnv,
-      {},
-      { getChainClient: mockGetChainClient },
-    )
-
-    expect(simulateContractCalls[0].gas).toBe(1_200_000n) // 120% of 1,000,000
-    expect(writeContractCalls[0].gas).toBe(1_200_000n)
   })
 
   it('should continue settling other batches when one batch fails', async () => {
