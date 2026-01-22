@@ -32,6 +32,27 @@ export class TransactionMonitorWorkflow extends WorkflowEntrypoint {
   async run({ payload }, step) {
     const { transactionHash, metadata } = payload
 
+    // Log environment diagnostics at workflow entry
+    console.log('TransactionMonitorWorkflow starting', {
+      transactionHash,
+      metadata,
+      envKeys: Object.keys(this.env || {}),
+      hasControllerPrivateKey: !!this.env?.FILBEAM_CONTROLLER_PRIVATE_KEY,
+      hasPaymentSettlerPrivateKey:
+        !!this.env?.FILBEAM_OPERATOR_PAYMENT_SETTLER_PRIVATE_KEY,
+      hasTransactionQueue: !!this.env?.TRANSACTION_QUEUE,
+    })
+
+    // Initialize chain client outside the step to catch initialization errors
+    let publicClient
+    try {
+      publicClient = getChainClient(this.env).publicClient
+      console.log('Chain client initialized successfully')
+    } catch (err) {
+      console.error('Failed to initialize chain client', err)
+      throw err
+    }
+
     try {
       // Wait for transaction receipt with timeout
       await step.do(
@@ -44,10 +65,24 @@ export class TransactionMonitorWorkflow extends WorkflowEntrypoint {
           },
         },
         async () => {
-          const { publicClient } = getChainClient(this.env)
-          return await publicClient.waitForTransactionReceipt({
-            hash: transactionHash,
-          })
+          console.log('Starting waitForTransactionReceipt', { transactionHash })
+          try {
+            const receipt = await publicClient.waitForTransactionReceipt({
+              hash: transactionHash,
+            })
+            console.log('Transaction receipt received', {
+              transactionHash,
+              status: receipt.status,
+              blockNumber: receipt.blockNumber?.toString(),
+            })
+            return receipt
+          } catch (error) {
+            console.error('RPC error in waitForTransactionReceipt', {
+              transactionHash,
+              error,
+            })
+            throw error
+          }
         },
       )
 
@@ -57,33 +92,46 @@ export class TransactionMonitorWorkflow extends WorkflowEntrypoint {
           'send confirmation to queue',
           { timeout: '30 seconds' },
           async () => {
-            await this.env.TRANSACTION_QUEUE.send({
+            const message = {
               type: metadata.onSuccess,
               transactionHash,
               ...metadata?.successData,
-            })
-
-            console.log(
-              `Sent ${metadata.onSuccess} message to queue for transaction ${transactionHash}`,
-            )
+            }
+            console.log('Sending success message to queue', { message })
+            try {
+              await this.env.TRANSACTION_QUEUE.send(message)
+              console.log('Success message sent to queue')
+            } catch (error) {
+              console.error('Failed to send success message to queue', error)
+              throw error
+            }
           },
         )
       }
     } catch (error) {
+      console.error('Workflow caught error', {
+        transactionHash,
+        error,
+      })
+
       // Handle failure - always send retry
       await step.do(
         'send to retry queue',
         { timeout: '30 seconds' },
         async () => {
-          await this.env.TRANSACTION_QUEUE.send({
+          const message = {
             type: 'transaction-retry',
             transactionHash,
             ...metadata?.retryData,
-          })
-
-          console.log(
-            `Sent retry message to queue for transaction ${transactionHash}`,
-          )
+          }
+          console.log('Sending retry message to queue', { message })
+          try {
+            await this.env.TRANSACTION_QUEUE.send(message)
+            console.log('Retry message sent to queue')
+          } catch (error) {
+            console.error('Failed to send retry message to queue', error)
+            throw error
+          }
         },
       )
     }
