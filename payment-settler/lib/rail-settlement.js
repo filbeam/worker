@@ -57,6 +57,7 @@ export async function settleCDNPaymentRails({
   }
 
   const estimatedGas = await publicClient.estimateContractGas(contractParams)
+  // Add 20% buffer to avoid SysErrOutOfGas errors
   const gasLimit = (estimatedGas * 120n) / 100n
 
   const { request } = await publicClient.simulateContract({
