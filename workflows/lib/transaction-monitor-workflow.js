@@ -46,9 +46,25 @@ export class TransactionMonitorWorkflow extends WorkflowEntrypoint {
           },
         },
         async () => {
-          return await publicClient.waitForTransactionReceipt({
+          console.log('Starting waitForTransactionReceipt', { transactionHash })
+
+          const receipt = await publicClient.waitForTransactionReceipt({
             hash: transactionHash,
           })
+
+          console.log('Transaction receipt received', {
+            transactionHash,
+            status: receipt.status,
+            blockNumber: receipt.blockNumber?.toString(),
+            gasUsed: receipt.gasUsed.toString(),
+          })
+
+          return {
+            status: receipt.status,
+            blockNumber: receipt.blockNumber?.toString() ?? null,
+            gasUsed: receipt.gasUsed.toString(),
+            transactionHash: receipt.transactionHash,
+          }
         },
       )
 
@@ -58,11 +74,16 @@ export class TransactionMonitorWorkflow extends WorkflowEntrypoint {
           'send confirmation to queue',
           { timeout: '30 seconds' },
           async () => {
-            await this.env.TRANSACTION_QUEUE.send({
+            const message = {
               type: metadata.onSuccess,
               transactionHash,
               ...metadata?.successData,
+            }
+
+            console.log(`Sending ${metadata.onSuccess}  message to queue`, {
+              message,
             })
+            await this.env.TRANSACTION_QUEUE.send(message)
 
             console.log(
               `Sent ${metadata.onSuccess} message to queue for transaction ${transactionHash}`,
@@ -71,19 +92,29 @@ export class TransactionMonitorWorkflow extends WorkflowEntrypoint {
         )
       }
     } catch (error) {
+      console.error('Workflow execution failed', {
+        transactionHash,
+        errorType: typeof error,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        errorStack: error instanceof Error ? error.stack : undefined,
+        error,
+      })
+
       // Handle failure - always send retry
       await step.do(
         'send to retry queue',
         { timeout: '30 seconds' },
         async () => {
-          await this.env.TRANSACTION_QUEUE.send({
+          const message = {
             type: 'transaction-retry',
             transactionHash,
             ...metadata?.retryData,
-          })
+          }
+          console.log('Sending transaction-retry message to queue', { message })
+          await this.env.TRANSACTION_QUEUE.send(message)
 
           console.log(
-            `Sent retry message to queue for transaction ${transactionHash}`,
+            `Sent transaction-retry message to queue for transaction ${transactionHash}`,
           )
         },
       )
