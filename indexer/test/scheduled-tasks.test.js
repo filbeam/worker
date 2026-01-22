@@ -1,4 +1,4 @@
-import { beforeEach, describe, it, expect, vi } from 'vitest'
+import { beforeEach, describe, it, expect, vi, afterEach } from 'vitest'
 import {
   env,
   createExecutionContext,
@@ -8,6 +8,10 @@ import { assertCloseToNow } from './test-helpers.js'
 import workerImpl from '../bin/indexer.js'
 
 describe('scheduled monitoring', () => {
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
   it('passes when everything is healthy', async () => {
     const mockFetch = vi.fn()
     mockFetch.mockImplementationOnce((url, opts) => {
@@ -69,40 +73,36 @@ describe('scheduled monitoring', () => {
 
   it('retries on 502 error from Goldsky and eventually fails', async () => {
     vi.useFakeTimers()
-    try {
-      const mockFetch = vi.fn()
-      // Mock consecutive failures
-      mockFetch.mockImplementation((url, opts) => {
-        expect(url).toMatch('goldsky')
-        return new Response('error code: 502', {
-          status: 502,
-          statusText: 'Bad Gateway',
-        })
+    const mockFetch = vi.fn()
+    // Mock consecutive failures
+    mockFetch.mockImplementation((url, opts) => {
+      expect(url).toMatch('goldsky')
+      return new Response('error code: 502', {
+        status: 502,
+        statusText: 'Bad Gateway',
       })
+    })
 
-      const promise = workerImpl.scheduled(
-        createScheduledController(),
-        env,
-        createExecutionContext(),
-        {
-          fetch: mockFetch,
-          checkIfAddressIsSanctioned: async () => false,
-        },
-      )
+    const promise = workerImpl.scheduled(
+      createScheduledController(),
+      env,
+      createExecutionContext(),
+      {
+        fetch: mockFetch,
+        checkIfAddressIsSanctioned: async () => false,
+      },
+    )
 
-      // Fast-forward through all retries
-      // With 10 retries and exponential backoff (1s, 2s, 4s, 8s, 16s, 32s, 64s, 128s, 256s, 512s)
-      // Total time would be 1023 seconds, so we advance more than that
-      await vi.advanceTimersByTimeAsync(1100000)
+    // Fast-forward through all retries
+    // With 10 retries and exponential backoff (1s, 2s, 4s, 8s, 16s, 32s, 64s, 128s, 256s, 512s)
+    // Total time would be 1023 seconds, so we advance more than that
+    await vi.advanceTimersByTimeAsync(1100000)
 
-      await expect(promise).rejects.toThrow(
-        'Cannot fetch  (502): error code: 502',
-      )
-      // Should have been called 11 times (initial + 10 retries)
-      expect(mockFetch).toHaveBeenCalledTimes(11)
-    } finally {
-      vi.useRealTimers()
-    }
+    await expect(promise).rejects.toThrow(
+      'Cannot fetch  (502): error code: 502',
+    )
+    // Should have been called 11 times (initial + 10 retries)
+    expect(mockFetch).toHaveBeenCalledTimes(11)
   })
 
   it('retries on 503 error and succeeds on retry', async () => {
