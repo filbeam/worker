@@ -32,6 +32,8 @@ export class TransactionMonitorWorkflow extends WorkflowEntrypoint {
   async run({ payload }, step) {
     const { transactionHash, metadata } = payload
 
+    const { publicClient } = getChainClient(this.env)
+
     try {
       // Wait for transaction receipt with timeout
       await step.do(
@@ -44,8 +46,6 @@ export class TransactionMonitorWorkflow extends WorkflowEntrypoint {
           },
         },
         async () => {
-          const { publicClient } = getChainClient(this.env)
-
           console.log('Starting waitForTransactionReceipt', { transactionHash })
 
           const receipt = await publicClient.waitForTransactionReceipt({
