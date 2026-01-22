@@ -75,7 +75,13 @@ export class TransactionMonitorWorkflow extends WorkflowEntrypoint {
               status: receipt.status,
               blockNumber: receipt.blockNumber?.toString(),
             })
-            return receipt
+
+            // Convert bigint values to strings for serialization
+            return JSON.parse(
+              JSON.stringify(receipt, (key, value) =>
+                typeof value === 'bigint' ? value.toString() : value,
+              ),
+            )
           } catch (error) {
             console.error('RPC error in waitForTransactionReceipt', {
               transactionHash,
