@@ -53,6 +53,32 @@ Create a new directory `<worker-name>/` with:
 3. Run `npm run update-ts-project` - Updates root `tsconfig.json` references
 4. **`.github/workflows/ci.yml`** - Add deployment step in the `deploy` job
 
+## Worker Registration
+
+After creating the worker directory, the worker must be registered in the repository so it is discoverable by tooling and CI.
+
+Update the worker registry file to include the new worker name:
+
+- `workers.ts` (or equivalent registry file)
+
+Add the worker name to the exported list/map following the existing pattern.
+
+
+4. **`.github/workflows/ci.yml`**
+   - Add the worker name to the deploy matrix
+   - Ensure calibration and mainnet deployments include the new worker
+   - Follow the existing worker entries as a template
+
+
+## Recommended Approach
+
+It is strongly recommended to copy an existing worker directory and modify it rather than creating files from scratch. This helps ensure:
+
+- Correct Wrangler configuration
+- Consistent scripts
+- Proper CI integration
+
+
 ## Verification Steps
 
 ```bash
@@ -100,3 +126,10 @@ If your worker needs access to the shared D1 database:
      }
    }
    ```
+
+## Common Pitfalls
+
+- Forgetting to register the worker in the worker registry
+- Missing CI deploy configuration
+- Including local-only changes (e.g. package-lock.json)
+- Forgetting to run `update-ts-project`
