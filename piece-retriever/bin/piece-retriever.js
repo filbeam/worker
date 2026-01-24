@@ -202,6 +202,29 @@ export default {
           'Cache-Control',
           `public, max-age=${env.CLIENT_CACHE_TTL}`,
         )
+        try {
+          const contentLengthHeader = retrievalResult.response.headers.get(
+            'content-length',
+          )
+          const estimatedEgress = contentLengthHeader
+            ? Number.parseInt(contentLengthHeader, 10) || 0
+            : 0
+          const remainingCdn = retrievalCandidate.cdnEgressQuota - BigInt(
+            estimatedEgress,
+          )
+          const remainingCacheMiss = retrievalCandidate.cacheMissEgressQuota -
+            BigInt(estimatedEgress)
+          response.headers.set(
+            'X-Cdn-Egress-Remaining',
+            String(remainingCdn < 0n ? 0n : remainingCdn),
+          )
+          response.headers.set(
+            'X-Cache-Miss-Egress-Remaining',
+            String(remainingCacheMiss < 0n ? 0n : remainingCacheMiss),
+          )
+        } catch (e) {
+          console.warn('Failed to compute egress remaining headers', e)
+        }
         return response
       }
 
@@ -288,6 +311,29 @@ export default {
         'Cache-Control',
         `public, max-age=${env.CLIENT_CACHE_TTL}`,
       )
+      try {
+        const contentLengthHeader = retrievalResult.response.headers.get(
+          'content-length',
+        )
+        const estimatedEgress = contentLengthHeader
+          ? Number.parseInt(contentLengthHeader, 10) || 0
+          : 0
+        const remainingCdn = retrievalCandidate.cdnEgressQuota - BigInt(
+          estimatedEgress,
+        )
+        const remainingCacheMiss = retrievalCandidate.cacheMissEgressQuota -
+          BigInt(estimatedEgress)
+        response.headers.set(
+          'X-Cdn-Egress-Remaining',
+          String(remainingCdn < 0n ? 0n : remainingCdn),
+        )
+        response.headers.set(
+          'X-Cache-Miss-Egress-Remaining',
+          String(remainingCacheMiss < 0n ? 0n : remainingCacheMiss),
+        )
+      } catch (e) {
+        console.warn('Failed to compute egress remaining headers', e)
+      }
       return response
     } catch (error) {
       const { status } = getErrorHttpStatusMessage(error)
