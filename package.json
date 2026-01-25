@@ -20,6 +20,7 @@
   ],
   "scripts": {
     "build:types": "npm run build:types --workspaces --if-present",
+    "validate-new-workers": "node scripts/validate-new-workers.js",
     "deploy:calibration": "npm run deploy:calibration --workspaces --if-present",
     "deploy:mainnet": "npm run deploy:mainnet --workspaces --if-present",
     "lint": "eslint && prettier --check . && tsc -b",
