@@ -78,7 +78,7 @@ Migrations are in `@./db/migrations/`. Applied automatically during deployment a
 
 ### Analytics
 
-Worker telemetry is collected via the `tail-handler` and stored in Cloudflare Analytics Engine. See [docs/worker-analytics.md](docs/worker-analytics.md) for the schema and example queries.
+See [docs/worker-analytics.md](docs/worker-analytics.md) for worker telemetry schema and example queries. Follow the instructions in that file when adding a new analytics dataset.
 
 ### Testing
 
