@@ -60,10 +60,6 @@ export async function settleCDNPaymentRails({
     args: [dataSetIds.map((id) => BigInt(id))],
   })
 
-  console.log(
-    `[${batchId}] Estimated gas limit: ${request.gas} for ${dataSetIds.length} data sets`,
-  )
-
   const txHash = await walletClient.writeContract(request)
   console.log(`[${batchId}] Settlement transaction sent: ${txHash}`)
   return txHash
