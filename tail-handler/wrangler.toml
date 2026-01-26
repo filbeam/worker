@@ -10,18 +10,18 @@ ENVIRONMENT = "dev"
 
 [[env.dev.analytics_engine_datasets]]
 binding = "RETRIEVAL_STATS"
-dataset = "filbeam-retrieval-stats-dev"
+dataset = "filbeam_retrieval_stats_dev"
 
 [env.calibration.vars]
 ENVIRONMENT = "calibration"
 
 [[env.calibration.analytics_engine_datasets]]
 binding = "RETRIEVAL_STATS"
-dataset = "filbeam-retrieval-stats-calibration"
+dataset = "filbeam_retrieval_stats_calibration"
 
 [env.mainnet.vars]
 ENVIRONMENT = "mainnet"
 
 [[env.mainnet.analytics_engine_datasets]]
 binding = "RETRIEVAL_STATS"
-dataset = "filbeam-retrieval-stats-mainnet"
+dataset = "filbeam_retrieval_stats_mainnet"
