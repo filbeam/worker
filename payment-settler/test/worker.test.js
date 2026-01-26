@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { env } from 'cloudflare:test'
 import { withDataSet, createNextId, getDaysAgo } from './test-helpers.js'
 import worker from '../bin/payment-settler.js'
@@ -9,34 +9,51 @@ describe('payment settler scheduled handler', () => {
   let simulateContractCalls
   let writeContractCalls
 
+  beforeEach(() => {
+    vi.resetAllMocks()
+  })
+
   const mockAccount = { address: '0xMockAccountAddress' }
 
   const mockPublicClient = {
-    simulateContract: vi.fn().mockImplementation((params) => {
+    simulateContract: vi.fn(),
+  }
+  beforeEach(() => {
+    mockPublicClient.simulateContract.mockImplementation((params) => {
       simulateContractCalls.push(params)
       return Promise.resolve({
         request: { ...params, mockedRequest: true },
       })
-    }),
-  }
+    })
+  })
 
   const mockWalletClient = {
-    writeContract: vi.fn().mockImplementation((request) => {
+    writeContract: vi.fn(),
+  }
+  beforeEach(() => {
+    mockWalletClient.writeContract.mockImplementation((request) => {
       writeContractCalls.push(request)
       return Promise.resolve('0xMockTransactionHash')
-    }),
-  }
+    })
+  })
 
-  const mockGetChainClient = vi.fn().mockReturnValue({
-    publicClient: mockPublicClient,
-    walletClient: mockWalletClient,
-    account: mockAccount,
+  const mockGetChainClient = vi.fn()
+  beforeEach(() => {
+    mockGetChainClient.mockReturnValue({
+      publicClient: mockPublicClient,
+      walletClient: mockWalletClient,
+      account: mockAccount,
+    })
   })
 
   const mockWorkflow = {
-    create: vi.fn().mockResolvedValue(undefined),
-    createBatch: vi.fn().mockResolvedValue(undefined),
+    create: vi.fn(),
+    createBatch: vi.fn(),
   }
+  beforeEach(() => {
+    mockWorkflow.create.mockResolvedValue(undefined)
+    mockWorkflow.createBatch.mockResolvedValue(undefined)
+  })
 
   const mockEnv = {
     ...env,
@@ -52,10 +69,6 @@ describe('payment settler scheduled handler', () => {
     writeContractCalls = []
 
     await env.DB.prepare('DELETE FROM data_sets').run()
-  })
-
-  afterEach(() => {
-    vi.clearAllMocks()
   })
 
   it('should successfully settle active data sets', async () => {
@@ -219,7 +232,7 @@ describe('payment settler scheduled handler', () => {
     ])
   })
 
-  it('should handle contract simulation errors', async () => {
+  it('should log error and continue when contract simulation fails', async () => {
     const id1 = nextId()
     await withDataSet(env, {
       id: id1,
@@ -232,17 +245,21 @@ describe('payment settler scheduled handler', () => {
 
     mockPublicClient.simulateContract.mockRejectedValue(simulationError)
 
-    await expect(
-      worker.scheduled(
-        undefined,
-        mockEnv,
-        {},
-        { getChainClient: mockGetChainClient },
-      ),
-    ).rejects.toThrow('Contract simulation failed')
+    // Should not throw - errors are logged
+    await worker.scheduled(
+      undefined,
+      mockEnv,
+      {},
+      { getChainClient: mockGetChainClient },
+    )
+
+    // No transactions should have been written
+    expect(writeContractCalls).toStrictEqual([])
+    // No workflow should have been created
+    expect(mockWorkflow.createBatch).not.toHaveBeenCalled()
   })
 
-  it('should handle write contract errors', async () => {
+  it('should log error and continue when write contract fails', async () => {
     const id1 = nextId()
     await withDataSet(env, {
       id: id1,
@@ -260,14 +277,18 @@ describe('payment settler scheduled handler', () => {
     })
     mockWalletClient.writeContract.mockRejectedValue(writeError)
 
-    await expect(
-      worker.scheduled(
-        undefined,
-        mockEnv,
-        {},
-        { getChainClient: mockGetChainClient },
-      ),
-    ).rejects.toThrow('Transaction failed')
+    // Should not throw - errors are logged
+    await worker.scheduled(
+      undefined,
+      mockEnv,
+      {},
+      { getChainClient: mockGetChainClient },
+    )
+
+    // Simulation was attempted
+    expect(simulateContractCalls).toHaveLength(1)
+    // No workflow should have been created since write failed
+    expect(mockWorkflow.createBatch).not.toHaveBeenCalled()
   })
 
   it('should handle mainnet environment correctly', async () => {
@@ -309,5 +330,77 @@ describe('payment settler scheduled handler', () => {
 
     expect(simulateContractCalls).toStrictEqual([])
     expect(writeContractCalls).toStrictEqual([])
+  })
+
+  it('should continue settling other batches when one batch fails', async () => {
+    const id1 = nextId()
+    const id2 = nextId()
+    const id3 = nextId()
+
+    // Seed three data sets - with SETTLEMENT_BATCH_SIZE=1, each gets its own batch
+    await withDataSet(env, {
+      id: id1,
+      withCDN: true,
+      usageReportedUntil: getDaysAgo(5),
+    })
+    await withDataSet(env, {
+      id: id2,
+      withCDN: true,
+      usageReportedUntil: getDaysAgo(6),
+    })
+    await withDataSet(env, {
+      id: id3,
+      withCDN: true,
+      usageReportedUntil: getDaysAgo(7),
+    })
+
+    // Make the second call fail
+    let callCount = 0
+    mockPublicClient.simulateContract.mockImplementation((params) => {
+      simulateContractCalls.push(params)
+      callCount++
+      if (callCount === 2) {
+        return Promise.reject(new Error('out of gas'))
+      }
+      return Promise.resolve({
+        request: { ...params, mockedRequest: true },
+      })
+    })
+
+    // Should not throw - errors are logged and other batches are still processed
+    await worker.scheduled(
+      undefined,
+      mockEnv,
+      {},
+      { getChainClient: mockGetChainClient },
+    )
+
+    // All three simulations were attempted
+    expect(simulateContractCalls).toHaveLength(3)
+
+    // Only two successful batches were written
+    expect(writeContractCalls).toHaveLength(2)
+
+    // Only two successful transactions were monitored
+    expect(mockWorkflow.createBatch).toHaveBeenCalledWith([
+      {
+        id: expect.stringMatching(
+          /^payment-settler-0xMockTransactionHash-\d+$/,
+        ),
+        params: {
+          transactionHash: '0xMockTransactionHash',
+          metadata: {},
+        },
+      },
+      {
+        id: expect.stringMatching(
+          /^payment-settler-0xMockTransactionHash-\d+$/,
+        ),
+        params: {
+          transactionHash: '0xMockTransactionHash',
+          metadata: {},
+        },
+      },
+    ])
   })
 })

@@ -90,6 +90,11 @@ Each worker has its own `vitest.config.js` that:
 
 Tests are colocated in `test/` directories within each worker.
 
+When adding new functionality that affects existing tests:
+
+- Keep existing tests focused on their original purpose - update them minimally using flexible matchers (e.g., `expect.any(BigInt)`) to accommodate the new behavior
+- Create a dedicated new test to verify the specific new behavior or calculation
+
 ### Code Style
 
 - ESLint via neostandard (style rules disabled, using Prettier)
