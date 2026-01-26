@@ -1,22 +1,31 @@
 # Worker Analytics
 
-FilBeam uses Cloudflare Analytics Engine to collect telemetry from all workers via the `tail-handler` worker.
+FilBeam uses Cloudflare Analytics Engine to collect telemetry from workers. Query the data using the [Cloudflare GraphQL Analytics API](https://developers.cloudflare.com/analytics/graphql-api/) or the dashboard.
 
-## Overview
+## Adding a New Dataset
 
-The `tail-handler` worker is a [Tail Worker](https://developers.cloudflare.com/workers/observability/logs/tail-workers/) that receives trace events from other workers and writes aggregated metrics to Analytics Engine. This provides visibility into worker performance and behavior without impacting request latency.
+When adding a new dataset, follow this structure:
 
-## Dataset Configuration
+- `## dataset_name` - second-level heading (without `filbeam_` prefix)
+  - `### Configuration` - binding and environment-specific dataset names
+  - `### Schema` - fields table
+  - `### Example Queries` - with individual queries as `####` headings
+
+## retrieval_stats
+
+Basic performance metrics for all workers, collected via the `tail-handler` [Tail Worker](https://developers.cloudflare.com/workers/observability/logs/tail-workers/).
+
+### Configuration
 
 Analytics are written to the `RETRIEVAL_STATS` binding, which maps to environment-specific datasets:
 
 | Environment   | Dataset Name                          |
 | ------------- | ------------------------------------- |
-| `dev`         | `filbeam-retrieval-stats-dev`         |
-| `calibration` | `filbeam-retrieval-stats-calibration` |
-| `mainnet`     | `filbeam-retrieval-stats-mainnet`     |
+| `dev`         | `filbeam_retrieval_stats_dev`         |
+| `calibration` | `filbeam_retrieval_stats_calibration` |
+| `mainnet`     | `filbeam_retrieval_stats_mainnet`     |
 
-## Schema
+### Schema
 
 Each data point contains the following fields:
 
@@ -28,11 +37,9 @@ Each data point contains the following fields:
 | `doubles[2]` | number | Response status. HTTP status code from fetch events, or `0` if not available (e.g., scheduled jobs) |
 | `blobs[0]`   | string | Outcome. Execution result: `"ok"`, `"exception"`, `"exceededCpu"`, `"exceededMemory"`, etc.         |
 
-## Example Queries
+### Example Queries
 
-Query the data using the [Cloudflare GraphQL Analytics API](https://developers.cloudflare.com/analytics/graphql-api/) or the dashboard.
-
-### Average response time by service
+#### Average response time by service
 
 ```sql
 SELECT
@@ -45,7 +52,7 @@ GROUP BY index1
 ORDER BY avg_wall_time_ms DESC
 ```
 
-### Error rate by service
+#### Error rate by service
 
 ```sql
 SELECT
@@ -59,7 +66,7 @@ GROUP BY index1
 ORDER BY error_rate DESC
 ```
 
-### Response status distribution
+#### Response status distribution
 
 ```sql
 SELECT
@@ -73,7 +80,7 @@ GROUP BY index1, double3
 ORDER BY index1, count DESC
 ```
 
-### P95 wall time by service
+#### P95 wall time by service
 
 ```sql
 SELECT
