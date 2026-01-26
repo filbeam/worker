@@ -86,7 +86,7 @@ describe('tail-handler worker', () => {
     )
   })
 
-  it('uses status code 0 when response is missing', async () => {
+  it('uses undefined status code when response is missing', async () => {
     const events = [
       buildTraceItem({
         event: {
@@ -100,12 +100,12 @@ describe('tail-handler worker', () => {
 
     expect(writeDataPointSpy).toHaveBeenCalledWith(
       expect.objectContaining({
-        doubles: [expect.any(Number), expect.any(Number), 0],
+        doubles: [expect.any(Number), expect.any(Number), undefined],
       }),
     )
   })
 
-  it('uses status code 0 when event is null', async () => {
+  it('uses undefined status code when event is null', async () => {
     const events = [buildTraceItem({ event: null })]
     const writeDataPointSpy = vi.spyOn(env.RETRIEVAL_STATS, 'writeDataPoint')
 
@@ -113,7 +113,7 @@ describe('tail-handler worker', () => {
 
     expect(writeDataPointSpy).toHaveBeenCalledWith(
       expect.objectContaining({
-        doubles: [expect.any(Number), expect.any(Number), 0],
+        doubles: [expect.any(Number), expect.any(Number), undefined],
       }),
     )
   })

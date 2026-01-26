@@ -2,7 +2,9 @@ export default {
   async tail(events: TraceItem[], env: Env, ctx: ExecutionContext) {
     for (const event of events) {
       const serviceName = extractServiceName(event.scriptTags, event.scriptName)
-      const responseStatus = extractResponseStatus(event)
+      // CF typings for `writeDataPoint` don't allow `undefined` values, despite the fact that
+      // the runtime does accept them and treats them as SQL value `null`.
+      const responseStatus = extractResponseStatus(event) as unknown as number
 
       try {
         env.RETRIEVAL_STATS.writeDataPoint({
@@ -26,7 +28,7 @@ function extractServiceName(
   return tag ? tag.slice(prefix.length) : (scriptName ?? 'unknown')
 }
 
-function extractResponseStatus(event: TraceItem): number {
+function extractResponseStatus(event: TraceItem): number | undefined {
   const fetchEvent = event.event as TraceItemFetchEventInfo | null
-  return fetchEvent?.response?.status ?? 0
+  return fetchEvent?.response?.status
 }
