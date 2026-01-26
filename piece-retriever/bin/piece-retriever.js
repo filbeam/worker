@@ -203,17 +203,15 @@ export default {
           `public, max-age=${env.CLIENT_CACHE_TTL}`,
         )
         try {
-          const contentLengthHeader = retrievalResult.response.headers.get(
-            'content-length',
-          )
+          const contentLengthHeader =
+            retrievalResult.response.headers.get('content-length')
           const estimatedEgress = contentLengthHeader
             ? Number.parseInt(contentLengthHeader, 10) || 0
             : 0
-          const remainingCdn = retrievalCandidate.cdnEgressQuota - BigInt(
-            estimatedEgress,
-          )
-          const remainingCacheMiss = retrievalCandidate.cacheMissEgressQuota -
-            BigInt(estimatedEgress)
+          const remainingCdn =
+            retrievalCandidate.cdnEgressQuota - BigInt(estimatedEgress)
+          const remainingCacheMiss =
+            retrievalCandidate.cacheMissEgressQuota - BigInt(estimatedEgress)
           response.headers.set(
             'X-Cdn-Egress-Remaining',
             String(remainingCdn < 0n ? 0n : remainingCdn),
@@ -312,17 +310,15 @@ export default {
         `public, max-age=${env.CLIENT_CACHE_TTL}`,
       )
       try {
-        const contentLengthHeader = retrievalResult.response.headers.get(
-          'content-length',
-        )
+        const contentLengthHeader =
+          retrievalResult.response.headers.get('content-length')
         const estimatedEgress = contentLengthHeader
           ? Number.parseInt(contentLengthHeader, 10) || 0
           : 0
-        const remainingCdn = retrievalCandidate.cdnEgressQuota - BigInt(
-          estimatedEgress,
-        )
-        const remainingCacheMiss = retrievalCandidate.cacheMissEgressQuota -
-          BigInt(estimatedEgress)
+        const remainingCdn =
+          retrievalCandidate.cdnEgressQuota - BigInt(estimatedEgress)
+        const remainingCacheMiss =
+          retrievalCandidate.cacheMissEgressQuota - BigInt(estimatedEgress)
         response.headers.set(
           'X-Cdn-Egress-Remaining',
           String(remainingCdn < 0n ? 0n : remainingCdn),
