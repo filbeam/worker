@@ -52,6 +52,7 @@ Create a new directory `<worker-name>/` with:
 2. **Root `vitest.workspace.js`** - Add worker name to the array
 3. Run `npm run update-ts-project` - Updates root `tsconfig.json` references
 4. **`.github/workflows/ci.yml`** - Add deployment step in the `deploy` job
+5. **`CLAUDE.md`** - Add the new worker to the "Monorepo Structure" list
 
 ## Worker Registration
 

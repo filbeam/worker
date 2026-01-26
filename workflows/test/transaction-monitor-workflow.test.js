@@ -36,7 +36,7 @@ describe('TransactionMonitorWorkflow', () => {
       workflow.env = mockEnv
 
       const transactionHash = '0xabc123'
-      const mockReceipt = { status: 'success', blockNumber: 12345n }
+      const mockReceipt = createMockReceipt({ transactionHash })
 
       mockStep.do.mockImplementation(async (name, options, callback) => {
         if (callback) return await callback()
@@ -72,7 +72,7 @@ describe('TransactionMonitorWorkflow', () => {
       workflow.env = mockEnv
 
       const transactionHash = '0xdef456'
-      const mockReceipt = { status: 'success', blockNumber: 12345n }
+      const mockReceipt = createMockReceipt({ transactionHash })
       const successData = { upToTimestamp: Date.now() }
 
       mockStep.do.mockImplementation(async (name, options, callback) => {
@@ -209,7 +209,7 @@ describe('TransactionMonitorWorkflow', () => {
       workflow.env = mockEnv
 
       const transactionHash = '0xmno345'
-      const mockReceipt = { status: 'success', blockNumber: 12345n }
+      const mockReceipt = createMockReceipt({ transactionHash })
 
       mockStep.do.mockImplementation(async (name, options, callback) => {
         if (callback) return await callback()
@@ -249,7 +249,9 @@ describe('TransactionMonitorWorkflow', () => {
       const { getChainClient } = await import('../lib/chain.js')
       getChainClient.mockReturnValue({
         publicClient: {
-          waitForTransactionReceipt: vi.fn().mockResolvedValue({}),
+          waitForTransactionReceipt: vi
+            .fn()
+            .mockResolvedValue(createMockReceipt({ transactionHash })),
         },
       })
 
@@ -272,7 +274,7 @@ describe('TransactionMonitorWorkflow', () => {
       const transactionHash = '0xstu901'
       const successData = { confirmationData: 'success' }
       const retryData = { retryInfo: 'retry' }
-      const mockReceipt = { status: 'success', blockNumber: 12345n }
+      const mockReceipt = createMockReceipt({ transactionHash })
 
       mockStep.do.mockImplementation(async (name, options, callback) => {
         if (callback) return await callback()
@@ -360,3 +362,21 @@ describe('TransactionMonitorWorkflow', () => {
     })
   })
 })
+
+/**
+ * @param {Partial<{
+ *   status: string
+ *   blockNumber: bigint
+ *   gasUsed: bigint
+ *   transactionHash: string
+ * }>} [overrides]
+ */
+function createMockReceipt(overrides = {}) {
+  return {
+    status: 'success',
+    blockNumber: 12345n,
+    gasUsed: 21000n,
+    transactionHash: '0xdefault',
+    ...overrides,
+  }
+}
