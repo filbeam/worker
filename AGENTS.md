@@ -48,6 +48,7 @@ npm run deploy:mainnet
 - @./db - Shared D1 database migrations
 - @./subgraph - GraphQL subgraph definitions for Goldsky/The Graph
 - @./x402-piece-gateway - x402 gateway worker for pieces with enabled x402 payments
+- @./tail-handler - Tail worker collecting telemetry to Analytics Engine
 
 ### Data Flow
 
@@ -74,6 +75,10 @@ Each worker has a `wrangler.toml` with three environments:
 ### Database
 
 Migrations are in `@./db/migrations/`. Applied automatically during deployment and tests via `wrangler d1 migrations apply`. All workers share the same D1 database.
+
+### Analytics
+
+Worker telemetry is collected via the `tail-handler` and stored in Cloudflare Analytics Engine. See [docs/worker-analytics.md](docs/worker-analytics.md) for the schema and example queries.
 
 ### Testing
 
@@ -105,6 +110,8 @@ When adding new functionality that affects existing tests:
 - Always follow existing code style
 - When testing object values always test them as a whole, not just individual properties
 - When testing array values always test them against the full array, not just individual items
+- Use partial matches (e.g., `expect.objectContaining()`, `expect.arrayContaining()`) when testing only relevant parts of the data; use `expect.any(Number)` for dynamic values like timestamps or IDs. This makes tests easier to understand by not relying on default values and avoids broken tests when defaults change
+- Update [docs/worker-analytics.md](docs/worker-analytics.md) when changing analytics schemas
 
 ## Adding a New Worker
 
