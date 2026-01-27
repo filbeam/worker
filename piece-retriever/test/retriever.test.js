@@ -1116,4 +1116,113 @@ describe('piece-retriever.fetch', () => {
     )
     expect(res.headers.get('X-Data-Set-ID')).toBe(String(dataSetId))
   })
+
+  it('sets FB-Cdn-Egress-Remaining and FB-Cache-Miss-Egress-Remaining headers for empty body responses', async () => {
+    const { pieceCid, dataSetId } = CONTENT_STORED_ON_CALIBRATION[0]
+    const contentLength = 100
+    const mockRetrieveFile = vi.fn().mockResolvedValue({
+      response: new Response(null, {
+        status: 200,
+        headers: { 'content-length': String(contentLength) }
+      }),
+      cacheMiss: true,
+    })
+    const ctx = createExecutionContext()
+    const req = withRequest(defaultPayerAddress, pieceCid)
+    const res = await worker.fetch(req, env, ctx, {
+      retrieveFile: mockRetrieveFile,
+    })
+    await waitOnExecutionContext(ctx)
+    expect(res.status).toBe(200)
+    expect(res.body).toBeNull()
+    expect(res.headers.get('FB-Cdn-Egress-Remaining')).toBe('0')
+    expect(res.headers.get('FB-Cache-Miss-Egress-Remaining')).toBe('0')
+  })
+
+  it('sets FB-Cdn-Egress-Remaining and FB-Cache-Miss-Egress-Remaining headers for streaming responses', async () => {
+    const { pieceCid, dataSetId } = CONTENT_STORED_ON_CALIBRATION[0]
+    const contentLength = 50
+    const stream = new ReadableStream({
+      start(controller) {
+        controller.close()
+      }
+    })
+    const mockRetrieveFile = vi.fn().mockResolvedValue({
+      response: new Response(stream, {
+        status: 200,
+        headers: { 'content-length': String(contentLength) }
+      }),
+      cacheMiss: true,
+    })
+    const ctx = createExecutionContext()
+    const req = withRequest(defaultPayerAddress, pieceCid)
+    const res = await worker.fetch(req, env, ctx, {
+      retrieveFile: mockRetrieveFile,
+    })
+    await waitOnExecutionContext(ctx)
+    expect(res.status).toBe(200)
+    expect(res.headers.get('FB-Cdn-Egress-Remaining')).toBe('50')
+    expect(res.headers.get('FB-Cache-Miss-Egress-Remaining')).toBe('50')
+  })
+
+  it('handles missing content-length header gracefully', async () => {
+    const { pieceCid, dataSetId } = CONTENT_STORED_ON_CALIBRATION[0]
+    const mockRetrieveFile = vi.fn().mockResolvedValue({
+      response: new Response('test content', { status: 200 }),
+      cacheMiss: true,
+    })
+    const ctx = createExecutionContext()
+    const req = withRequest(defaultPayerAddress, pieceCid)
+    const res = await worker.fetch(req, env, ctx, {
+      retrieveFile: mockRetrieveFile,
+    })
+    await waitOnExecutionContext(ctx)
+    expect(res.status).toBe(200)
+    expect(await res.text()).toBe('test content')
+    expect(res.headers.get('FB-Cdn-Egress-Remaining')).toBe('100')
+    expect(res.headers.get('FB-Cache-Miss-Egress-Remaining')).toBe('100')
+  })
+
+  it('handles invalid content-length header gracefully', async () => {
+    const { pieceCid, dataSetId } = CONTENT_STORED_ON_CALIBRATION[0]
+    const mockRetrieveFile = vi.fn().mockResolvedValue({
+      response: new Response('test content', {
+        status: 200,
+        headers: { 'content-length': 'invalid' }
+      }),
+      cacheMiss: true,
+    })
+    const ctx = createExecutionContext()
+    const req = withRequest(defaultPayerAddress, pieceCid)
+    const res = await worker.fetch(req, env, ctx, {
+      retrieveFile: mockRetrieveFile,
+    })
+    await waitOnExecutionContext(ctx)
+    expect(res.status).toBe(200)
+    expect(await res.text()).toBe('test content')
+    expect(res.headers.get('FB-Cdn-Egress-Remaining')).toBe('100')
+    expect(res.headers.get('FB-Cache-Miss-Egress-Remaining')).toBe('100')
+  })
+
+  it('measures egress bytes correctly for streaming responses', async () => {
+    const { pieceCid, dataSetId } = CONTENT_STORED_ON_CALIBRATION[0]
+    const content = 'x'.repeat(75)
+    const mockRetrieveFile = vi.fn().mockResolvedValue({
+      response: new Response(content, {
+        status: 200,
+        headers: { 'content-length': '75' }
+      }),
+      cacheMiss: true,
+    })
+    const ctx = createExecutionContext()
+    const req = withRequest(defaultPayerAddress, pieceCid)
+    const res = await worker.fetch(req, env, ctx, {
+      retrieveFile: mockRetrieveFile,
+    })
+    await waitOnExecutionContext(ctx)
+    expect(res.status).toBe(200)
+    expect(await res.text()).toBe(content)
+    expect(res.headers.get('FB-Cdn-Egress-Remaining')).toBe('25')
+    expect(res.headers.get('FB-Cache-Miss-Egress-Remaining')).toBe('25')
+  })
 })

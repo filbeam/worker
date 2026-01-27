@@ -226,7 +226,6 @@ export default {
         return response
       }
 
-      // Stream, count bytes and validate
       let egressBytes = 0
       /** @type {number | null} */
       let firstByteAt = null
@@ -297,7 +296,6 @@ export default {
         })(),
       )
 
-      // Return immediately, proxying the transformed response
       const response = new Response(returnedStream, {
         status: retrievalResult.response.status,
         statusText: retrievalResult.response.statusText,
