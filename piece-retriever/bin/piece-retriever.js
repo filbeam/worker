@@ -24,6 +24,9 @@ export default {
    * @returns
    */
   async fetch(request, env, ctx, { retrieveFile = defaultRetrieveFile } = {}) {
+    request.signal.addEventListener('abort', () => {
+      console.log('The request was aborted!', { url: request.url })
+    })
     try {
       return await this._fetch(request, env, ctx, { retrieveFile })
     } catch (error) {
