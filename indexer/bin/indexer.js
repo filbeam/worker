@@ -316,44 +316,52 @@ export default {
    * @param {typeof globalThis.fetch} options.fetch
    */
   async checkGoldskyStatus(env, { fetch }) {
-    const [subgraph] = await Promise.allSettled([
-      (async () => {
-        const res = await fetch(env.GOLDSKY_SUBGRAPH_URL, {
-          method: 'POST',
-          body: JSON.stringify({
-            query: `
-              query {
-                _meta {
-                  hasIndexingErrors
-                  block {
-                    number
-                  }
-                }
-              }
-            `,
-          }),
-        })
-        const { data } = await res.json()
-        return data
-      })(),
-      // (placeholder for more data-fetching steps)
-    ])
-    const alerts = []
-    if (subgraph.status === 'rejected') {
-      alerts.push(
-        `Can't access subgraph: ${subgraph.reason.stack ?? subgraph.reason.message ?? subgraph.reason}`,
+    const query = `
+      query {
+        _meta {
+          hasIndexingErrors
+          block {
+            number
+          }
+        }
+      }
+    `
+
+    /** @type {Response} */
+    let res
+    try {
+      res = await fetch(env.GOLDSKY_SUBGRAPH_URL, {
+        method: 'POST',
+        body: JSON.stringify({ query }),
+      })
+    } catch (err) {
+      console.warn(
+        `Goldsky fetch failed: ${err instanceof Error ? err.message : String(err)}`,
       )
-    } else if (
-      typeof subgraph.value?._meta !== 'object' ||
-      subgraph.value?._meta === null
-    ) {
-      console.warn(`Unexpected subgraph response: ${subgraph.value}`)
-    } else if (subgraph.value._meta.hasIndexingErrors) {
-      alerts.push('Goldsky has indexing errors')
+      return
     }
-    // (placeholder for more alerting conditions)
-    if (alerts.length) {
-      throw new Error(alerts.join(' & '))
+
+    if (!res.ok) {
+      let errorText
+      try {
+        errorText = await res.text()
+      } catch (err) {
+        const details = err instanceof Error ? err.stack : String(err)
+        errorText = 'Error reading response body: ' + details
+      }
+      console.warn(`Goldsky returned ${res.status}: ${errorText}`)
+      return
     }
+
+    const { data } = await res.json()
+
+    if (typeof data?._meta !== 'object' || data?._meta === null) {
+      console.warn(`Unexpected Goldsky response: ${JSON.stringify(data)}`)
+      return
+    }
+
+    env.GOLDSKY_STATS.writeDataPoint({
+      doubles: [data._meta.block.number, data._meta.hasIndexingErrors ? 1 : 0],
+    })
   },
 }
