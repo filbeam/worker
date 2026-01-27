@@ -214,11 +214,11 @@ export default {
             retrievalCandidate.cacheMissEgressQuota - BigInt(estimatedEgress)
           response.headers.set(
             'FB-Cdn-Egress-Remaining',
-            String(remainingCdn < 0n ? 0n : remainingCdn),
+            String(remainingCdn),
           )
           response.headers.set(
             'FB-Cache-Miss-Egress-Remaining',
-            String(remainingCacheMiss < 0n ? 0n : remainingCacheMiss),
+            String(remainingCacheMiss),
           )
         } catch (e) {
           console.warn('Failed to compute egress remaining headers', e)
@@ -226,7 +226,7 @@ export default {
         return response
       }
 
-      // Stream, count bytes and validate (a cache miss)
+      // Stream, count bytes and validate
       let egressBytes = 0
       /** @type {number | null} */
       let firstByteAt = null
@@ -321,11 +321,11 @@ export default {
           retrievalCandidate.cacheMissEgressQuota - BigInt(estimatedEgress)
         response.headers.set(
           'FB-Cdn-Egress-Remaining',
-          String(remainingCdn < 0n ? 0n : remainingCdn),
+          String(remainingCdn),
         )
         response.headers.set(
           'FB-Cache-Miss-Egress-Remaining',
-          String(remainingCacheMiss < 0n ? 0n : remainingCacheMiss),
+          String(remainingCacheMiss),
         )
       } catch (e) {
         console.warn('Failed to compute egress remaining headers', e)
