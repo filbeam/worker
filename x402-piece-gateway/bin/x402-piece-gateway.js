@@ -26,6 +26,9 @@ export default {
     ctx,
     { useFacilitator = defaultUseFacilitator } = {},
   ) {
+    request.signal.addEventListener('abort', () => {
+      console.log('The request was aborted!', { url: request.url })
+    })
     try {
       return await this._fetch(request, env, ctx, { useFacilitator })
     } catch (error) {
