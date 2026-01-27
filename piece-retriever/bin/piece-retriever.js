@@ -213,11 +213,11 @@ export default {
           const remainingCacheMiss =
             retrievalCandidate.cacheMissEgressQuota - BigInt(estimatedEgress)
           response.headers.set(
-            'X-Cdn-Egress-Remaining',
+            'FB-Cdn-Egress-Remaining',
             String(remainingCdn < 0n ? 0n : remainingCdn),
           )
           response.headers.set(
-            'X-Cache-Miss-Egress-Remaining',
+            'FB-Cache-Miss-Egress-Remaining',
             String(remainingCacheMiss < 0n ? 0n : remainingCacheMiss),
           )
         } catch (e) {
@@ -304,7 +304,7 @@ export default {
         headers: retrievalResult.response.headers,
       })
       setContentSecurityPolicy(response)
-      response.headers.set('X-Data-Set-ID', retrievalCandidate.dataSetId)
+      response.headers.set('FB-Data-Set-ID', retrievalCandidate.dataSetId)
       response.headers.set(
         'Cache-Control',
         `public, max-age=${env.CLIENT_CACHE_TTL}`,
@@ -320,11 +320,11 @@ export default {
         const remainingCacheMiss =
           retrievalCandidate.cacheMissEgressQuota - BigInt(estimatedEgress)
         response.headers.set(
-          'X-Cdn-Egress-Remaining',
+          'FB-Cdn-Egress-Remaining',
           String(remainingCdn < 0n ? 0n : remainingCdn),
         )
         response.headers.set(
-          'X-Cache-Miss-Egress-Remaining',
+          'FB-Cache-Miss-Egress-Remaining',
           String(remainingCacheMiss < 0n ? 0n : remainingCacheMiss),
         )
       } catch (e) {
