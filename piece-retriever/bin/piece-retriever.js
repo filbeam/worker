@@ -236,10 +236,10 @@ export default {
       const readableStream = retrievalResult.response.body
         .pipeThrough(measureStream)
         .pipeThrough(responseFinishedStream)
-      const errorWatchStream = new TransformStream()
+      const returnedStream = new TransformStream()
 
       ctx.waitUntil(
-        readableStream.pipeTo(errorWatchStream.writable).catch((err) => {
+        readableStream.pipeTo(returnedStream.writable).catch((err) => {
           console.error('Error in server stream:', err)
         }),
       )
@@ -287,7 +287,7 @@ export default {
       )
 
       // Return immediately, proxying the transformed response
-      const response = new Response(errorWatchStream.readable, {
+      const response = new Response(returnedStream.readable, {
         status: retrievalResult.response.status,
         statusText: retrievalResult.response.statusText,
         headers: retrievalResult.response.headers,
