@@ -360,8 +360,13 @@ export default {
       return
     }
 
+    const lastIndexedBlock = data._meta.block?.number
+    const hasIndexingErrors = data._meta.hasIndexingErrors
+
+    console.log('Goldsky status', { lastIndexedBlock, hasIndexingErrors })
+
     env.GOLDSKY_STATS.writeDataPoint({
-      doubles: [data._meta.block.number, data._meta.hasIndexingErrors ? 1 : 0],
+      doubles: [lastIndexedBlock, hasIndexingErrors ? 1 : 0],
     })
   },
 }
