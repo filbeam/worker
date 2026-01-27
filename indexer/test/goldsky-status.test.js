@@ -74,6 +74,18 @@ describe('checkGoldskyStatus', () => {
     )
   })
 
+  it('warns and returns without data point when fetch throws a network error', async () => {
+    const mockFetch = vi.fn().mockRejectedValue(new Error('Network error'))
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    await workerImpl.checkGoldskyStatus(testEnv, { fetch: mockFetch })
+
+    expect(writeDataPoint).not.toHaveBeenCalled()
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('Network error'),
+    )
+  })
+
   it('warns and returns without data point when response is malformed', async () => {
     const mockFetch = vi
       .fn()

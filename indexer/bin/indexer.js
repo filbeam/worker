@@ -316,21 +316,30 @@ export default {
    * @param {typeof globalThis.fetch} options.fetch
    */
   async checkGoldskyStatus(env, { fetch }) {
-    const res = await fetch(env.GOLDSKY_SUBGRAPH_URL, {
-      method: 'POST',
-      body: JSON.stringify({
-        query: `
-          query {
-            _meta {
-              hasIndexingErrors
-              block {
-                number
-              }
-            }
+    const query = `
+      query {
+        _meta {
+          hasIndexingErrors
+          block {
+            number
           }
-        `,
-      }),
-    })
+        }
+      }
+    `
+
+    /** @type {Response} */
+    let res
+    try {
+      res = await fetch(env.GOLDSKY_SUBGRAPH_URL, {
+        method: 'POST',
+        body: JSON.stringify({ query }),
+      })
+    } catch (err) {
+      console.warn(
+        `Goldsky fetch failed: ${err instanceof Error ? err.message : String(err)}`,
+      )
+      return
+    }
 
     if (!res.ok) {
       let errorText
