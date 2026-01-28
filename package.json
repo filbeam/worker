@@ -30,13 +30,13 @@
   "prettier": "@checkernetwork/prettier-config",
   "devDependencies": {
     "@checkernetwork/prettier-config": "^1.0.1",
-    "@cloudflare/vitest-pool-workers": "^0.12.6",
+    "@cloudflare/vitest-pool-workers": "^0.12.7",
     "@npmcli/map-workspaces": "^5.0.3",
     "@types/node": "^25.0.10",
     "neostandard": "^0.12.1",
     "prettier": "^3.8.1",
     "typescript": "^5.9.3",
     "vitest": "3.1.4",
-    "wrangler": "^4.59.2"
+    "wrangler": "^4.61.0"
   }
 }

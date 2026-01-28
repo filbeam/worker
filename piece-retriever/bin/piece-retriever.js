@@ -24,6 +24,9 @@ export default {
    * @returns
    */
   async fetch(request, env, ctx, { retrieveFile = defaultRetrieveFile } = {}) {
+    request.signal.addEventListener('abort', () => {
+      console.log('The request was aborted!', { url: request.url })
+    })
     try {
       return await this._fetch(request, env, ctx, { retrieveFile })
     } catch (error) {
@@ -277,6 +280,28 @@ export default {
       const { promise: responseFinishedPromise, resolve: responseFinished } =
         Promise.withResolvers()
 
+      /** @type {number | null} */
+      let minChunkSize = null
+      /** @type {number | null} */
+      let maxChunkSize = null
+      let bytesReceived = 0
+
+      const logStreamStats = () => {
+        console.log(
+          'Stream stats ' +
+            `minChunkSize=${minChunkSize} ` +
+            `maxChunkSize=${maxChunkSize} ` +
+            `bytesReceived=${bytesReceived} ` +
+            `url=${request.url} ` +
+            `cf-ray=${request.headers.get('cf-ray')}`,
+        )
+        minChunkSize = null
+        maxChunkSize = null
+        bytesReceived = 0
+      }
+
+      const iv = setInterval(logStreamStats, 10_000)
+
       const measureStream = new TransformStream({
         transform(chunk, controller) {
           if (firstByteAt === null) {
@@ -284,7 +309,18 @@ export default {
             firstByteAt = performance.now()
           }
           egressBytes += chunk.length
+          bytesReceived += chunk.length
+          if (minChunkSize === null || chunk.length < minChunkSize) {
+            minChunkSize = chunk.length
+          }
+          if (maxChunkSize === null || chunk.length > maxChunkSize) {
+            maxChunkSize = chunk.length
+          }
           controller.enqueue(chunk)
+        },
+        flush() {
+          logStreamStats()
+          clearInterval(iv)
         },
       })
 
@@ -294,9 +330,17 @@ export default {
           responseFinished(null)
         },
       })
-      const returnedStream = retrievalResult.response.body
+      const readableStream = retrievalResult.response.body
         .pipeThrough(measureStream)
         .pipeThrough(responseFinishedStream)
+      const returnedStream = new TransformStream()
+
+      ctx.waitUntil(
+        readableStream.pipeTo(returnedStream.writable).catch((err) => {
+          console.error('Error in server stream:', err)
+          logStreamStats()
+        }),
+      )
 
       ctx.waitUntil(
         (async () => {

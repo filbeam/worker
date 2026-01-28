@@ -8,7 +8,7 @@ import { assertCloseToNow } from './test-helpers.js'
 import workerImpl from '../bin/indexer.js'
 
 describe('scheduled monitoring', () => {
-  it('passes when everything is healthy', async () => {
+  it('checks goldsky status and fetches subgraph data', async () => {
     const mockFetch = vi.fn()
     mockFetch.mockImplementationOnce((url, opts) => {
       expect(url).toMatch('goldsky')
@@ -28,43 +28,18 @@ describe('scheduled monitoring', () => {
         }),
       )
     })
+    const writeDataPoint = vi.fn()
+    const testEnv = { ...env, GOLDSKY_STATS: { writeDataPoint } }
     await workerImpl.scheduled(
       createScheduledController(),
-      env,
+      testEnv,
       createExecutionContext(),
       { fetch: mockFetch, checkIfAddressIsSanctioned: async () => false },
     )
     expect(mockFetch).toHaveBeenCalledTimes(1)
-  })
-  it('fails when there is a goldsky indexing issue', async () => {
-    const mockFetch = vi.fn()
-    mockFetch.mockImplementationOnce((url, opts) => {
-      expect(url).toMatch('goldsky')
-      return new Response(
-        JSON.stringify({
-          data: {
-            _meta: {
-              hasIndexingErrors: true,
-              block: {
-                number: 100,
-              },
-            },
-          },
-        }),
-      )
+    expect(writeDataPoint).toHaveBeenCalledWith({
+      doubles: [100, 0],
     })
-    await expect(
-      workerImpl.scheduled(
-        createScheduledController(),
-        env,
-        createExecutionContext(),
-        {
-          fetch: mockFetch,
-          checkIfAddressIsSanctioned: async () => false,
-        },
-      ),
-    ).rejects.toThrow('Goldsky has indexing errors')
-    expect(mockFetch).toHaveBeenCalledTimes(1)
   })
 })
 
@@ -85,9 +60,10 @@ describe('scheduled wallet screening', () => {
       .bind(TEST_WALLET)
       .run()
 
+    const testEnv = { ...env, GOLDSKY_STATS: { writeDataPoint: vi.fn() } }
     await workerImpl.scheduled(
       createScheduledController(),
-      env,
+      testEnv,
       createExecutionContext(),
       {
         fetch: async (url, opts) => {

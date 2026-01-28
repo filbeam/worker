@@ -4,7 +4,7 @@ FilBeam uses Cloudflare Analytics Engine to collect telemetry from workers. Quer
 
 ## Adding a New Dataset
 
-When adding a new dataset, follow this structure:
+When adding a new dataset, add it at the end of the file using this structure:
 
 - `## dataset_name` - second-level heading (without `filbeam_` prefix)
   - `### Configuration` - binding and environment-specific dataset names
@@ -90,4 +90,55 @@ FROM filbeam_retrieval_stats_mainnet
 WHERE timestamp > NOW() - INTERVAL '1' HOUR
 GROUP BY index1
 ORDER BY p95_wall_time_ms DESC
+```
+
+## goldsky_stats
+
+Goldsky subgraph health and indexing progress metrics, written by the `indexer` worker.
+
+### Configuration
+
+Analytics are written to the `GOLDSKY_STATS` binding, which maps to environment-specific datasets:
+
+| Environment   | Dataset Name                        |
+| ------------- | ----------------------------------- |
+| `dev`         | `filbeam_goldsky_stats_dev`         |
+| `calibration` | `filbeam_goldsky_stats_calibration` |
+| `mainnet`     | `filbeam_goldsky_stats_mainnet`     |
+
+### Schema
+
+Each data point contains the following fields:
+
+| Field        | Type   | Description                       |
+| ------------ | ------ | --------------------------------- |
+| `doubles[0]` | number | Latest indexed block number       |
+| `doubles[1]` | number | Has indexing errors (1=yes, 0=no) |
+
+### Example Queries
+
+#### Latest indexed block over time
+
+```sql
+SELECT
+  toStartOfMinute(timestamp) AS minute,
+  MAX(double1) AS latest_block
+FROM filbeam_goldsky_stats_mainnet
+WHERE timestamp > NOW() - INTERVAL '1' HOUR
+GROUP BY minute
+ORDER BY minute DESC
+```
+
+#### Indexing error rate
+
+```sql
+SELECT
+  toStartOfHour(timestamp) AS hour,
+  COUNT(*) AS checks,
+  SUM(double2) AS errors,
+  SUM(double2) / COUNT(*) AS error_rate
+FROM filbeam_goldsky_stats_mainnet
+WHERE timestamp > NOW() - INTERVAL '24' HOUR
+GROUP BY hour
+ORDER BY hour DESC
 ```
