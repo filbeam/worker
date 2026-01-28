@@ -6,73 +6,73 @@ sources:
     type: subgraph_entity
     subgraphs:
       - name: filbeam-mainnet
-        version: 1.0.0
+        version: 1.1.0
     name: data_set_created
   source__service_provider_registry__product_added:
     type: subgraph_entity
     subgraphs:
       - name: service-provider-registry-mainnet
-        version: 1.0.0
+        version: 1.1.0
     name: product_added
   filbeam__piece_added:
     type: subgraph_entity
     subgraphs:
       - name: filbeam-mainnet
-        version: 1.0.0
+        version: 1.1.0
     name: piece_added
   filbeam__service_terminated:
     type: subgraph_entity
     subgraphs:
       - name: filbeam-mainnet
-        version: 1.0.0
+        version: 1.1.0
     name: service_terminated
   source__service_provider_registry__product_updated:
     type: subgraph_entity
     subgraphs:
       - name: service-provider-registry-mainnet
-        version: 1.0.0
+        version: 1.1.0
     name: product_updated
   filbeam__pieces_removed:
     type: subgraph_entity
     subgraphs:
       - name: filbeam-mainnet
-        version: 1.0.0
+        version: 1.1.0
     name: pieces_removed
   filbeam__cdn_service_terminated:
     type: subgraph_entity
     subgraphs:
       - name: filbeam-mainnet
-        version: 1.0.0
+        version: 1.1.0
     name: cdn_service_terminated
   filbeam__cdn_payment_rails_topped_up:
     type: subgraph_entity
     subgraphs:
       - name: filbeam-mainnet
-        version: 1.0.0
+        version: 1.1.0
     name: cdn_payment_rails_topped_up
   filbeam__usage_reported:
     type: subgraph_entity
     subgraphs:
       - name: filbeam-mainnet
-        version: 1.0.0
+        version: 1.1.0
     name: usage_reported
   filbeam__cdn_payment_settled:
     type: subgraph_entity
     subgraphs:
       - name: filbeam-mainnet
-        version: 1.0.0
+        version: 1.1.0
     name: cdn_payment_settled
   source__service_provider_registry__product_removed:
     type: subgraph_entity
     subgraphs:
       - name: service-provider-registry-mainnet
-        version: 1.0.0
+        version: 1.1.0
     name: product_removed
   source__service_provider_registry__provider_removed:
     type: subgraph_entity
     subgraphs:
       - name: service-provider-registry-mainnet
-        version: 1.0.0
+        version: 1.1.0
     name: provider_removed
 transforms: {}
 sinks:
