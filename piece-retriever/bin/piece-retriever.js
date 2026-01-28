@@ -384,7 +384,7 @@ export default {
         })(),
       )
 
-      const response = new Response(returnedStream, {
+      const response = new Response(returnedStream.readable, {
         status: retrievalResult.response.status,
         statusText: retrievalResult.response.statusText,
         headers: retrievalResult.response.headers,
