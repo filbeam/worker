@@ -1463,6 +1463,92 @@ describe('POST /fwss/service-terminated', () => {
   })
 })
 
+describe('POST /filbeam-operator/usage-reported', () => {
+  it('returns 400 if payload is invalid', async () => {
+    const req = new Request('https://host/filbeam-operator/usage-reported', {
+      method: 'POST',
+      headers: {
+        [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+      },
+      body: JSON.stringify({}),
+    })
+    const res = await workerImpl.fetch(req, env)
+    expect(res.status).toBe(400)
+    expect(await res.text()).toBe('Bad Request')
+  })
+
+  it('stores usage_reported_until for a data set', async () => {
+    const dataSetId = randomId()
+    const req = new Request('https://host/filbeam-operator/usage-reported', {
+      method: 'POST',
+      headers: {
+        [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+      },
+      body: JSON.stringify({
+        data_set_id: dataSetId,
+        to_epoch: '500',
+      }),
+    })
+    const res = await workerImpl.fetch(req, env)
+    expect(res.status).toBe(200)
+    expect(await res.text()).toBe('OK')
+
+    const row = await env.DB.prepare(
+      'SELECT * FROM data_sets_settlements WHERE data_set_id = ?',
+    )
+      .bind(dataSetId)
+      .first()
+    expect(row).toEqual({
+      data_set_id: dataSetId,
+      usage_reported_until: 500,
+      payments_settled_until: 0,
+    })
+  })
+})
+
+describe('POST /filbeam-operator/cdn-settlement', () => {
+  it('returns 400 if payload is invalid', async () => {
+    const req = new Request('https://host/filbeam-operator/cdn-settlement', {
+      method: 'POST',
+      headers: {
+        [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+      },
+      body: JSON.stringify({}),
+    })
+    const res = await workerImpl.fetch(req, env)
+    expect(res.status).toBe(400)
+    expect(await res.text()).toBe('Bad Request')
+  })
+
+  it('stores payments_settled_until for a data set', async () => {
+    const dataSetId = randomId()
+    const req = new Request('https://host/filbeam-operator/cdn-settlement', {
+      method: 'POST',
+      headers: {
+        [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+      },
+      body: JSON.stringify({
+        data_set_id: dataSetId,
+        block_number: 12345,
+      }),
+    })
+    const res = await workerImpl.fetch(req, env)
+    expect(res.status).toBe(200)
+    expect(await res.text()).toBe('OK')
+
+    const row = await env.DB.prepare(
+      'SELECT * FROM data_sets_settlements WHERE data_set_id = ?',
+    )
+      .bind(dataSetId)
+      .first()
+    expect(row).toEqual({
+      data_set_id: dataSetId,
+      usage_reported_until: 0,
+      payments_settled_until: 12345,
+    })
+  })
+})
+
 describe('POST /fwss/cdn-payment-rails-topped-up', () => {
   beforeEach(async () => {
     await env.DB.exec('DELETE FROM data_sets')

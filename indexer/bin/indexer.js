@@ -14,6 +14,10 @@ import {
   removeDataSetPieces,
   insertDataSetPiece,
 } from '../lib/pdp-verifier-handlers.js'
+import {
+  handleUsageReported,
+  handleCdnPaymentSettled,
+} from '../lib/filbeam-operator-handlers.js'
 import { screenWallets } from '../lib/wallet-screener.js'
 import { CID } from 'multiformats/cid'
 
@@ -236,6 +240,36 @@ export default {
         return new Response('Internal Server Error', { status: 500 })
       }
 
+      return new Response('OK', { status: 200 })
+    } else if (pathname === '/filbeam-operator/usage-reported') {
+      if (
+        typeof payload.data_set_id !== 'string' ||
+        typeof payload.to_epoch !== 'string'
+      ) {
+        console.error('FilBeamOperator.UsageReported: Invalid payload', payload)
+        return new Response('Bad Request', { status: 400 })
+      }
+
+      console.log(
+        `Usage reported (data_set_id=${payload.data_set_id}, to_epoch=${payload.to_epoch})`,
+      )
+
+      await handleUsageReported(env, payload)
+      return new Response('OK', { status: 200 })
+    } else if (pathname === '/filbeam-operator/cdn-settlement') {
+      if (
+        typeof payload.data_set_id !== 'string' ||
+        typeof payload.block_number !== 'number'
+      ) {
+        console.error('FilBeamOperator.CDNSettlement: Invalid payload', payload)
+        return new Response('Bad Request', { status: 400 })
+      }
+
+      console.log(
+        `CDN settlement (data_set_id=${payload.data_set_id}, block_number=${payload.block_number})`,
+      )
+
+      await handleCdnPaymentSettled(env, payload)
       return new Response('OK', { status: 200 })
     } else {
       return new Response('Not Found', { status: 404 })
