@@ -97,6 +97,15 @@ id = "placeholder-id"
 
 Without the top-level placeholder, wrangler marks environment-only bindings as optional (`binding?: Type`), causing TypeScript errors when accessing them.
 
+### Secret Variables (.dev.vars)
+
+Workers that require secrets have `.dev.vars.template` files with placeholder values. Run `node bin/setup-dev-vars.js` to create `.dev.vars` files from templates.
+
+When adding a new secret variable to a worker:
+
+1. Add the variable to the worker's `.dev.vars.template` file with a placeholder value
+2. Run `node bin/setup-dev-vars.js` to update your local `.dev.vars` (or manually add the new variable)
+
 ### Database
 
 Migrations are in `@./db/migrations/`. Applied automatically during deployment and tests via `wrangler d1 migrations apply`. All workers share the same D1 database.
