@@ -4,5 +4,9 @@ compatibility_date = "2025-09-08"
 compatibility_flags = ["nodejs_compat"]
 upload_source_maps = true
 
+# Top-level placeholder to ensure TypeScript types are required (not optional)
+[vars]
+RPC_URL = "https://api.calibration.node.glif.io/rpc/v0"
+
 [env.dev.vars]
 RPC_URL = "https://api.calibration.node.glif.io/rpc/v0"
