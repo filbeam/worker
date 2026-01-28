@@ -223,14 +223,14 @@ export default {
       let bytesReceived = 0
 
       const logStreamStats = () => {
-        console.log({
-          message: 'Stream stats',
-          minChunkSize,
-          maxChunkSize,
-          bytesReceived,
-          url: request.url,
-          'cf-ray': request.headers.get('cf-ray'),
-        })
+        console.log(
+          'Stream stats ' +
+            `minChunkSize=${minChunkSize} ` +
+            `maxChunkSize=${maxChunkSize} ` +
+            `bytesReceived=${bytesReceived} ` +
+            `url=${request.url} ` +
+            `cf-ray=${request.headers.get('cf-ray')}`,
+        )
         minChunkSize = null
         maxChunkSize = null
         bytesReceived = 0
