@@ -1506,15 +1506,18 @@ describe('POST /filbeam-operator/usage-reported', () => {
   })
 })
 
-describe('POST /filbeam-operator/cdn-settlement', () => {
+describe('POST /filbeam-operator/cdn-payment-settled', () => {
   it('returns 400 if payload is invalid', async () => {
-    const req = new Request('https://host/filbeam-operator/cdn-settlement', {
-      method: 'POST',
-      headers: {
-        [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+    const req = new Request(
+      'https://host/filbeam-operator/cdn-payment-settled',
+      {
+        method: 'POST',
+        headers: {
+          [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+        },
+        body: JSON.stringify({}),
       },
-      body: JSON.stringify({}),
-    })
+    )
     const res = await workerImpl.fetch(req, env)
     expect(res.status).toBe(400)
     expect(await res.text()).toBe('Bad Request')
@@ -1522,16 +1525,19 @@ describe('POST /filbeam-operator/cdn-settlement', () => {
 
   it('stores payments_settled_until for a data set', async () => {
     const dataSetId = randomId()
-    const req = new Request('https://host/filbeam-operator/cdn-settlement', {
-      method: 'POST',
-      headers: {
-        [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+    const req = new Request(
+      'https://host/filbeam-operator/cdn-payment-settled',
+      {
+        method: 'POST',
+        headers: {
+          [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+        },
+        body: JSON.stringify({
+          data_set_id: dataSetId,
+          block_number: 12345,
+        }),
       },
-      body: JSON.stringify({
-        data_set_id: dataSetId,
-        block_number: 12345,
-      }),
-    })
+    )
     const res = await workerImpl.fetch(req, env)
     expect(res.status).toBe(200)
     expect(await res.text()).toBe('OK')

@@ -2,7 +2,7 @@ import {
   UsageReported as UsageReportedEvent,
   CDNSettlement as CDNSettlementEvent,
 } from '../generated/FilBeamOperator/FilBeamOperator'
-import { UsageReported, CDNSettlement } from '../generated/schema'
+import { UsageReported, CdnPaymentSettled } from '../generated/schema'
 import { getEventEntityId } from './utils'
 
 export function handleUsageReported(event: UsageReportedEvent): void {
@@ -20,8 +20,8 @@ export function handleUsageReported(event: UsageReportedEvent): void {
   entity.save()
 }
 
-export function handleCDNSettlement(event: CDNSettlementEvent): void {
-  const entity = new CDNSettlement(getEventEntityId(event))
+export function handleCdnPaymentSettled(event: CDNSettlementEvent): void {
+  const entity = new CdnPaymentSettled(getEventEntityId(event))
   entity.dataSetId = event.params.dataSetId.toString()
   entity.cdnAmount = event.params.cdnAmount.toString()
 

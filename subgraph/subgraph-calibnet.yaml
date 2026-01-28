@@ -69,7 +69,7 @@ dataSources:
       language: wasm/assemblyscript
       entities:
         - UsageReported
-        - CDNSettlement
+        - CdnPaymentSettled
       abis:
         - name: FilBeamOperator
           file: ./abis/FilBeamOperator.abi.json
@@ -77,5 +77,5 @@ dataSources:
         - event: UsageReported(indexed uint256,indexed uint256,indexed uint256,uint256,uint256)
           handler: handleUsageReported
         - event: CDNSettlement(indexed uint256,uint256)
-          handler: handleCDNSettlement
+          handler: handleCdnPaymentSettled
       file: ./src/FilBeamOperator.ts

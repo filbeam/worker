@@ -8,11 +8,11 @@ import {
 } from 'matchstick-as/assembly/index'
 import {
   handleUsageReported,
-  handleCDNSettlement,
+  handleCdnPaymentSettled,
 } from '../src/FilBeamOperator'
 import {
   createUsageReportedEvent,
-  createCDNSettlementEvent,
+  createCdnPaymentSettledEvent,
 } from './FilBeamOperator.utils'
 import { getEventEntityId } from '../src/utils'
 
@@ -50,23 +50,23 @@ describe('FilBeam Subgraph (FilBeamOperator)', () => {
     )
   })
 
-  test('CDNSettlement created and stored', () => {
-    assert.entityCount('CDNSettlement', 0)
+  test('CdnPaymentSettled created and stored', () => {
+    assert.entityCount('CdnPaymentSettled', 0)
 
-    const event = createCDNSettlementEvent(
+    const event = createCdnPaymentSettledEvent(
       BigInt.fromString('102'),
       BigInt.fromString('999999'),
     )
 
-    handleCDNSettlement(event)
+    handleCdnPaymentSettled(event)
 
-    assert.entityCount('CDNSettlement', 1)
+    assert.entityCount('CdnPaymentSettled', 1)
     const id = getEventEntityId(event)
 
-    assert.fieldEquals('CDNSettlement', id, 'dataSetId', '102')
-    assert.fieldEquals('CDNSettlement', id, 'cdnAmount', '999999')
+    assert.fieldEquals('CdnPaymentSettled', id, 'dataSetId', '102')
+    assert.fieldEquals('CdnPaymentSettled', id, 'cdnAmount', '999999')
     assert.fieldEquals(
-      'CDNSettlement',
+      'CdnPaymentSettled',
       id,
       'transactionHash',
       event.transaction.hash.toHexString(),

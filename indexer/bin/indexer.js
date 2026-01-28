@@ -256,17 +256,20 @@ export default {
 
       await handleUsageReported(env, payload)
       return new Response('OK', { status: 200 })
-    } else if (pathname === '/filbeam-operator/cdn-settlement') {
+    } else if (pathname === '/filbeam-operator/cdn-payment-settled') {
       if (
         typeof payload.data_set_id !== 'string' ||
         typeof payload.block_number !== 'number'
       ) {
-        console.error('FilBeamOperator.CDNSettlement: Invalid payload', payload)
+        console.error(
+          'FilBeamOperator.CdnPaymentSettled: Invalid payload',
+          payload,
+        )
         return new Response('Bad Request', { status: 400 })
       }
 
       console.log(
-        `CDN settlement (data_set_id=${payload.data_set_id}, block_number=${payload.block_number})`,
+        `CDN payment settled (data_set_id=${payload.data_set_id}, block_number=${payload.block_number})`,
       )
 
       await handleCdnPaymentSettled(env, payload)

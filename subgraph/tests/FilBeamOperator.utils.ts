@@ -50,7 +50,7 @@ export function createUsageReportedEvent(
   return event
 }
 
-export function createCDNSettlementEvent(
+export function createCdnPaymentSettledEvent(
   dataSetId: BigInt,
   cdnAmount: BigInt,
 ): CDNSettlement {

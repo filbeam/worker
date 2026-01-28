@@ -83,7 +83,7 @@ type UsageReported @entity(immutable: true) {
   transactionHash: String!
 }
 
-type CDNSettlement @entity(immutable: true) {
+type CdnPaymentSettled @entity(immutable: true) {
   id: ID!
   dataSetId: String! # uint256
   cdnAmount: String! # uint256
