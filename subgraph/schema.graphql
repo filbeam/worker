@@ -70,3 +70,24 @@ type CdnPaymentRailsToppedUp @entity(immutable: true) {
   blockTimestamp: BigInt!
   transactionHash: String!
 }
+
+type UsageReported @entity(immutable: true) {
+  id: ID!
+  dataSetId: String! # uint256
+  fromEpoch: String! # uint256
+  toEpoch: String! # uint256
+  cdnBytesUsed: String! # uint256
+  cacheMissBytesUsed: String! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: String!
+}
+
+type CDNSettlement @entity(immutable: true) {
+  id: ID!
+  dataSetId: String! # uint256
+  cdnAmount: String! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: String!
+}
