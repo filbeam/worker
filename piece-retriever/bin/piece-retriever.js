@@ -274,6 +274,7 @@ export default {
       ctx.waitUntil(
         readableStream.pipeTo(returnedStream.writable).catch((err) => {
           console.error('Error in server stream:', err)
+          logStreamStats()
         }),
       )
 
