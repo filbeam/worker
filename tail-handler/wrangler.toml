@@ -5,6 +5,10 @@ compatibility_flags = ["nodejs_compat"]
 logpush = true
 upload_source_maps = true
 
+[[analytics_engine_datasets]]
+binding = "RETRIEVAL_STATS"
+dataset = "test-retrieval-stats"
+
 [env.dev.vars]
 ENVIRONMENT = "dev"
 

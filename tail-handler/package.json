@@ -5,7 +5,7 @@
   "type": "module",
   "main": "src/index.ts",
   "scripts": {
-    "build:types": "wrangler types --env dev",
+    "build:types": "wrangler types",
     "deploy:calibration": "wrangler deploy --env calibration",
     "deploy:mainnet": "wrangler deploy --env mainnet",
     "start": "wrangler dev --env dev",
