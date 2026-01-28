@@ -223,7 +223,8 @@ export default {
       let bytesReceived = 0
 
       const logStreamStats = () => {
-        console.log('Stream stats', {
+        console.log({
+          message: 'Stream stats',
           minChunkSize,
           maxChunkSize,
           bytesReceived,
