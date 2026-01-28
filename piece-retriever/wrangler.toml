@@ -69,4 +69,4 @@ binding = "BAD_BITS_KV"
 id = "7b03c39d53a041fdbe973c20285e16e9"
 
 [limits]
-cpu_ms = 40000
+cpu_ms = 300000 # maximum
