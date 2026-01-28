@@ -227,6 +227,8 @@ export default {
           minChunkSize,
           maxChunkSize,
           bytesReceived,
+          url: request.url,
+          'cf-ray': request.headers.get('cf-ray'),
         })
         minChunkSize = null
         maxChunkSize = null
