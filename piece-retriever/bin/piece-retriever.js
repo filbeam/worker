@@ -216,6 +216,25 @@ export default {
       const { promise: responseFinishedPromise, resolve: responseFinished } =
         Promise.withResolvers()
 
+      /** @type {number | null} */
+      let minChunkSize = null
+      /** @type {number | null} */
+      let maxChunkSize = null
+      let bytesReceived = 0
+
+      const iv = setInterval(() => {
+        console.log('Stream stats for last second', {
+          minChunkSize,
+          maxChunkSize,
+          bytesReceived,
+          url: request.url,
+          'cf-ray': request.headers.get('cf-ray'),
+        })
+        minChunkSize = null
+        maxChunkSize = null
+        bytesReceived = 0
+      }, 1000)
+
       const measureStream = new TransformStream({
         transform(chunk, controller) {
           if (firstByteAt === null) {
@@ -223,7 +242,17 @@ export default {
             firstByteAt = performance.now()
           }
           egressBytes += chunk.length
+          bytesReceived += chunk.length
+          if (minChunkSize === null || chunk.length < minChunkSize) {
+            minChunkSize = chunk.length
+          }
+          if (maxChunkSize === null || chunk.length > maxChunkSize) {
+            maxChunkSize = chunk.length
+          }
           controller.enqueue(chunk)
+        },
+        flush() {
+          clearInterval(iv)
         },
       })
 
