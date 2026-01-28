@@ -142,3 +142,41 @@ WHERE timestamp > NOW() - INTERVAL '24' HOUR
 GROUP BY hour
 ORDER BY hour DESC
 ```
+
+## settlement_stats
+
+Settlement lag metrics, written by the `indexer` worker. Tracks the data set with the oldest unsettled usage to monitor payment settlement progress.
+
+### Configuration
+
+Analytics are written to the `SETTLEMENT_STATS` binding, which maps to environment-specific datasets:
+
+| Environment   | Dataset Name                           |
+| ------------- | -------------------------------------- |
+| `dev`         | `filbeam_settlement_stats_dev`         |
+| `calibration` | `filbeam_settlement_stats_calibration` |
+| `mainnet`     | `filbeam_settlement_stats_mainnet`     |
+
+### Schema
+
+Each data point contains the following fields:
+
+| Field        | Type   | Description                                                 |
+| ------------ | ------ | ----------------------------------------------------------- |
+| `doubles[0]` | number | Payments settled until timestamp (ms since Unix epoch)      |
+| `blobs[0]`   | string | Data set ID of the data set with the oldest unsettled usage |
+
+### Example Queries
+
+#### Settlement lag over time
+
+```sql
+SELECT
+  toStartOfMinute(timestamp) AS minute,
+  MIN(double1) AS oldest_settled_timestamp_ms,
+  blob1 AS data_set_id
+FROM filbeam_settlement_stats_mainnet
+WHERE timestamp > NOW() - INTERVAL '1' HOUR
+GROUP BY minute, blob1
+ORDER BY minute DESC
+```
