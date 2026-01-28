@@ -222,8 +222,8 @@ export default {
       let maxChunkSize = null
       let bytesReceived = 0
 
-      const iv = setInterval(() => {
-        console.log('Stream stats for last second', {
+      const logStreamStats = () => {
+        console.log('Stream stats', {
           minChunkSize,
           maxChunkSize,
           bytesReceived,
@@ -233,7 +233,9 @@ export default {
         minChunkSize = null
         maxChunkSize = null
         bytesReceived = 0
-      }, 1000)
+      }
+
+      const iv = setInterval(logStreamStats, 10_000)
 
       const measureStream = new TransformStream({
         transform(chunk, controller) {
@@ -252,6 +254,7 @@ export default {
           controller.enqueue(chunk)
         },
         flush() {
+          logStreamStats()
           clearInterval(iv)
         },
       })
