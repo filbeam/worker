@@ -100,6 +100,53 @@ export default {
         'Service provider lookup failed',
       )
 
+      const noRemainingQuota = retrievalCandidates.every(candidate => {
+        return (
+          (typeof candidate.cdnEgressQuota === 'bigint' && candidate.cdnEgressQuota <= 0n) ||
+          (typeof candidate.cdnEgressQuota === 'number' && candidate.cdnEgressQuota <= 0) ||
+          (typeof candidate.cacheMissEgressQuota === 'bigint' && candidate.cacheMissEgressQuota <= 0n) ||
+          (typeof candidate.cacheMissEgressQuota === 'number' && candidate.cacheMissEgressQuota <= 0)
+        )
+      })
+
+      if (noRemainingQuota) {
+        let minCdn = null
+        let minCacheMiss = null
+        for (const c of retrievalCandidates) {
+          const cdn = typeof c.cdnEgressQuota === 'bigint' ? c.cdnEgressQuota : BigInt(c.cdnEgressQuota)
+          const cacheMiss = typeof c.cacheMissEgressQuota === 'bigint' ? c.cacheMissEgressQuota : BigInt(c.cacheMissEgressQuota)
+          minCdn = cdn
+          minCacheMiss = cacheMiss
+        }
+
+        ctx.waitUntil(
+          logRetrievalResult(env, {
+            cacheMiss: null,
+            cacheMissResponseValid: null,
+            responseStatus: 429,
+            egressBytes: 0,
+            requestCountryCode,
+            timestamp: requestTimestamp,
+            dataSetId: retrievalCandidates[0]?.dataSetId ?? null,
+            botName,
+          }),
+        )
+
+        const response = new Response(
+          'Egress quota exceeded for all available service providers. Please try again later.',
+          {
+            status: 429,
+            headers: new Headers({
+              'FB-Data-Set-ID': retrievalCandidates.map(c => c.dataSetId).join(','),
+              'FB-Cdn-Egress-Remaining': minCdn !== null ? String(minCdn) : '0',
+              'FB-Cache-Miss-Egress-Remaining': minCacheMiss !== null ? String(minCacheMiss) : '0'
+            }),
+          },
+        )
+        setContentSecurityPolicy(response)
+        return response
+      }
+
       let retrievalCandidate
       let retrievalResult
       const retrievalAttempts = []
@@ -169,7 +216,7 @@ export default {
           {
             status: 502,
             headers: new Headers({
-              'X-Data-Set-ID': retrievalAttempts
+              'FB-Data-Set-ID': retrievalAttempts
                 .map((a) => a.dataSetId)
                 .join(','),
             }),
@@ -200,15 +247,32 @@ export default {
           retrievalResult.response,
         )
         setContentSecurityPolicy(response)
-        response.headers.set('X-Data-Set-ID', retrievalCandidate.dataSetId)
+        response.headers.set('FB-Data-Set-ID', retrievalCandidate.dataSetId)
         response.headers.set(
           'Cache-Control',
           `public, max-age=${env.CLIENT_CACHE_TTL}`,
         )
+        try {
+          const contentLengthHeader =
+            retrievalResult.response.headers.get('content-length')
+          const estimatedEgress = contentLengthHeader
+            ? Number.parseInt(contentLengthHeader, 10)
+            : 0
+          const remainingCdn =
+            retrievalCandidate.cdnEgressQuota - BigInt(estimatedEgress)
+          const remainingCacheMiss =
+            retrievalCandidate.cacheMissEgressQuota - BigInt(estimatedEgress)
+          response.headers.set('FB-Cdn-Egress-Remaining', String(remainingCdn))
+          response.headers.set(
+            'FB-Cache-Miss-Egress-Remaining',
+            String(remainingCacheMiss),
+          )
+        } catch (e) {
+          console.warn('Failed to compute egress remaining headers', e)
+        }
         return response
       }
 
-      // Stream, count bytes and validate (a cache miss)
       let egressBytes = 0
       /** @type {number | null} */
       let firstByteAt = null
@@ -320,18 +384,35 @@ export default {
         })(),
       )
 
-      // Return immediately, proxying the transformed response
       const response = new Response(returnedStream.readable, {
         status: retrievalResult.response.status,
         statusText: retrievalResult.response.statusText,
         headers: retrievalResult.response.headers,
       })
       setContentSecurityPolicy(response)
-      response.headers.set('X-Data-Set-ID', retrievalCandidate.dataSetId)
+      response.headers.set('FB-Data-Set-ID', retrievalCandidate.dataSetId)
       response.headers.set(
         'Cache-Control',
         `public, max-age=${env.CLIENT_CACHE_TTL}`,
       )
+      try {
+        const contentLengthHeader =
+          retrievalResult.response.headers.get('content-length')
+        const estimatedEgress = contentLengthHeader
+          ? Number.parseInt(contentLengthHeader, 10)
+          : 0
+        const remainingCdn =
+          retrievalCandidate.cdnEgressQuota - BigInt(estimatedEgress)
+        const remainingCacheMiss =
+          retrievalCandidate.cacheMissEgressQuota - BigInt(estimatedEgress)
+        response.headers.set('FB-Cdn-Egress-Remaining', String(remainingCdn))
+        response.headers.set(
+          'FB-Cache-Miss-Egress-Remaining',
+          String(remainingCacheMiss),
+        )
+      } catch (e) {
+        console.warn('Failed to compute egress remaining headers', e)
+      }
       return response
     } catch (error) {
       const { status } = getErrorHttpStatusMessage(error)

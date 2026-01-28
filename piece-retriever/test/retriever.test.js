@@ -586,7 +586,7 @@ describe('piece-retriever.fetch', () => {
     )
   })
 
-  it('returns data set ID in the X-Data-Set-ID response header', async () => {
+  it('returns data set ID in the FB-Data-Set-ID response header', async () => {
     const { pieceCid, dataSetId } = CONTENT_STORED_ON_CALIBRATION[0]
     const mockRetrieveFile = vi.fn().mockResolvedValue({
       response: new Response('hello'),
@@ -598,7 +598,7 @@ describe('piece-retriever.fetch', () => {
       retrieveFile: mockRetrieveFile,
     })
     expect(await res.text()).toBe('hello')
-    expect(res.headers.get('X-Data-Set-ID')).toBe(String(dataSetId))
+    expect(res.headers.get('FB-Data-Set-ID')).toBe(String(dataSetId))
     await waitOnExecutionContext(ctx)
   })
 
@@ -633,7 +633,7 @@ describe('piece-retriever.fetch', () => {
     ])
   })
 
-  it('returns data set ID in the X-Data-Set-ID response header when the response body is empty', async () => {
+  it('returns data set ID in the FB-Data-Set-ID response header when the response body is empty', async () => {
     const { pieceCid, dataSetId } = CONTENT_STORED_ON_CALIBRATION[0]
     const mockRetrieveFile = vi.fn().mockResolvedValue({
       response: new Response(null, { status: 404 }),
@@ -646,7 +646,7 @@ describe('piece-retriever.fetch', () => {
     })
     await waitOnExecutionContext(ctx)
     expect(res.body).toBeNull()
-    expect(res.headers.get('X-Data-Set-ID')).toBe(String(dataSetId))
+    expect(res.headers.get('FB-Data-Set-ID')).toBe(String(dataSetId))
   })
 
   it('supports HEAD requests', async () => {
@@ -981,7 +981,7 @@ describe('piece-retriever.fetch', () => {
     expect(await res.text()).toMatch(
       /^No available service provider found. Attempted: ID=/,
     )
-    expect(res.headers.get('X-Data-Set-ID')).toBe(String(dataSetId))
+    expect(res.headers.get('FB-Data-Set-ID')).toBe(String(dataSetId))
 
     const result = await env.DB.prepare(
       'SELECT * FROM retrieval_logs WHERE data_set_id = ?',
@@ -1114,6 +1114,6 @@ describe('piece-retriever.fetch', () => {
     expect(await res.text()).toMatch(
       /^No available service provider found. Attempted: ID=/,
     )
-    expect(res.headers.get('X-Data-Set-ID')).toBe(String(dataSetId))
+    expect(res.headers.get('FB-Data-Set-ID')).toBe(String(dataSetId))
   })
 })
