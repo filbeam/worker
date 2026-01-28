@@ -13,6 +13,10 @@ head_sampling_rate = 1
 binding = "BAD_BITS_KV"
 id = "8cc92155-16f6-426a-b782-2965e0daf100"
 
+[[r2_buckets]]
+binding = "BAD_BITS_R2"
+bucket_name = "test-bad-bits"
+
 [env.dev.vars]
 ENVIRONMENT = "dev"
 

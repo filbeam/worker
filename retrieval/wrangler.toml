@@ -4,6 +4,15 @@ compatibility_date = "2025-09-08"
 compatibility_flags = ["nodejs_compat"]
 upload_source_maps = true
 
+# Top-level placeholders to ensure TypeScript types are required (not optional)
+[[d1_databases]]
+binding = "DB"
+database_name = "placeholder-db"
+database_id = "00000000-0000-0000-0000-000000000000"
+
+[vars]
+RPC_URL = "https://api.calibration.node.glif.io/rpc/v0"
+
 [env.dev.vars]
 RPC_URL = "https://api.calibration.node.glif.io/rpc/v0"
 
