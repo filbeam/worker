@@ -19,6 +19,7 @@ declare namespace Cloudflare {
 		CHAINALYSIS_API_KEY: string;
 		DB: D1Database;
 		GOLDSKY_STATS: AnalyticsEngineDataset;
+		SETTLEMENT_STATS: AnalyticsEngineDataset;
 	}
 }
 interface Env extends Cloudflare.Env {}

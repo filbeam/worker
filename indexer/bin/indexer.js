@@ -19,6 +19,7 @@ import {
   handleCdnPaymentSettled,
 } from '../lib/filbeam-operator-handlers.js'
 import { screenWallets } from '../lib/wallet-screener.js'
+import { epochToTimestampMs } from '../lib/epoch.js'
 import { CID } from 'multiformats/cid'
 
 export default {
@@ -336,6 +337,7 @@ export default {
         staleThresholdMs: Number(env.WALLET_SCREENING_STALE_THRESHOLD_MS),
         checkIfAddressIsSanctioned,
       }),
+      this.reportSettlementStats(env),
     ])
     const errors = results
       .filter((r) => r.status === 'rejected')
@@ -404,6 +406,45 @@ export default {
 
     env.GOLDSKY_STATS.writeDataPoint({
       doubles: [lastIndexedBlock, hasIndexingErrors ? 1 : 0],
+    })
+  },
+
+  /** @param {Env} env */
+  async reportSettlementStats(env) {
+    /**
+     * @type {{
+     *   data_set_id: string
+     *   payments_settled_until: number
+     * } | null}
+     */
+    const row = await env.DB.prepare(
+      `
+      SELECT data_set_id, payments_settled_until
+      FROM data_sets_settlements
+      WHERE usage_reported_until > payments_settled_until
+      ORDER BY payments_settled_until ASC
+      LIMIT 1
+    `,
+    ).first()
+
+    if (!row) {
+      console.log('No data sets with unsettled usage')
+      return
+    }
+
+    const timestampMs = epochToTimestampMs(
+      row.payments_settled_until,
+      Number(env.FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS),
+    )
+
+    console.log('Oldest unsettled data set', {
+      dataSetId: row.data_set_id,
+      paymentsSettledUntilTimestamp: timestampMs,
+    })
+
+    env.SETTLEMENT_STATS.writeDataPoint({
+      doubles: [timestampMs],
+      blobs: [row.data_set_id],
     })
   },
 }
