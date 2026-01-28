@@ -50,6 +50,18 @@ sources:
       - name: filbeam-mainnet
         version: 1.0.0
     name: cdn_payment_rails_topped_up
+  filbeam__usage_reported:
+    type: subgraph_entity
+    subgraphs:
+      - name: filbeam-mainnet
+        version: 1.0.0
+    name: usage_reported
+  filbeam__cdn_settlement:
+    type: subgraph_entity
+    subgraphs:
+      - name: filbeam-mainnet
+        version: 1.0.0
+    name: cdn_settlement
   source__service_provider_registry__product_removed:
     type: subgraph_entity
     subgraphs:
@@ -112,6 +124,18 @@ sinks:
     secret_name: WEBHOOK_SECRET_CMBHIZHPO0
     one_row_per_request: true
     from: filbeam__cdn_payment_rails_topped_up
+  sink__filbeam_operator__usage_reported:
+    url: https://index.filcdn.io/filbeam-operator/usage-reported
+    type: webhook
+    secret_name: WEBHOOK_SECRET_CMBHIZHPO0
+    one_row_per_request: true
+    from: filbeam__usage_reported
+  sink__filbeam_operator__cdn_settlement:
+    url: https://index.filcdn.io/filbeam-operator/cdn-settlement
+    type: webhook
+    secret_name: WEBHOOK_SECRET_CMBHIZHPO0
+    one_row_per_request: true
+    from: filbeam__cdn_settlement
   sink__service_provider_registry__product_removed:
     url: https://index.filcdn.io/service-provider-registry/product-removed
     type: webhook
