@@ -7,7 +7,7 @@
   "type": "module",
   "main": "lib/transaction-monitor-workflow.js",
   "scripts": {
-    "build:types": "wrangler types --env dev",
+    "build:types": "wrangler types",
     "test": "vitest run"
   },
   "dependencies": {
