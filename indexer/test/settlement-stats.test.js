@@ -11,7 +11,6 @@ describe('reportSettlementStats', () => {
     testEnv = {
       ...env,
       SETTLEMENT_STATS: { writeDataPoint },
-      FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS: 1667326380000,
     }
   })
 
@@ -21,36 +20,36 @@ describe('reportSettlementStats', () => {
 
   it('writes data point for data set with oldest unsettled usage', async () => {
     await testEnv.DB.prepare(
-      `INSERT INTO data_sets_settlements (data_set_id, usage_reported_until, payments_settled_until) VALUES ('ds-1', 200, 100)`,
+      `INSERT INTO data_sets (id, with_cdn, usage_reported_until, payments_settled_until) VALUES ('ds-1', FALSE, '2022-11-02T00:00:00.000Z', '2022-11-01T12:00:00.000Z')`,
     ).run()
 
     await workerImpl.reportSettlementStats(testEnv)
 
     expect(writeDataPoint).toHaveBeenCalledWith({
-      doubles: [100 * 30 * 1000 + 1667326380000],
+      doubles: [new Date('2022-11-01T12:00:00.000Z').getTime()],
       blobs: ['ds-1'],
     })
   })
 
   it('picks the data set with the oldest payments_settled_until', async () => {
     await testEnv.DB.prepare(
-      `INSERT INTO data_sets_settlements (data_set_id, usage_reported_until, payments_settled_until) VALUES ('ds-old', 300, 50)`,
+      `INSERT INTO data_sets (id, with_cdn, usage_reported_until, payments_settled_until) VALUES ('ds-old', FALSE, '2022-11-02T00:00:00.000Z', '2022-11-01T00:00:00.000Z')`,
     ).run()
     await testEnv.DB.prepare(
-      `INSERT INTO data_sets_settlements (data_set_id, usage_reported_until, payments_settled_until) VALUES ('ds-new', 300, 200)`,
+      `INSERT INTO data_sets (id, with_cdn, usage_reported_until, payments_settled_until) VALUES ('ds-new', FALSE, '2022-11-02T00:00:00.000Z', '2022-11-01T12:00:00.000Z')`,
     ).run()
 
     await workerImpl.reportSettlementStats(testEnv)
 
     expect(writeDataPoint).toHaveBeenCalledWith({
-      doubles: [50 * 30 * 1000 + 1667326380000],
+      doubles: [new Date('2022-11-01T00:00:00.000Z').getTime()],
       blobs: ['ds-old'],
     })
   })
 
   it('does not write data point when no unsettled usage exists', async () => {
     await testEnv.DB.prepare(
-      `INSERT INTO data_sets_settlements (data_set_id, usage_reported_until, payments_settled_until) VALUES ('ds-settled', 100, 100)`,
+      `INSERT INTO data_sets (id, with_cdn, usage_reported_until, payments_settled_until) VALUES ('ds-settled', FALSE, '2022-11-01T12:00:00.000Z', '2022-11-01T12:00:00.000Z')`,
     ).run()
 
     await workerImpl.reportSettlementStats(testEnv)

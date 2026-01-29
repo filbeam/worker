@@ -14,12 +14,8 @@ import {
   removeDataSetPieces,
   insertDataSetPiece,
 } from '../lib/pdp-verifier-handlers.js'
-import {
-  handleUsageReported,
-  handleCdnPaymentSettled,
-} from '../lib/filbeam-operator-handlers.js'
+import { handleCdnPaymentSettled } from '../lib/filbeam-operator-handlers.js'
 import { screenWallets } from '../lib/wallet-screener.js'
-import { epochToTimestampMs } from '../lib/epoch.js'
 import { CID } from 'multiformats/cid'
 
 export default {
@@ -242,21 +238,6 @@ export default {
       }
 
       return new Response('OK', { status: 200 })
-    } else if (pathname === '/filbeam-operator/usage-reported') {
-      if (
-        typeof payload.data_set_id !== 'string' ||
-        typeof payload.to_epoch !== 'string'
-      ) {
-        console.error('FilBeamOperator.UsageReported: Invalid payload', payload)
-        return new Response('Bad Request', { status: 400 })
-      }
-
-      console.log(
-        `Usage reported (data_set_id=${payload.data_set_id}, to_epoch=${payload.to_epoch})`,
-      )
-
-      await handleUsageReported(env, payload)
-      return new Response('OK', { status: 200 })
     } else if (pathname === '/filbeam-operator/cdn-payment-settled') {
       if (
         typeof payload.data_set_id !== 'string' ||
@@ -413,14 +394,14 @@ export default {
   async reportSettlementStats(env) {
     /**
      * @type {{
-     *   data_set_id: string
-     *   payments_settled_until: number
+     *   id: string
+     *   payments_settled_until: string
      * } | null}
      */
     const row = await env.DB.prepare(
       `
-      SELECT data_set_id, payments_settled_until
-      FROM data_sets_settlements
+      SELECT id, payments_settled_until
+      FROM data_sets
       WHERE usage_reported_until > payments_settled_until
       ORDER BY payments_settled_until ASC
       LIMIT 1
@@ -432,19 +413,15 @@ export default {
       return
     }
 
-    const timestampMs = epochToTimestampMs(
-      row.payments_settled_until,
-      Number(env.FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS),
-    )
+    const timestampMs = new Date(row.payments_settled_until).getTime()
 
-    console.log('Oldest unsettled data set', {
-      dataSetId: row.data_set_id,
-      paymentsSettledUntilTimestamp: timestampMs,
-    })
+    console.log(
+      `Oldest unsettled data set: ${row.id}, payments settled until ${row.payments_settled_until}`,
+    )
 
     env.SETTLEMENT_STATS.writeDataPoint({
       doubles: [timestampMs],
-      blobs: [row.data_set_id],
+      blobs: [row.id],
     })
   },
 }

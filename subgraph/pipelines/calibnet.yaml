@@ -50,12 +50,6 @@ sources:
       - name: filbeam-calibnet
         version: 1.1.0
     name: cdn_payment_rails_topped_up
-  filbeam__usage_reported:
-    type: subgraph_entity
-    subgraphs:
-      - name: filbeam-calibnet
-        version: 1.1.0
-    name: usage_reported
   filbeam__cdn_payment_settled:
     type: subgraph_entity
     subgraphs:
@@ -124,12 +118,6 @@ sinks:
     secret_name: WEBHOOK_SECRET_CMBHIZHPO0
     one_row_per_request: true
     from: filbeam__cdn_payment_rails_topped_up
-  sink__filbeam_operator__usage_reported:
-    url: https://index.calibration.filcdn.io/filbeam-operator/usage-reported
-    type: webhook
-    secret_name: WEBHOOK_SECRET_CMBHIZHPO0
-    one_row_per_request: true
-    from: filbeam__usage_reported
   sink__filbeam_operator__cdn_payment_settled:
     url: https://index.calibration.filcdn.io/filbeam-operator/cdn-payment-settled
     type: webhook

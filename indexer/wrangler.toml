@@ -18,6 +18,10 @@ database_id = "8cc92155-16f6-426a-b782-2965e0daf100"
 binding = "GOLDSKY_STATS"
 dataset = "test-goldsky-stats"
 
+[[analytics_engine_datasets]]
+binding = "SETTLEMENT_STATS"
+dataset = "test-settlement-stats"
+
 [[queues.producers]]
 binding = "RETRY_QUEUE"
 queue = "test-retry-queue"
