@@ -10,6 +10,17 @@ binding = "DB"
 database_name = "test-db"
 database_id = "8cc92155-16f6-426a-b782-2965e0daf100"
 
+[[kv_namespaces]]
+binding = "BAD_BITS_KV"
+id = "test-kv-id"
+
+[vars]
+ORIGIN_CACHE_TTL = 86400
+CLIENT_CACHE_TTL = 31536000
+DNS_ROOT = ".localhost"
+BOT_TOKENS = ""
+ENFORCE_EGRESS_QUOTA = false
+
 [env.dev]
 tail_consumers = [{ service = "filbeam-tail-handler-dev" }]
 
@@ -69,4 +80,4 @@ binding = "BAD_BITS_KV"
 id = "7b03c39d53a041fdbe973c20285e16e9"
 
 [limits]
-cpu_ms = 40000
+cpu_ms = 300000 # maximum

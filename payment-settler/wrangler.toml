@@ -14,6 +14,22 @@ binding = "DB"
 database_name = "test-db"
 database_id = "8cc92155-16f6-426a-b782-2965e0daf100"
 
+[[queues.producers]]
+binding = "TRANSACTION_QUEUE"
+queue = "test-transaction-queue"
+
+[[workflows]]
+binding = "TRANSACTION_MONITOR_WORKFLOW"
+name = "test-transaction-monitor-workflow"
+class_name = "TransactionMonitorWorkflow"
+
+[vars]
+RPC_URL = "https://api.calibration.node.glif.io/"
+FILBEAM_OPERATOR_CONTRACT_ADDRESS = "0x0000000000000000000000000000000000000000"
+DEFAULT_LOCKUP_PERIOD_DAYS = 30
+FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS = 1667326380000
+SETTLEMENT_BATCH_SIZE = 10
+
 [env.dev.vars]
 ENVIRONMENT = "dev"
 RPC_URL = "https://api.calibration.node.glif.io/"

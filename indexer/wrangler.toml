@@ -14,10 +14,24 @@ binding = "DB"
 database_name = "test-db"
 database_id = "8cc92155-16f6-426a-b782-2965e0daf100"
 
+[[analytics_engine_datasets]]
+binding = "GOLDSKY_STATS"
+dataset = "test-goldsky-stats"
+
+[[queues.producers]]
+binding = "RETRY_QUEUE"
+queue = "test-retry-queue"
+
 [vars]
+GOLDSKY_SUBGRAPH_URL = "https://api.goldsky.com/api/public/project_cmb91qc80slyu01wca6e2eupl/subgraphs/filbeam-alpha-calibnet/1.0.0/gn"
 # Default rate: 7 USDFC per TiB (in 1e18 units)
 CDN_RATE_PER_TIB = "7000000000000000000"
 CACHE_MISS_RATE_PER_TIB = "7000000000000000000"
+# Top-level placeholders to ensure TypeScript types are required (not optional)
+WALLET_SCREENING_BATCH_SIZE = 1
+WALLET_SCREENING_STALE_THRESHOLD_MS = 86400000
+DEFAULT_LOCKUP_PERIOD_DAYS = 30
+FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS = 1667326380000
 
 [env.dev.vars]
 ENVIRONMENT = "dev"
@@ -42,6 +56,10 @@ dataset = "filbeam_goldsky_stats_dev"
 [[env.dev.analytics_engine_datasets]]
 binding = "SETTLEMENT_STATS"
 dataset = "filbeam_settlement_stats_dev"
+
+[[env.dev.queues.producers]]
+queue = "indexer-retry-queue-dev"
+binding = "RETRY_QUEUE"
 
 [env.calibration.vars]
 ENVIRONMENT = "calibration"
