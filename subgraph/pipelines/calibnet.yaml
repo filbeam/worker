@@ -12,7 +12,7 @@ sources:
     type: subgraph_entity
     subgraphs:
       - name: service-provider-registry-calibnet
-        version: 1.1.0
+        version: 1.0.0
     name: product_added
   filbeam__piece_added:
     type: subgraph_entity
@@ -30,7 +30,7 @@ sources:
     type: subgraph_entity
     subgraphs:
       - name: service-provider-registry-calibnet
-        version: 1.1.0
+        version: 1.0.0
     name: product_updated
   filbeam__pieces_removed:
     type: subgraph_entity
@@ -60,13 +60,13 @@ sources:
     type: subgraph_entity
     subgraphs:
       - name: service-provider-registry-calibnet
-        version: 1.1.0
+        version: 1.0.0
     name: product_removed
   source__service_provider_registry__provider_removed:
     type: subgraph_entity
     subgraphs:
       - name: service-provider-registry-calibnet
-        version: 1.1.0
+        version: 1.0.0
     name: provider_removed
 transforms: {}
 sinks:
