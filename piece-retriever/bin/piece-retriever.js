@@ -100,12 +100,16 @@ export default {
         'Service provider lookup failed',
       )
 
-      const noRemainingQuota = retrievalCandidates.every(candidate => {
+      const noRemainingQuota = retrievalCandidates.every((candidate) => {
         return (
-          (typeof candidate.cdnEgressQuota === 'bigint' && candidate.cdnEgressQuota <= 0n) ||
-          (typeof candidate.cdnEgressQuota === 'number' && candidate.cdnEgressQuota <= 0) ||
-          (typeof candidate.cacheMissEgressQuota === 'bigint' && candidate.cacheMissEgressQuota <= 0n) ||
-          (typeof candidate.cacheMissEgressQuota === 'number' && candidate.cacheMissEgressQuota <= 0)
+          (typeof candidate.cdnEgressQuota === 'bigint' &&
+            candidate.cdnEgressQuota <= 0n) ||
+          (typeof candidate.cdnEgressQuota === 'number' &&
+            candidate.cdnEgressQuota <= 0) ||
+          (typeof candidate.cacheMissEgressQuota === 'bigint' &&
+            candidate.cacheMissEgressQuota <= 0n) ||
+          (typeof candidate.cacheMissEgressQuota === 'number' &&
+            candidate.cacheMissEgressQuota <= 0)
         )
       })
 
@@ -113,8 +117,14 @@ export default {
         let minCdn = null
         let minCacheMiss = null
         for (const c of retrievalCandidates) {
-          const cdn = typeof c.cdnEgressQuota === 'bigint' ? c.cdnEgressQuota : BigInt(c.cdnEgressQuota)
-          const cacheMiss = typeof c.cacheMissEgressQuota === 'bigint' ? c.cacheMissEgressQuota : BigInt(c.cacheMissEgressQuota)
+          const cdn =
+            typeof c.cdnEgressQuota === 'bigint'
+              ? c.cdnEgressQuota
+              : BigInt(c.cdnEgressQuota)
+          const cacheMiss =
+            typeof c.cacheMissEgressQuota === 'bigint'
+              ? c.cacheMissEgressQuota
+              : BigInt(c.cacheMissEgressQuota)
           minCdn = cdn
           minCacheMiss = cacheMiss
         }
@@ -137,9 +147,12 @@ export default {
           {
             status: 429,
             headers: new Headers({
-              'FB-Data-Set-ID': retrievalCandidates.map(c => c.dataSetId).join(','),
+              'FB-Data-Set-ID': retrievalCandidates
+                .map((c) => c.dataSetId)
+                .join(','),
               'FB-Cdn-Egress-Remaining': minCdn !== null ? String(minCdn) : '0',
-              'FB-Cache-Miss-Egress-Remaining': minCacheMiss !== null ? String(minCacheMiss) : '0'
+              'FB-Cache-Miss-Egress-Remaining':
+                minCacheMiss !== null ? String(minCacheMiss) : '0',
             }),
           },
         )
@@ -253,22 +266,16 @@ export default {
           `public, max-age=${env.CLIENT_CACHE_TTL}`,
         )
         try {
-          const contentLengthHeader =
-            retrievalResult.response.headers.get('content-length')
-          const estimatedEgress = contentLengthHeader
-            ? Number.parseInt(contentLengthHeader, 10)
-            : 0
-          const remainingCdn =
-            retrievalCandidate.cdnEgressQuota - BigInt(estimatedEgress)
-          const remainingCacheMiss =
-            retrievalCandidate.cacheMissEgressQuota - BigInt(estimatedEgress)
-          response.headers.set('FB-Cdn-Egress-Remaining', String(remainingCdn))
+          response.headers.set(
+            'FB-Cdn-Egress-Remaining',
+            String(retrievalCandidate.cdnEgressQuota),
+          )
           response.headers.set(
             'FB-Cache-Miss-Egress-Remaining',
-            String(remainingCacheMiss),
+            String(retrievalCandidate.cacheMissEgressQuota),
           )
         } catch (e) {
-          console.warn('Failed to compute egress remaining headers', e)
+          console.warn('Failed to set egress remaining headers', e)
         }
         return response
       }
@@ -396,19 +403,13 @@ export default {
         `public, max-age=${env.CLIENT_CACHE_TTL}`,
       )
       try {
-        const contentLengthHeader =
-          retrievalResult.response.headers.get('content-length')
-        const estimatedEgress = contentLengthHeader
-          ? Number.parseInt(contentLengthHeader, 10)
-          : 0
-        const remainingCdn =
-          retrievalCandidate.cdnEgressQuota - BigInt(estimatedEgress)
-        const remainingCacheMiss =
-          retrievalCandidate.cacheMissEgressQuota - BigInt(estimatedEgress)
-        response.headers.set('FB-Cdn-Egress-Remaining', String(remainingCdn))
+        response.headers.set(
+          'FB-Cdn-Egress-Remaining',
+          String(retrievalCandidate.cdnEgressQuota),
+        )
         response.headers.set(
           'FB-Cache-Miss-Egress-Remaining',
-          String(remainingCacheMiss),
+          String(retrievalCandidate.cacheMissEgressQuota),
         )
       } catch (e) {
         console.warn('Failed to compute egress remaining headers', e)
