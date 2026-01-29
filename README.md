@@ -7,37 +7,15 @@ and cache from the Filecoin PDP Service Providers.
 
 ### Initial setup
 
-Create `indexer/.dev.vars` file with the following content:
+Run the following command to create `.dev.vars` files from templates:
 
 ```
-SECRET_HEADER_KEY=X-SECRET-KEY
-SECRET_HEADER_VALUE=SecretToken
-CHAINALYSIS_API_KEY=YourChainalysisApiKey
+node bin/setup-dev-vars.js
 ```
 
-Create `piece-retriever/.dev.vars` file with the following content:
+This creates `.dev.vars` files in worker directories that require secrets. Edit the generated files and replace placeholder values with real credentials as needed.
 
-```
-BOT_TOKENS="{\"secret\":\"dev\"}"
-```
-
-Create `terminator/.dev.vars` file with the following content:
-
-```
-FILBEAM_CONTROLLER_PRIVATE_KEY=0xSomePrivateKey
-```
-
-Create `usage-reporter/.dev.vars` file with the following content:
-
-```
-FILBEAM_CONTROLLER_PRIVATE_KEY=0xSomePrivateKey
-```
-
-Create `payment-settler/.dev.vars` file with the following content:
-
-```
-FILBEAM_OPERATOR_PAYMENT_SETTLER_PRIVATE_KEY=0xSomePrivateKey
-```
+Note: The script won't overwrite existing `.dev.vars` files.
 
 ### Workflow
 
