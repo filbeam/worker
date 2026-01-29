@@ -1043,7 +1043,7 @@ describe('piece-retriever.fetch', () => {
     expect(result).toMatchObject({ egress_bytes: 0, bot_name: botName })
   })
 
-  it('sets FB egress remaining headers as snapshot for empty response body', async () => {
+  it('sets egress remaining headers for empty response body', async () => {
     const dataSetId = 'snapshot-empty'
     const pieceCid = 'bagaSnapshotEmpty'
     const cdnEgressQuota = 123
@@ -1085,7 +1085,7 @@ describe('piece-retriever.fetch', () => {
     )
   })
 
-  it('sets FB egress remaining headers as snapshot for streaming responses', async () => {
+  it('sets egress remaining headers for streaming responses', async () => {
     const dataSetId = 'snapshot-stream'
     const pieceCid = 'bagaSnapshotStream'
     const cdnEgressQuota = 789
