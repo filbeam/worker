@@ -1,4 +1,4 @@
-/** @import {WorkflowStep} from 'cloudflare:workers' */
+/** @import {WorkflowStep} from "cloudflare:workers" */
 import { env } from 'cloudflare:test'
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { TransactionMonitorWorkflow } from '../lib/transaction-monitor-workflow.js'
@@ -17,13 +17,13 @@ describe('TransactionMonitorWorkflow', () => {
    *   TRANSACTION_QUEUE: { send: (message: any) => Promise<void> }
    *   ENVIRONMENT: string
    *   RPC_URL: string
-   *   FILCDN_CONTROLLER_ADDRESS_PRIVATE_KEY: string
+   *   FILBEAM_CONTROLLER_PRIVATE_KEY: string
    * }}
    */
   const mockEnv = {
     ...env,
     TRANSACTION_QUEUE: mockQueue,
-    FILCDN_CONTROLLER_ADDRESS_PRIVATE_KEY: '0x1234',
+    FILBEAM_CONTROLLER_PRIVATE_KEY: '0x1234',
   }
 
   afterEach(() => {

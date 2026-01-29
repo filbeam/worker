@@ -4,7 +4,7 @@ import {
   handleTransactionRetryQueueMessage,
 } from '../lib/queue-handlers.js'
 import { env } from 'cloudflare:test'
-import { abi as fwssAbi } from '../lib/fwss.js'
+import { abi as filBeamAbi } from '../lib/filbeam.js'
 import { randomId, withDataSet } from './test-helpers.js'
 import { privateKeyToAccount } from 'viem/accounts'
 
@@ -93,8 +93,8 @@ describe('handleTerminateCdnServiceQueueMessage', () => {
     expect(mockChainClient.publicClient.simulateContract).toHaveBeenCalledWith({
       account: mockAccount,
       address: '0xcontract',
-      abi: fwssAbi,
-      functionName: 'terminateCDNService',
+      abi: filBeamAbi,
+      functionName: 'terminateCDNPaymentRails',
       args: [BigInt(dataSetId)],
     })
 

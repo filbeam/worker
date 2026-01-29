@@ -24,7 +24,7 @@ BOT_TOKENS="{\"secret\":\"dev\"}"
 Create `terminator/.dev.vars` file with the following content:
 
 ```
-FILCDN_CONTROLLER_ADDRESS_PRIVATE_KEY=0xSomePrivateKey
+FILBEAM_CONTROLLER_PRIVATE_KEY=0xSomePrivateKey
 ```
 
 ### Workflow

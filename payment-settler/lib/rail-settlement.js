@@ -1,4 +1,10 @@
-/** @import {PublicClient, WalletClient, PrivateKeyAccount} from 'viem' */
+/**
+ * @import {
+ *   PrivateKeyAccount,
+ *   PublicClient,
+ *   WalletClient
+ * } from "viem"
+ */
 import filbeamAbi from '../lib/FilBeamOperator.abi.json'
 
 /**

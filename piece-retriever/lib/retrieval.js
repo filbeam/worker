@@ -20,7 +20,9 @@ import { createPieceCIDStream } from './piece.js'
  *   url: string
  *   validate: function | null
  * }>}
- *   - The response from the fetch request, the cache miss and the content length.
+ *   -
+ *
+ *   The response from the fetch request, the cache miss and the content length.
  */
 export async function retrieveFile(
   ctx,

@@ -1,5 +1,5 @@
 import assert from 'node:assert'
-import { abi as fwssAbi } from './fwss.js'
+import { abi as filBeamAbi } from './filbeam.js'
 import { getChainClient as defaultGetChainClient } from './chain.js'
 import { getRecentSendMessage as defaultGetRecentSendMessage } from './filfox.js'
 
@@ -41,16 +41,16 @@ export async function handleTerminateCdnServiceQueueMessage(
     // Create contract call
     const { request } = await publicClient.simulateContract({
       account,
-      abi: fwssAbi,
+      abi: filBeamAbi,
       address: /** @type {`0x${string}`} */ (
         env.FILBEAM_OPERATOR_CONTRACT_ADDRESS
       ),
-      functionName: 'terminateCDNService',
+      functionName: 'terminateCDNPaymentRails',
       args: [BigInt(dataSetId)],
     })
 
     console.log(
-      `Sending terminateCDNService transaction for dataSetId: ${dataSetId}`,
+      `Sending terminateCDNPaymentRails transaction for dataSetId: ${dataSetId}`,
     )
 
     // Send transaction

@@ -1,4 +1,9 @@
-/** @import {WorkflowEvent, WorkflowStep} from 'cloudflare:workers' */
+/**
+ * @import {
+ *   WorkflowEvent,
+ *   WorkflowStep
+ * } from "cloudflare:workers"
+ */
 import { WorkflowEntrypoint } from 'cloudflare:workers'
 import { getChainClient } from './chain.js'
 
