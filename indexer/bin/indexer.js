@@ -414,13 +414,14 @@ export default {
     }
 
     const timestampMs = new Date(row.payments_settled_until).getTime()
+    const lagMs = Date.now() - timestampMs
 
     console.log(
       `Oldest unsettled data set: ${row.id}, payments settled until ${row.payments_settled_until}`,
     )
 
     env.SETTLEMENT_STATS.writeDataPoint({
-      doubles: [timestampMs],
+      doubles: [timestampMs, lagMs],
       blobs: [row.id],
     })
   },

@@ -7,6 +7,8 @@ describe('reportSettlementStats', () => {
   let testEnv
 
   beforeEach(() => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2022-11-02T12:00:00.000Z'))
     writeDataPoint = vi.fn()
     testEnv = {
       ...env,
@@ -15,6 +17,7 @@ describe('reportSettlementStats', () => {
   })
 
   afterEach(() => {
+    vi.useRealTimers()
     vi.restoreAllMocks()
   })
 
@@ -25,8 +28,12 @@ describe('reportSettlementStats', () => {
 
     await workerImpl.reportSettlementStats(testEnv)
 
+    const paymentsSettledUntilMs = new Date(
+      '2022-11-01T12:00:00.000Z',
+    ).getTime()
+    const nowMs = new Date('2022-11-02T12:00:00.000Z').getTime()
     expect(writeDataPoint).toHaveBeenCalledWith({
-      doubles: [new Date('2022-11-01T12:00:00.000Z').getTime()],
+      doubles: [paymentsSettledUntilMs, nowMs - paymentsSettledUntilMs],
       blobs: ['ds-1'],
     })
   })
@@ -42,7 +49,10 @@ describe('reportSettlementStats', () => {
     await workerImpl.reportSettlementStats(testEnv)
 
     expect(writeDataPoint).toHaveBeenCalledWith({
-      doubles: [new Date('2022-11-01T00:00:00.000Z').getTime()],
+      doubles: [
+        new Date('2022-11-01T00:00:00.000Z').getTime(),
+        expect.any(Number),
+      ],
       blobs: ['ds-old'],
     })
   })

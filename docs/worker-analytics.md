@@ -164,6 +164,7 @@ Each data point contains the following fields:
 | Field        | Type   | Description                                                 |
 | ------------ | ------ | ----------------------------------------------------------- |
 | `doubles[0]` | number | Payments settled until timestamp (ms since Unix epoch)      |
+| `doubles[1]` | number | Settlement lag in milliseconds (Date.now() - doubles[0])    |
 | `blobs[0]`   | string | Data set ID of the data set with the oldest unsettled usage |
 
 ### Example Queries
@@ -173,7 +174,7 @@ Each data point contains the following fields:
 ```sql
 SELECT
   toStartOfMinute(timestamp) AS minute,
-  MIN(double1) AS oldest_settled_timestamp_ms,
+  MAX(double2) AS max_lag_ms,
   blob1 AS data_set_id
 FROM filbeam_settlement_stats_mainnet
 WHERE timestamp > NOW() - INTERVAL '1' HOUR
