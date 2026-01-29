@@ -262,6 +262,7 @@ describe('webhook ordering scenarios', () => {
       total_egress_bytes_used: 0,
       terminate_service_tx_hash: null,
       usage_reported_until: '1970-01-01T00:00:00.000Z',
+      cdn_payments_settled_until: '1970-01-01T00:00:00.000Z',
       pending_usage_report_tx_hash: null,
     })
 
@@ -362,6 +363,7 @@ describe('webhook ordering scenarios', () => {
       total_egress_bytes_used: 0,
       terminate_service_tx_hash: null,
       usage_reported_until: '1970-01-01T00:00:00.000Z',
+      cdn_payments_settled_until: '1970-01-01T00:00:00.000Z',
       pending_usage_report_tx_hash: null,
     })
 
@@ -421,6 +423,7 @@ describe('webhook ordering scenarios', () => {
       total_egress_bytes_used: 0,
       terminate_service_tx_hash: null,
       usage_reported_until: '1970-01-01T00:00:00.000Z',
+      cdn_payments_settled_until: '1970-01-01T00:00:00.000Z',
       pending_usage_report_tx_hash: null,
     })
 
@@ -476,6 +479,7 @@ describe('webhook ordering scenarios', () => {
       total_egress_bytes_used: 0,
       terminate_service_tx_hash: null,
       usage_reported_until: '1970-01-01T00:00:00.000Z',
+      cdn_payments_settled_until: '1970-01-01T00:00:00.000Z',
       pending_usage_report_tx_hash: null,
     })
   })

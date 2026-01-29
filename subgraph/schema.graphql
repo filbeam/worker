@@ -70,3 +70,12 @@ type CdnPaymentRailsToppedUp @entity(immutable: true) {
   blockTimestamp: BigInt!
   transactionHash: String!
 }
+
+type CdnPaymentSettled @entity(immutable: true) {
+  id: ID!
+  dataSetId: String! # uint256
+  cdnAmount: String! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: String!
+}

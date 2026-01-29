@@ -14,6 +14,7 @@ import {
   removeDataSetPieces,
   insertDataSetPiece,
 } from '../lib/pdp-verifier-handlers.js'
+import { handleCdnPaymentSettled } from '../lib/filbeam-operator-handlers.js'
 import { screenWallets } from '../lib/wallet-screener.js'
 import { CID } from 'multiformats/cid'
 
@@ -237,6 +238,24 @@ export default {
       }
 
       return new Response('OK', { status: 200 })
+    } else if (pathname === '/filbeam-operator/cdn-payment-settled') {
+      if (
+        typeof payload.data_set_id !== 'string' ||
+        typeof payload.block_number !== 'number'
+      ) {
+        console.error(
+          'FilBeamOperator.CdnPaymentSettled: Invalid payload',
+          payload,
+        )
+        return new Response('Bad Request', { status: 400 })
+      }
+
+      console.log(
+        `CDN payment settled (data_set_id=${payload.data_set_id}, block_number=${payload.block_number})`,
+      )
+
+      await handleCdnPaymentSettled(env, payload)
+      return new Response('OK', { status: 200 })
     } else {
       return new Response('Not Found', { status: 404 })
     }
@@ -299,6 +318,7 @@ export default {
         staleThresholdMs: Number(env.WALLET_SCREENING_STALE_THRESHOLD_MS),
         checkIfAddressIsSanctioned,
       }),
+      this.reportSettlementStats(env),
     ])
     const errors = results
       .filter((r) => r.status === 'rejected')
@@ -367,6 +387,46 @@ export default {
 
     env.GOLDSKY_STATS.writeDataPoint({
       doubles: [lastIndexedBlock, hasIndexingErrors ? 1 : 0],
+    })
+  },
+
+  /** @param {Env} env */
+  async reportSettlementStats(env) {
+    /**
+     * @type {{
+     *   id: string
+     *   cdn_payments_settled_until: string
+     * } | null}
+     */
+    const row = await env.DB.prepare(
+      `
+      SELECT id, cdn_payments_settled_until
+      FROM data_sets
+      WHERE usage_reported_until > cdn_payments_settled_until
+      ORDER BY cdn_payments_settled_until ASC
+      LIMIT 1
+    `,
+    ).first()
+
+    if (!row) {
+      console.log('No data sets with unsettled CDN usage')
+      env.SETTLEMENT_STATS.writeDataPoint({
+        doubles: [Date.now(), 0],
+        blobs: [''],
+      })
+      return
+    }
+
+    const timestampMs = new Date(row.cdn_payments_settled_until).getTime()
+    const lagMs = Date.now() - timestampMs
+
+    console.log(
+      `Oldest unsettled CDN usage: data_set=${row.id}, cdn_payments_settled_until=${row.cdn_payments_settled_until}, lag_ms=${lagMs}`,
+    )
+
+    env.SETTLEMENT_STATS.writeDataPoint({
+      doubles: [timestampMs, lagMs],
+      blobs: [row.id],
     })
   },
 }

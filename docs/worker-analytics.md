@@ -142,3 +142,42 @@ WHERE timestamp > NOW() - INTERVAL '24' HOUR
 GROUP BY hour
 ORDER BY hour DESC
 ```
+
+## settlement_stats
+
+CDN payment settlement lag metrics, written by the `indexer` worker. Tracks the data set with the oldest unsettled CDN usage to monitor CDN payment settlement progress.
+
+### Configuration
+
+Analytics are written to the `SETTLEMENT_STATS` binding, which maps to environment-specific datasets:
+
+| Environment   | Dataset Name                           |
+| ------------- | -------------------------------------- |
+| `dev`         | `filbeam_settlement_stats_dev`         |
+| `calibration` | `filbeam_settlement_stats_calibration` |
+| `mainnet`     | `filbeam_settlement_stats_mainnet`     |
+
+### Schema
+
+Each data point contains the following fields:
+
+| Field        | Type   | Description                                                                          |
+| ------------ | ------ | ------------------------------------------------------------------------------------ |
+| `doubles[0]` | number | CDN payments settled until timestamp (ms since Unix epoch)                           |
+| `doubles[1]` | number | Settlement lag in milliseconds (Date.now() - doubles[0])                             |
+| `blobs[0]`   | string | Data set ID with oldest unsettled CDN usage, or empty string if all usage is settled |
+
+### Example Queries
+
+#### Settlement lag over time
+
+```sql
+SELECT
+  toStartOfMinute(timestamp) AS minute,
+  MAX(double2) AS max_lag_ms,
+  blob1 AS data_set_id
+FROM filbeam_settlement_stats_mainnet
+WHERE timestamp > NOW() - INTERVAL '1' HOUR
+GROUP BY minute, blob1
+ORDER BY minute DESC
+```
