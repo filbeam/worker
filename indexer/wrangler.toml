@@ -27,7 +27,7 @@ binding = "RETRY_QUEUE"
 queue = "test-retry-queue"
 
 [vars]
-GOLDSKY_SUBGRAPH_URL = "https://api.goldsky.com/api/public/project_cmb91qc80slyu01wca6e2eupl/subgraphs/filbeam-alpha-calibnet/1.0.0/gn"
+GOLDSKY_SUBGRAPH_URL = "https://api.goldsky.com/api/public/project_cmb91qc80slyu01wca6e2eupl/subgraphs/filbeam-alpha-calibnet/1.1.0/gn"
 # Default rate: 7 USDFC per TiB (in 1e18 units)
 CDN_RATE_PER_TIB = "7000000000000000000"
 CACHE_MISS_RATE_PER_TIB = "7000000000000000000"
@@ -41,7 +41,7 @@ FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS = 1667326380000
 ENVIRONMENT = "dev"
 WALLET_SCREENING_BATCH_SIZE = 1
 WALLET_SCREENING_STALE_THRESHOLD_MS = 86400000 # one day
-GOLDSKY_SUBGRAPH_URL="https://api.goldsky.com/api/public/project_cmb91qc80slyu01wca6e2eupl/subgraphs/filbeam-alpha-calibnet/1.0.0/gn"
+GOLDSKY_SUBGRAPH_URL="https://api.goldsky.com/api/public/project_cmb91qc80slyu01wca6e2eupl/subgraphs/filbeam-alpha-calibnet/1.1.0/gn"
 DEFAULT_LOCKUP_PERIOD_DAYS = 30
 FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS = 1667326380000 # Calibration network genesis timestamp in milliseconds
 # 7 USDFC per TiB (in 1e18 units)
@@ -71,7 +71,7 @@ WALLET_SCREENING_BATCH_SIZE = 1
 WALLET_SCREENING_STALE_THRESHOLD_MS = 86400000 # one day
 DEFAULT_LOCKUP_PERIOD_DAYS = 30
 FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS = 1667326380000 # Calibration network genesis timestamp in milliseconds
-GOLDSKY_SUBGRAPH_URL="https://api.goldsky.com/api/public/project_cmb91qc80slyu01wca6e2eupl/subgraphs/filbeam-calibnet/1.0.0/gn"
+GOLDSKY_SUBGRAPH_URL="https://api.goldsky.com/api/public/project_cmb91qc80slyu01wca6e2eupl/subgraphs/filbeam-calibnet/1.1.0/gn"
 # 7 USDFC per TiB (in 1e18 units)
 CDN_RATE_PER_TIB = "7000000000000000000"
 CACHE_MISS_RATE_PER_TIB = "7000000000000000000"
@@ -105,7 +105,7 @@ max_batch_timeout = 30
 ENVIRONMENT = "mainnet"
 WALLET_SCREENING_BATCH_SIZE = 10
 WALLET_SCREENING_STALE_THRESHOLD_MS = 21600000 # 6 hours
-GOLDSKY_SUBGRAPH_URL="https://api.goldsky.com/api/public/project_cmb91qc80slyu01wca6e2eupl/subgraphs/filbeam-mainnet/1.0.0/gn"
+GOLDSKY_SUBGRAPH_URL="https://api.goldsky.com/api/public/project_cmb91qc80slyu01wca6e2eupl/subgraphs/filbeam-mainnet/1.1.0/gn"
 DEFAULT_LOCKUP_PERIOD_DAYS = 30
 FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS = 1598306400000 # Mainnet genesis timestamp in milliseconds
 # 7 USDFC per TiB (in 1e18 units)
