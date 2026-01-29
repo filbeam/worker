@@ -21,7 +21,7 @@ describe('handleCdnPaymentSettled', () => {
     })
 
     const row = await testEnv.DB.prepare(
-      'SELECT id, with_cdn, usage_reported_until, payments_settled_until FROM data_sets WHERE id = ?',
+      'SELECT id, with_cdn, usage_reported_until, cdn_payments_settled_until FROM data_sets WHERE id = ?',
     )
       .bind(dataSetId)
       .first()
@@ -30,7 +30,7 @@ describe('handleCdnPaymentSettled', () => {
       id: dataSetId,
       with_cdn: 1,
       usage_reported_until: '1970-01-01T00:00:00.000Z',
-      payments_settled_until: '2022-11-02T02:33:00.000Z',
+      cdn_payments_settled_until: '2022-11-02T02:33:00.000Z',
     })
   })
 
@@ -46,12 +46,12 @@ describe('handleCdnPaymentSettled', () => {
     })
 
     const row = await testEnv.DB.prepare(
-      'SELECT payments_settled_until FROM data_sets WHERE id = ?',
+      'SELECT cdn_payments_settled_until FROM data_sets WHERE id = ?',
     )
       .bind(dataSetId)
       .first()
 
-    expect(row).toEqual({ payments_settled_until: TIMESTAMP_AT_BLOCK_2000 })
+    expect(row).toEqual({ cdn_payments_settled_until: TIMESTAMP_AT_BLOCK_2000 })
   })
 
   it('does not decrease value when called with lower block_number', async () => {
@@ -66,12 +66,12 @@ describe('handleCdnPaymentSettled', () => {
     })
 
     const row = await testEnv.DB.prepare(
-      'SELECT payments_settled_until FROM data_sets WHERE id = ?',
+      'SELECT cdn_payments_settled_until FROM data_sets WHERE id = ?',
     )
       .bind(dataSetId)
       .first()
 
-    expect(row).toEqual({ payments_settled_until: TIMESTAMP_AT_BLOCK_2000 })
+    expect(row).toEqual({ cdn_payments_settled_until: TIMESTAMP_AT_BLOCK_2000 })
   })
 
   it('handles different data_set_ids independently', async () => {
@@ -87,17 +87,21 @@ describe('handleCdnPaymentSettled', () => {
     })
 
     const row1 = await testEnv.DB.prepare(
-      'SELECT payments_settled_until FROM data_sets WHERE id = ?',
+      'SELECT cdn_payments_settled_until FROM data_sets WHERE id = ?',
     )
       .bind(id1)
       .first()
     const row2 = await testEnv.DB.prepare(
-      'SELECT payments_settled_until FROM data_sets WHERE id = ?',
+      'SELECT cdn_payments_settled_until FROM data_sets WHERE id = ?',
     )
       .bind(id2)
       .first()
 
-    expect(row1).toEqual({ payments_settled_until: '2022-11-01T22:23:00.000Z' })
-    expect(row2).toEqual({ payments_settled_until: '2022-11-02T19:13:00.000Z' })
+    expect(row1).toEqual({
+      cdn_payments_settled_until: '2022-11-01T22:23:00.000Z',
+    })
+    expect(row2).toEqual({
+      cdn_payments_settled_until: '2022-11-02T19:13:00.000Z',
+    })
   })
 })

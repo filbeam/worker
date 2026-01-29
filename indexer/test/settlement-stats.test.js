@@ -23,27 +23,27 @@ describe('reportSettlementStats', () => {
 
   it('writes data point for data set with oldest unsettled usage', async () => {
     await testEnv.DB.prepare(
-      `INSERT INTO data_sets (id, with_cdn, usage_reported_until, payments_settled_until) VALUES ('ds-1', FALSE, '2022-11-02T00:00:00.000Z', '2022-11-01T12:00:00.000Z')`,
+      `INSERT INTO data_sets (id, with_cdn, usage_reported_until, cdn_payments_settled_until) VALUES ('ds-1', FALSE, '2022-11-02T00:00:00.000Z', '2022-11-01T12:00:00.000Z')`,
     ).run()
 
     await workerImpl.reportSettlementStats(testEnv)
 
-    const paymentsSettledUntilMs = new Date(
+    const cdnPaymentsSettledUntilMs = new Date(
       '2022-11-01T12:00:00.000Z',
     ).getTime()
     const nowMs = new Date('2022-11-02T12:00:00.000Z').getTime()
     expect(writeDataPoint).toHaveBeenCalledWith({
-      doubles: [paymentsSettledUntilMs, nowMs - paymentsSettledUntilMs],
+      doubles: [cdnPaymentsSettledUntilMs, nowMs - cdnPaymentsSettledUntilMs],
       blobs: ['ds-1'],
     })
   })
 
-  it('picks the data set with the oldest payments_settled_until', async () => {
+  it('picks the data set with the oldest cdn_payments_settled_until', async () => {
     await testEnv.DB.prepare(
-      `INSERT INTO data_sets (id, with_cdn, usage_reported_until, payments_settled_until) VALUES ('ds-old', FALSE, '2022-11-02T00:00:00.000Z', '2022-11-01T00:00:00.000Z')`,
+      `INSERT INTO data_sets (id, with_cdn, usage_reported_until, cdn_payments_settled_until) VALUES ('ds-old', FALSE, '2022-11-02T00:00:00.000Z', '2022-11-01T00:00:00.000Z')`,
     ).run()
     await testEnv.DB.prepare(
-      `INSERT INTO data_sets (id, with_cdn, usage_reported_until, payments_settled_until) VALUES ('ds-new', FALSE, '2022-11-02T00:00:00.000Z', '2022-11-01T12:00:00.000Z')`,
+      `INSERT INTO data_sets (id, with_cdn, usage_reported_until, cdn_payments_settled_until) VALUES ('ds-new', FALSE, '2022-11-02T00:00:00.000Z', '2022-11-01T12:00:00.000Z')`,
     ).run()
 
     await workerImpl.reportSettlementStats(testEnv)
@@ -57,19 +57,27 @@ describe('reportSettlementStats', () => {
     })
   })
 
-  it('does not write data point when no unsettled usage exists', async () => {
+  it('writes "no lag" data point when no unsettled usage exists', async () => {
     await testEnv.DB.prepare(
-      `INSERT INTO data_sets (id, with_cdn, usage_reported_until, payments_settled_until) VALUES ('ds-settled', FALSE, '2022-11-01T12:00:00.000Z', '2022-11-01T12:00:00.000Z')`,
+      `INSERT INTO data_sets (id, with_cdn, usage_reported_until, cdn_payments_settled_until) VALUES ('ds-settled', FALSE, '2022-11-01T12:00:00.000Z', '2022-11-01T12:00:00.000Z')`,
     ).run()
 
     await workerImpl.reportSettlementStats(testEnv)
 
-    expect(writeDataPoint).not.toHaveBeenCalled()
+    const nowMs = new Date('2022-11-02T12:00:00.000Z').getTime()
+    expect(writeDataPoint).toHaveBeenCalledWith({
+      doubles: [nowMs, 0],
+      blobs: [''],
+    })
   })
 
-  it('does not write data point when table is empty', async () => {
+  it('writes "no lag" data point when table is empty', async () => {
     await workerImpl.reportSettlementStats(testEnv)
 
-    expect(writeDataPoint).not.toHaveBeenCalled()
+    const nowMs = new Date('2022-11-02T12:00:00.000Z').getTime()
+    expect(writeDataPoint).toHaveBeenCalledWith({
+      doubles: [nowMs, 0],
+      blobs: [''],
+    })
   })
 })

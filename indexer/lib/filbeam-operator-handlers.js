@@ -12,10 +12,10 @@ export async function handleCdnPaymentSettled(env, payload) {
   const timestampISO = new Date(timestampMs).toISOString()
 
   await env.DB.prepare(
-    `INSERT INTO data_sets (id, with_cdn, payments_settled_until)
+    `INSERT INTO data_sets (id, with_cdn, cdn_payments_settled_until)
      VALUES (?, TRUE, ?)
      ON CONFLICT (id) DO UPDATE
-     SET payments_settled_until = MAX(data_sets.payments_settled_until, excluded.payments_settled_until)`,
+     SET cdn_payments_settled_until = MAX(data_sets.cdn_payments_settled_until, excluded.cdn_payments_settled_until)`,
   )
     .bind(payload.data_set_id, timestampISO)
     .run()

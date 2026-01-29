@@ -395,29 +395,33 @@ export default {
     /**
      * @type {{
      *   id: string
-     *   payments_settled_until: string
+     *   cdn_payments_settled_until: string
      * } | null}
      */
     const row = await env.DB.prepare(
       `
-      SELECT id, payments_settled_until
+      SELECT id, cdn_payments_settled_until
       FROM data_sets
-      WHERE usage_reported_until > payments_settled_until
-      ORDER BY payments_settled_until ASC
+      WHERE usage_reported_until > cdn_payments_settled_until
+      ORDER BY cdn_payments_settled_until ASC
       LIMIT 1
     `,
     ).first()
 
     if (!row) {
-      console.log('No data sets with unsettled usage')
+      console.log('No data sets with unsettled CDN usage')
+      env.SETTLEMENT_STATS.writeDataPoint({
+        doubles: [Date.now(), 0],
+        blobs: [''],
+      })
       return
     }
 
-    const timestampMs = new Date(row.payments_settled_until).getTime()
+    const timestampMs = new Date(row.cdn_payments_settled_until).getTime()
     const lagMs = Date.now() - timestampMs
 
     console.log(
-      `Oldest unsettled data set: ${row.id}, payments settled until ${row.payments_settled_until}`,
+      `Oldest unsettled CDN usage: data_set=${row.id}, cdn_payments_settled_until=${row.cdn_payments_settled_until}, lag_ms=${lagMs}`,
     )
 
     env.SETTLEMENT_STATS.writeDataPoint({

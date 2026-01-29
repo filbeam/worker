@@ -145,7 +145,7 @@ ORDER BY hour DESC
 
 ## settlement_stats
 
-Settlement lag metrics, written by the `indexer` worker. Tracks the data set with the oldest unsettled usage to monitor payment settlement progress.
+CDN payment settlement lag metrics, written by the `indexer` worker. Tracks the data set with the oldest unsettled CDN usage to monitor CDN payment settlement progress.
 
 ### Configuration
 
@@ -161,11 +161,11 @@ Analytics are written to the `SETTLEMENT_STATS` binding, which maps to environme
 
 Each data point contains the following fields:
 
-| Field        | Type   | Description                                                 |
-| ------------ | ------ | ----------------------------------------------------------- |
-| `doubles[0]` | number | Payments settled until timestamp (ms since Unix epoch)      |
-| `doubles[1]` | number | Settlement lag in milliseconds (Date.now() - doubles[0])    |
-| `blobs[0]`   | string | Data set ID of the data set with the oldest unsettled usage |
+| Field        | Type   | Description                                                                          |
+| ------------ | ------ | ------------------------------------------------------------------------------------ |
+| `doubles[0]` | number | CDN payments settled until timestamp (ms since Unix epoch)                           |
+| `doubles[1]` | number | Settlement lag in milliseconds (Date.now() - doubles[0])                             |
+| `blobs[0]`   | string | Data set ID with oldest unsettled CDN usage, or empty string if all usage is settled |
 
 ### Example Queries
 

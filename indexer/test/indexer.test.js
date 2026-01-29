@@ -1480,7 +1480,7 @@ describe('POST /filbeam-operator/cdn-payment-settled', () => {
     expect(await res.text()).toBe('Bad Request')
   })
 
-  it('stores payments_settled_until for a data set', async () => {
+  it('stores cdn_payments_settled_until for a data set', async () => {
     const dataSetId = randomId()
     const req = new Request(
       'https://host/filbeam-operator/cdn-payment-settled',
@@ -1500,14 +1500,14 @@ describe('POST /filbeam-operator/cdn-payment-settled', () => {
     expect(await res.text()).toBe('OK')
 
     const row = await env.DB.prepare(
-      'SELECT id, usage_reported_until, payments_settled_until FROM data_sets WHERE id = ?',
+      'SELECT id, usage_reported_until, cdn_payments_settled_until FROM data_sets WHERE id = ?',
     )
       .bind(dataSetId)
       .first()
     expect(row).toEqual({
       id: dataSetId,
       usage_reported_until: '1970-01-01T00:00:00.000Z',
-      payments_settled_until: '2022-11-06T01:05:30.000Z',
+      cdn_payments_settled_until: '2022-11-06T01:05:30.000Z',
     })
   })
 })
