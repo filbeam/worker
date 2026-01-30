@@ -586,7 +586,7 @@ describe('piece-retriever.fetch', () => {
     )
   })
 
-  it('returns data set ID in the X-Data-Set-ID response header', async () => {
+  it('returns data set ID in the FB-Data-Set-ID response header', async () => {
     const { pieceCid, dataSetId } = CONTENT_STORED_ON_CALIBRATION[0]
     const mockRetrieveFile = vi.fn().mockResolvedValue({
       response: new Response('hello'),
@@ -598,7 +598,7 @@ describe('piece-retriever.fetch', () => {
       retrieveFile: mockRetrieveFile,
     })
     expect(await res.text()).toBe('hello')
-    expect(res.headers.get('X-Data-Set-ID')).toBe(String(dataSetId))
+    expect(res.headers.get('FB-Data-Set-ID')).toBe(String(dataSetId))
     await waitOnExecutionContext(ctx)
   })
 
@@ -633,7 +633,7 @@ describe('piece-retriever.fetch', () => {
     ])
   })
 
-  it('returns data set ID in the X-Data-Set-ID response header when the response body is empty', async () => {
+  it('returns data set ID in the FB-Data-Set-ID response header when the response body is empty', async () => {
     const { pieceCid, dataSetId } = CONTENT_STORED_ON_CALIBRATION[0]
     const mockRetrieveFile = vi.fn().mockResolvedValue({
       response: new Response(null, { status: 404 }),
@@ -646,7 +646,7 @@ describe('piece-retriever.fetch', () => {
     })
     await waitOnExecutionContext(ctx)
     expect(res.body).toBeNull()
-    expect(res.headers.get('X-Data-Set-ID')).toBe(String(dataSetId))
+    expect(res.headers.get('FB-Data-Set-ID')).toBe(String(dataSetId))
   })
 
   it('supports HEAD requests', async () => {
@@ -981,7 +981,7 @@ describe('piece-retriever.fetch', () => {
     expect(await res.text()).toMatch(
       /^No available service provider found. Attempted: ID=/,
     )
-    expect(res.headers.get('X-Data-Set-ID')).toBe(String(dataSetId))
+    expect(res.headers.get('FB-Data-Set-ID')).toBe(String(dataSetId))
 
     const result = await env.DB.prepare(
       'SELECT * FROM retrieval_logs WHERE data_set_id = ?',
@@ -1041,6 +1041,100 @@ describe('piece-retriever.fetch', () => {
       .bind(String(realDataSetId))
       .first()
     expect(result).toMatchObject({ egress_bytes: 0, bot_name: botName })
+  })
+
+  it('sets egress remaining headers for empty response body', async () => {
+    const dataSetId = 'snapshot-empty'
+    const pieceCid = 'bagaSnapshotEmpty'
+    const cdnEgressQuota = 123
+    const cacheMissEgressQuota = 456
+
+    await withDataSetPieces(env, {
+      dataSetId,
+      serviceProviderId: 'svc-snap-empty',
+      payerAddress: defaultPayerAddress,
+      withCDN: true,
+      cdnEgressQuota,
+      cacheMissEgressQuota,
+      pieceId: 'p-snap-empty',
+      pieceCid,
+    })
+    await withApprovedProvider(env, {
+      id: 'svc-snap-empty',
+      serviceUrl: 'https://snap-empty.example/',
+    })
+
+    const mockRetrieveFile = vi.fn().mockResolvedValue({
+      response: new Response(null, { status: 200 }),
+      cacheMiss: true,
+    })
+
+    const ctx = createExecutionContext()
+    const req = withRequest(defaultPayerAddress, pieceCid)
+    const res = await worker.fetch(req, env, ctx, {
+      retrieveFile: mockRetrieveFile,
+    })
+    await waitOnExecutionContext(ctx)
+
+    expect(res.status).toBe(200)
+    expect(res.headers.get('FB-Cdn-Egress-Remaining')).toBe(
+      String(cdnEgressQuota),
+    )
+    expect(res.headers.get('FB-Cache-Miss-Egress-Remaining')).toBe(
+      String(cacheMissEgressQuota),
+    )
+  })
+
+  it('sets egress remaining headers for streaming responses', async () => {
+    const dataSetId = 'snapshot-stream'
+    const pieceCid = 'bagaSnapshotStream'
+    const cdnEgressQuota = 789
+    const cacheMissEgressQuota = 1000
+
+    await withDataSetPieces(env, {
+      dataSetId,
+      serviceProviderId: 'svc-snap-stream',
+      payerAddress: defaultPayerAddress,
+      withCDN: true,
+      cdnEgressQuota,
+      cacheMissEgressQuota,
+      pieceId: 'p-snap-stream',
+      pieceCid,
+    })
+    await withApprovedProvider(env, {
+      id: 'svc-snap-stream',
+      serviceUrl: 'https://snap-stream.example/',
+    })
+
+    const fakeBody = new Uint8Array([1, 2, 3, 4])
+    const fakeResponse = new Response(fakeBody, {
+      status: 200,
+      headers: { 'Content-Length': String(fakeBody.length) },
+    })
+
+    const mockRetrieveFile = vi.fn().mockResolvedValue({
+      response: fakeResponse,
+      cacheMiss: true,
+      validate: () => true,
+    })
+
+    const ctx = createExecutionContext()
+    const req = withRequest(defaultPayerAddress, pieceCid)
+    const res = await worker.fetch(req, env, ctx, {
+      retrieveFile: mockRetrieveFile,
+    })
+
+    const body = await res.arrayBuffer()
+    expect(body.byteLength).toBe(fakeBody.length)
+    await waitOnExecutionContext(ctx)
+
+    expect(res.status).toBe(200)
+    expect(res.headers.get('FB-Cdn-Egress-Remaining')).toBe(
+      String(cdnEgressQuota),
+    )
+    expect(res.headers.get('FB-Cache-Miss-Egress-Remaining')).toBe(
+      String(cacheMissEgressQuota),
+    )
   })
 
   it('stores bot name in retrieval logs when SP returns 502', async () => {
@@ -1114,6 +1208,6 @@ describe('piece-retriever.fetch', () => {
     expect(await res.text()).toMatch(
       /^No available service provider found. Attempted: ID=/,
     )
-    expect(res.headers.get('X-Data-Set-ID')).toBe(String(dataSetId))
+    expect(res.headers.get('FB-Data-Set-ID')).toBe(String(dataSetId))
   })
 })

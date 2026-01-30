@@ -169,7 +169,7 @@ export default {
           {
             status: 502,
             headers: new Headers({
-              'X-Data-Set-ID': retrievalAttempts
+              'FB-Data-Set-ID': retrievalAttempts
                 .map((a) => a.dataSetId)
                 .join(','),
             }),
@@ -200,15 +200,22 @@ export default {
           retrievalResult.response,
         )
         setContentSecurityPolicy(response)
-        response.headers.set('X-Data-Set-ID', retrievalCandidate.dataSetId)
+        response.headers.set('FB-Data-Set-ID', retrievalCandidate.dataSetId)
         response.headers.set(
           'Cache-Control',
           `public, max-age=${env.CLIENT_CACHE_TTL}`,
         )
+        response.headers.set(
+          'FB-Cdn-Egress-Remaining',
+          String(retrievalCandidate.cdnEgressQuota),
+        )
+        response.headers.set(
+          'FB-Cache-Miss-Egress-Remaining',
+          String(retrievalCandidate.cacheMissEgressQuota),
+        )
         return response
       }
 
-      // Stream, count bytes and validate (a cache miss)
       let egressBytes = 0
       /** @type {number | null} */
       let firstByteAt = null
@@ -320,17 +327,24 @@ export default {
         })(),
       )
 
-      // Return immediately, proxying the transformed response
       const response = new Response(returnedStream.readable, {
         status: retrievalResult.response.status,
         statusText: retrievalResult.response.statusText,
         headers: retrievalResult.response.headers,
       })
       setContentSecurityPolicy(response)
-      response.headers.set('X-Data-Set-ID', retrievalCandidate.dataSetId)
+      response.headers.set('FB-Data-Set-ID', retrievalCandidate.dataSetId)
       response.headers.set(
         'Cache-Control',
         `public, max-age=${env.CLIENT_CACHE_TTL}`,
+      )
+      response.headers.set(
+        'FB-Cdn-Egress-Remaining',
+        String(retrievalCandidate.cdnEgressQuota),
+      )
+      response.headers.set(
+        'FB-Cache-Miss-Egress-Remaining',
+        String(retrievalCandidate.cacheMissEgressQuota),
       )
       return response
     } catch (error) {
