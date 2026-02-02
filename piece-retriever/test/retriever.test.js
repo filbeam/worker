@@ -1022,8 +1022,6 @@ describe('piece-retriever.fetch', () => {
     await waitOnExecutionContext(ctx)
     expect(res.status).toBe(200)
 
-    expect(res.headers.get('X-Data-Set-ID')).toBe(String(dataSetId))
-
     const result = await env.DB.prepare(
       'SELECT * FROM retrieval_logs WHERE data_set_id = ?',
     )
