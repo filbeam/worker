@@ -999,10 +999,8 @@ describe('piece-retriever.fetch', () => {
     const readable = new ReadableStream({
       pull(controller) {
         if (ix++ === 0) {
-          console.log('pull: some data')
           controller.enqueue('some data')
         } else {
-          console.log('pull: error')
           throw new Error('abort')
         }
       },
