@@ -313,6 +313,17 @@ export default {
             console.error('Error in server stream:', err)
             logStreamStats()
             clearInterval(iv)
+
+            await logRetrievalResult(env, {
+              cacheMiss: retrievalResult.cacheMiss,
+              cacheMissResponseValid: null,
+              responseStatus: 900,
+              egressBytes,
+              requestCountryCode,
+              timestamp: requestTimestamp,
+              dataSetId: retrievalCandidate.dataSetId,
+              botName,
+            })
           }
         })(),
       )
