@@ -333,8 +333,8 @@ export default {
     } catch (error) {
       const { status } = getErrorHttpStatusMessage(error)
       const statusToLog = String(error).includes('Network connection lost.')
-        ? 901 // specific error code for "network connection lost"
-        : 900 // generic error code similar to 500
+        ? 900
+        : status
 
       ctx.waitUntil(
         logRetrievalResult(env, {
