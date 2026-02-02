@@ -995,14 +995,15 @@ describe('piece-retriever.fetch', () => {
     const { pieceCid, dataSetId } = CONTENT_STORED_ON_CALIBRATION[0]
     const url = 'https://example.com/piece/123'
 
-    let ix = 0
+    let shouldAbort = false
     const upstreamResponseBody = new ReadableStream({
       pull(controller) {
-        if (ix++ === 0) {
-          controller.enqueue('some data')
-        } else {
+        if (shouldAbort) {
           throw new Error('abort')
         }
+
+        controller.enqueue('some data')
+        shouldAbort = true
       },
     })
     const response = new Response(upstreamResponseBody)
