@@ -217,6 +217,7 @@ export default {
       return await handleProviderRemoved(env, providerId)
     } else if (pathname === '/fwss/cdn-payment-rails-topped-up') {
       if (
+        typeof payload.id !== 'string' ||
         typeof payload.data_set_id !== 'string' ||
         typeof payload.cdn_amount_added !== 'string' ||
         typeof payload.cache_miss_amount_added !== 'string'

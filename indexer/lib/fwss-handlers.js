@@ -1,6 +1,7 @@
 import { checkIfAddressIsSanctioned as defaultCheckIfAddressIsSanctioned } from './chainalysis.js'
 import { epochToTimestampMs } from './epoch.js'
 import { BYTES_PER_TIB } from './constants.js'
+import { isEventProcessed, markEventProcessed } from './processed-events.js'
 
 /**
  * Handle proof set rail creation
@@ -106,13 +107,20 @@ export async function handleFWSSServiceTerminated(env, payload) {
  *
  * @param {Env} env
  * @param {object} payload
+ * @param {string} payload.id - Unique entity ID from subgraph (txHash +
+ *   logIndex)
  * @param {string} payload.data_set_id
  * @param {string} payload.cdn_amount_added
  * @param {string} payload.cache_miss_amount_added
  * @throws {Error} If there is an error during the database operation
  */
 export async function handleFWSSCDNPaymentRailsToppedUp(env, payload) {
-  const { CDN_RATE_PER_TIB, CACHE_MISS_RATE_PER_TIB } = env
+  const { CDN_RATE_PER_TIB, CACHE_MISS_RATE_PER_TIB, PROCESSED_EVENTS } = env
+
+  // Check idempotency
+  if (await isEventProcessed(PROCESSED_EVENTS, 'cdn_top_up', payload.id)) {
+    return // Already processed, skip
+  }
 
   const cdnEgressQuotaAdded =
     (BigInt(payload.cdn_amount_added) * BYTES_PER_TIB) /
@@ -141,4 +149,7 @@ export async function handleFWSSCDNPaymentRailsToppedUp(env, payload) {
       cacheMissEgressQuotaAdded.toString(),
     )
     .run()
+
+  // Mark as processed after successful DB operation
+  await markEventProcessed(PROCESSED_EVENTS, 'cdn_top_up', payload.id)
 }

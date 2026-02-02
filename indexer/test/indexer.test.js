@@ -1616,6 +1616,7 @@ describe('POST /fwss/cdn-payment-rails-topped-up', () => {
         [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
       },
       body: JSON.stringify({
+        id: '0xtest-calc-stores-0',
         data_set_id: dataSetId,
         cdn_amount_added: '5000000000000000000', // 5 USDFC
         cache_miss_amount_added: '10000000000000000000', // 10 USDFC
@@ -1655,6 +1656,7 @@ describe('POST /fwss/cdn-payment-rails-topped-up', () => {
         [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
       },
       body: JSON.stringify({
+        id: '0xtest-zero-lockup-0',
         data_set_id: dataSetId,
         cdn_amount_added: '0',
         cache_miss_amount_added: '0',
@@ -1695,6 +1697,7 @@ describe('POST /fwss/cdn-payment-rails-topped-up', () => {
           [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
         },
         body: JSON.stringify({
+          id: '0xtest-accum-existing-0',
           data_set_id: dataSetId,
           cdn_amount_added: '5000000000000000000',
           cache_miss_amount_added: '10000000000000000000',
@@ -1703,13 +1706,14 @@ describe('POST /fwss/cdn-payment-rails-topped-up', () => {
       env,
     )
 
-    // Second top-up with additional amounts
+    // Second top-up with additional amounts (different entity id)
     const req = new Request('https://host/fwss/cdn-payment-rails-topped-up', {
       method: 'POST',
       headers: {
         [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
       },
       body: JSON.stringify({
+        id: '0xtest-accum-existing-1',
         data_set_id: dataSetId,
         cdn_amount_added: '5000000000000000000', // 5 USDFC more
         cache_miss_amount_added: '10000000000000000000', // 10 USDFC more
@@ -1745,6 +1749,7 @@ describe('POST /fwss/cdn-payment-rails-topped-up', () => {
         [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
       },
       body: JSON.stringify({
+        id: '0xtest-creates-dataset-0',
         data_set_id: dataSetId,
         cdn_amount_added: '5000000000000000000',
         cache_miss_amount_added: '10000000000000000000',
