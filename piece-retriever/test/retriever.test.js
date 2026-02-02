@@ -991,6 +991,48 @@ describe('piece-retriever.fetch', () => {
     expect(result).toMatchObject({ bot_name: null })
   })
 
+  it('still writes retrieval logs if the SP aborts the response', async () => {
+    const { pieceCid, dataSetId } = CONTENT_STORED_ON_CALIBRATION[0]
+    const url = 'https://example.com/piece/123'
+
+    let ix = 0
+    const readable = new ReadableStream({
+      pull(controller) {
+        if (ix++ === 0) {
+          console.log('pull: some data')
+          controller.enqueue('some data')
+        } else {
+          console.log('pull: error')
+          throw new Error('abort')
+        }
+      },
+    })
+    const response = new Response(readable)
+
+    const mockRetrieveFile = vi.fn().mockResolvedValue({
+      response,
+      cacheMiss: true,
+      url,
+    })
+    const ctx = createExecutionContext()
+    const req = withRequest(defaultPayerAddress, pieceCid)
+    const res = await worker.fetch(req, env, ctx, {
+      retrieveFile: mockRetrieveFile,
+    })
+    await expect(res.text()).rejects.toThrow() // Rejects because empty response
+    await waitOnExecutionContext(ctx)
+    expect(res.status).toBe(200)
+
+    expect(res.headers.get('X-Data-Set-ID')).toBe(String(dataSetId))
+
+    const result = await env.DB.prepare(
+      'SELECT * FROM retrieval_logs WHERE data_set_id = ?',
+    )
+      .bind(String(dataSetId))
+      .first()
+    expect(result).toMatchObject({ response_status: 900 })
+  })
+
   it('stores bot name in retrieval logs when valid authorization header is provided', async () => {
     const body = 'file content'
     const fakeResponse = new Response(body, {
