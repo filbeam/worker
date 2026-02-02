@@ -343,15 +343,12 @@ export default {
       return response
     } catch (error) {
       const { status } = getErrorHttpStatusMessage(error)
-      const statusToLog = String(error).includes('Network connection lost.')
-        ? 900
-        : status
 
       ctx.waitUntil(
         logRetrievalResult(env, {
           cacheMiss: null,
           cacheMissResponseValid: null,
-          responseStatus: statusToLog,
+          responseStatus: status,
           egressBytes: null,
           requestCountryCode,
           timestamp: requestTimestamp,
