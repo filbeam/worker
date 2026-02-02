@@ -21,6 +21,6 @@ export async function isEventProcessed(kv, eventType, entityId) {
  */
 export async function markEventProcessed(kv, eventType, entityId) {
   const key = `${eventType}:${entityId}`
-  const timestamp = Math.floor(Date.now() / 1000) // Unix timestamp in seconds
-  await kv.put(key, String(timestamp))
+  // Store timestamp for debugging purposes
+  await kv.put(key, Date.now().toString())
 }
