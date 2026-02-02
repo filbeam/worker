@@ -313,7 +313,6 @@ export default {
             console.error('Error in server stream:', err)
             logStreamStats()
             clearInterval(iv)
-            throw err
           }
         })(),
       )
