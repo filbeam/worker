@@ -996,7 +996,7 @@ describe('piece-retriever.fetch', () => {
     const url = 'https://example.com/piece/123'
 
     let ix = 0
-    const readable = new ReadableStream({
+    const upstreamResponseBody = new ReadableStream({
       pull(controller) {
         if (ix++ === 0) {
           controller.enqueue('some data')
@@ -1005,7 +1005,7 @@ describe('piece-retriever.fetch', () => {
         }
       },
     })
-    const response = new Response(readable)
+    const response = new Response(upstreamResponseBody)
 
     const mockRetrieveFile = vi.fn().mockResolvedValue({
       response,
