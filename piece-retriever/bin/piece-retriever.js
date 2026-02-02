@@ -267,9 +267,10 @@ export default {
               500,
               'Should never happen',
             )
-            await retrievalResult.response.body
-              .pipeThrough(measureStream)
-              .pipeTo(returnedStream.writable)
+            await Promise.all([
+              retrievalResult.response.body.pipeTo(measureStream.writable),
+              measureStream.readable.pipeTo(returnedStream.writable),
+            ])
             console.log('Response finished')
 
             const cacheMissResponseValid =
