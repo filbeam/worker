@@ -1,13 +1,70 @@
 import assert from 'node:assert'
 import { getChainClient as defaultGetChainClient } from './chain.js'
 import { getRecentSendMessage as defaultGetRecentSendMessage } from './filfox.js'
+import { epochToTimestampMs } from './epoch.js'
 
 /**
  * @typedef {{
  *   type: 'transaction-retry'
  *   transactionHash: `0x${string}`
+ *   dataSetIds: string[]
  * }} TransactionRetryMessage
  */
+
+/**
+ * @typedef {{
+ *   type: 'settlement-confirmed'
+ *   transactionHash: `0x${string}`
+ *   blockNumber: string
+ *   dataSetIds: string[]
+ * }} SettlementConfirmedMessage
+ */
+
+/**
+ * Handles settlement confirmed queue messages
+ *
+ * @param {SettlementConfirmedMessage} message
+ * @param {Env} env
+ */
+export async function handleSettlementConfirmedQueueMessage(message, env) {
+  const { transactionHash, blockNumber, dataSetIds } = message
+  assert(transactionHash, 'transactionHash is required')
+  assert(blockNumber, 'blockNumber is required')
+  assert(dataSetIds, 'dataSetIds is required')
+
+  console.log(`Processing settlement confirmation for hash: ${transactionHash}`)
+
+  try {
+    const settledUntil = new Date(
+      epochToTimestampMs(
+        blockNumber,
+        Number(env.FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS),
+      ),
+    ).toISOString()
+
+    const placeholders = dataSetIds.map(() => '?').join(', ')
+    await env.DB.prepare(
+      `
+      UPDATE data_sets
+      SET cdn_payments_settled_until = ?
+      WHERE id IN (${placeholders})
+        AND cdn_payments_settled_until < ?
+      `,
+    )
+      .bind(settledUntil, ...dataSetIds, settledUntil)
+      .run()
+
+    console.log(
+      `Updated cdn_payments_settled_until to ${settledUntil} for ${dataSetIds.length} data sets`,
+    )
+  } catch (error) {
+    console.error(
+      `Failed to process settlement confirmation for hash: ${transactionHash}`,
+      error,
+    )
+    throw error
+  }
+}
 
 /**
  * Handles transaction retry queue messages
@@ -23,8 +80,9 @@ export async function handleTransactionRetryQueueMessage(
     getRecentSendMessage = defaultGetRecentSendMessage,
   } = {},
 ) {
-  const { transactionHash } = message
-  assert(transactionHash)
+  const { transactionHash, dataSetIds } = message
+  assert(transactionHash, 'transactionHash is required')
+  assert(dataSetIds, 'dataSetIds is required')
 
   console.log(`Processing transaction retry for hash: ${transactionHash}`)
 
@@ -42,6 +100,16 @@ export async function handleTransactionRetryQueueMessage(
           `Transaction ${transactionHash} is no longer pending, retry not needed`,
         )
 
+        // Transaction already confirmed - send confirmation message to queue
+        await env.TRANSACTION_QUEUE.send({
+          type: 'settlement-confirmed',
+          transactionHash,
+          blockNumber: receipt.blockNumber.toString(),
+          dataSetIds,
+        })
+        console.log(
+          `Sent confirmation message to queue for already confirmed transaction ${transactionHash}`,
+        )
         return
       }
     } catch (error) {
@@ -104,18 +172,15 @@ export async function handleTransactionRetryQueueMessage(
       `Sent retry transaction ${retryHash} for original transaction ${transactionHash}`,
     )
 
-    console.log(
-      `Sent retry transaction ${retryHash} for original transaction ${transactionHash}`,
-    )
-
     // Start transaction monitor workflow
     await env.TRANSACTION_MONITOR_WORKFLOW.create({
       id: `payment-settler-${retryHash}-${Date.now()}`,
       params: {
         transactionHash: retryHash,
         metadata: {
-          // Only retry data, no success handling needed since we don't store in DB
-          retryData: {},
+          onSuccess: 'settlement-confirmed',
+          successData: { dataSetIds },
+          retryData: { dataSetIds },
         },
       },
     })
