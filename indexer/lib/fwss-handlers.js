@@ -117,9 +117,9 @@ export async function handleFWSSServiceTerminated(env, payload) {
 export async function handleFWSSCDNPaymentRailsToppedUp(env, payload) {
   const { CDN_RATE_PER_TIB, CACHE_MISS_RATE_PER_TIB, PROCESSED_EVENTS } = env
 
-  // Check idempotency
   if (await isEventProcessed(PROCESSED_EVENTS, 'cdn_top_up', payload.id)) {
-    return // Already processed, skip
+    console.log(`Event already processed. Entity id: ${payload.id}`)
+    return
   }
 
   const cdnEgressQuotaAdded =
