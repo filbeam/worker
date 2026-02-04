@@ -97,6 +97,18 @@ id = "placeholder-id"
 
 Without the top-level placeholder, wrangler marks environment-only bindings as optional (`binding?: Type`), causing TypeScript errors when accessing them.
 
+### Creating KV Namespaces
+
+When a worker needs a new KV namespace, create it using the wrangler CLI before deployment:
+
+1. **Use consistent naming**: Follow the pattern `filbeam-{name}-{env}` (e.g., `filbeam-processed-events-calibration`)
+2. **Create for each environment**:
+   ```bash
+   CLOUDFLARE_ACCOUNT_ID=37573110e38849a343d93b727953188f npx wrangler kv namespace create filbeam-<name>-calibration
+   CLOUDFLARE_ACCOUNT_ID=37573110e38849a343d93b727953188f npx wrangler kv namespace create filbeam-<name>-mainnet
+   ```
+3. **Update wrangler.toml** with the returned namespace IDs
+
 ### Secret Variables (.dev.vars)
 
 Workers that require secrets have `.dev.vars.template` files with placeholder values. Run `node bin/setup-dev-vars.js` to create `.dev.vars` files from templates.

@@ -112,7 +112,7 @@ max_batch_timeout = 30
 
 [[env.calibration.kv_namespaces]]
 binding = "PROCESSED_EVENTS"
-id = "b18c3c10-fake-calibration-id"
+id = "86018fc9b60a462bbfd3a08c66680ffc"
 
 [env.mainnet.vars]
 ENVIRONMENT = "mainnet"
@@ -152,4 +152,4 @@ max_batch_timeout = 30
 
 [[env.mainnet.kv_namespaces]]
 binding = "PROCESSED_EVENTS"
-id = "b18c3c10-fake-mainnet-id"
+id = "7304e6155fa04801ae0522a01380e5ef"
