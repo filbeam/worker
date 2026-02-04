@@ -213,9 +213,6 @@ export default {
       /** @type {number | null} */
       let firstByteAt = null
 
-      const { promise: responseFinishedPromise, resolve: responseFinished } =
-        Promise.withResolvers()
-
       /** @type {number | null} */
       let minChunkSize = null
       /** @type {number | null} */
@@ -260,63 +257,74 @@ export default {
         },
       })
 
-      const responseFinishedStream = new TransformStream({
-        flush() {
-          console.log('Response finished')
-          responseFinished(null)
-        },
-      })
-      const readableStream = retrievalResult.response.body
-        .pipeThrough(measureStream)
-        .pipeThrough(responseFinishedStream)
       const returnedStream = new TransformStream()
 
       ctx.waitUntil(
-        readableStream.pipeTo(returnedStream.writable).catch((err) => {
-          console.error('Error in server stream:', err)
-          logStreamStats()
-        }),
-      )
-
-      ctx.waitUntil(
         (async () => {
-          await responseFinishedPromise
-          const cacheMissResponseValid =
-            typeof retrievalResult.validate === 'function'
-              ? retrievalResult.validate()
-              : null
-          httpAssert(firstByteAt, 500, 'Should never happen')
-          const lastByteFetchedAt = performance.now()
-
-          if (cacheMissResponseValid === false) {
-            await caches.default.delete(
-              getRetrievalUrl(retrievalCandidate.serviceUrl, pieceCid),
+          try {
+            httpAssert(
+              retrievalResult.response.body,
+              500,
+              'Should never happen',
             )
+            await Promise.all([
+              retrievalResult.response.body.pipeTo(measureStream.writable),
+              measureStream.readable.pipeTo(returnedStream.writable),
+            ])
+            console.log('Response finished')
+
+            const cacheMissResponseValid =
+              typeof retrievalResult.validate === 'function'
+                ? retrievalResult.validate()
+                : null
+            httpAssert(firstByteAt, 500, 'Should never happen')
+            const lastByteFetchedAt = performance.now()
+
+            if (cacheMissResponseValid === false) {
+              await caches.default.delete(
+                getRetrievalUrl(retrievalCandidate.serviceUrl, pieceCid),
+              )
+            }
+
+            await logRetrievalResult(env, {
+              cacheMiss: retrievalResult.cacheMiss,
+              cacheMissResponseValid,
+              responseStatus: retrievalResult.response.status,
+              egressBytes,
+              requestCountryCode,
+              timestamp: requestTimestamp,
+              performanceStats: {
+                fetchTtfb: firstByteAt - fetchStartedAt,
+                fetchTtlb: lastByteFetchedAt - fetchStartedAt,
+                workerTtfb: firstByteAt - workerStartedAt,
+              },
+              dataSetId: retrievalCandidate.dataSetId,
+              botName,
+            })
+
+            await updateDataSetStats(env, {
+              dataSetId: retrievalCandidate.dataSetId,
+              egressBytes,
+              cacheMiss: retrievalResult.cacheMiss,
+              cacheMissResponseValid,
+              enforceEgressQuota: env.ENFORCE_EGRESS_QUOTA,
+            })
+          } catch (err) {
+            console.error('Error in server stream:', err)
+            logStreamStats()
+            clearInterval(iv)
+
+            await logRetrievalResult(env, {
+              cacheMiss: retrievalResult.cacheMiss,
+              cacheMissResponseValid: null,
+              responseStatus: 900,
+              egressBytes,
+              requestCountryCode,
+              timestamp: requestTimestamp,
+              dataSetId: retrievalCandidate.dataSetId,
+              botName,
+            })
           }
-
-          await logRetrievalResult(env, {
-            cacheMiss: retrievalResult.cacheMiss,
-            cacheMissResponseValid,
-            responseStatus: retrievalResult.response.status,
-            egressBytes,
-            requestCountryCode,
-            timestamp: requestTimestamp,
-            performanceStats: {
-              fetchTtfb: firstByteAt - fetchStartedAt,
-              fetchTtlb: lastByteFetchedAt - fetchStartedAt,
-              workerTtfb: firstByteAt - workerStartedAt,
-            },
-            dataSetId: retrievalCandidate.dataSetId,
-            botName,
-          })
-
-          await updateDataSetStats(env, {
-            dataSetId: retrievalCandidate.dataSetId,
-            egressBytes,
-            cacheMiss: retrievalResult.cacheMiss,
-            cacheMissResponseValid,
-            enforceEgressQuota: env.ENFORCE_EGRESS_QUOTA,
-          })
         })(),
       )
 
