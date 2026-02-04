@@ -45,6 +45,7 @@ describe('handleFWSSCDNPaymentRailsToppedUp', () => {
     }
 
     const payload = {
+      id: '0xtest-calc-quotas-0',
       data_set_id: testDataSetId,
       cdn_amount_added: '5000000000000000000',
       cache_miss_amount_added: '10000000000000000000',
@@ -72,6 +73,7 @@ describe('handleFWSSCDNPaymentRailsToppedUp', () => {
     }
 
     const payload = {
+      id: '0xtest-zero-amounts-0',
       data_set_id: testDataSetId,
       cdn_amount_added: '0',
       cache_miss_amount_added: '0',
@@ -99,6 +101,7 @@ describe('handleFWSSCDNPaymentRailsToppedUp', () => {
     }
 
     const payload1 = {
+      id: '0xtest-accum-0',
       data_set_id: testDataSetId,
       cdn_amount_added: '5000000000000000000',
       cache_miss_amount_added: '10000000000000000000',
@@ -117,8 +120,9 @@ describe('handleFWSSCDNPaymentRailsToppedUp', () => {
       cache_miss_egress_quota: 2 * Number(BYTES_PER_TIB),
     })
 
-    // Second top-up should increment, not replace
+    // Second top-up should increment, not replace (different entity id)
     const payload2 = {
+      id: '0xtest-accum-1',
       data_set_id: testDataSetId,
       cdn_amount_added: '5000000000000000000',
       cache_miss_amount_added: '10000000000000000000',
@@ -138,6 +142,102 @@ describe('handleFWSSCDNPaymentRailsToppedUp', () => {
     })
   })
 
+  it('is idempotent when called with identical payload (same entity id)', async () => {
+    const CDN_RATE_PER_TIB = 5_000_000_000_000_000_000n
+    const CACHE_MISS_RATE_PER_TIB = 5_000_000_000_000_000_000n
+
+    const testEnv = {
+      ...env,
+      CDN_RATE_PER_TIB: CDN_RATE_PER_TIB.toString(),
+      CACHE_MISS_RATE_PER_TIB: CACHE_MISS_RATE_PER_TIB.toString(),
+    }
+
+    const payload = {
+      id: '0xabc123-0', // entity id from subgraph
+      data_set_id: testDataSetId,
+      cdn_amount_added: (1n * CDN_RATE_PER_TIB).toString(),
+      cache_miss_amount_added: (2n * CACHE_MISS_RATE_PER_TIB).toString(),
+    }
+
+    await handleFWSSCDNPaymentRailsToppedUp(testEnv, payload)
+
+    const resultAfterFirst = await env.DB.prepare(
+      'SELECT cdn_egress_quota, cache_miss_egress_quota FROM data_set_egress_quotas WHERE data_set_id = ?',
+    )
+      .bind(testDataSetId)
+      .first()
+
+    expect(resultAfterFirst).toStrictEqual({
+      cdn_egress_quota: Number(BYTES_PER_TIB),
+      cache_miss_egress_quota: Number(2n * BYTES_PER_TIB),
+    })
+
+    // Call with identical payload (duplicate webhook delivery)
+    await handleFWSSCDNPaymentRailsToppedUp(testEnv, payload)
+
+    const resultAfterSecond = await env.DB.prepare(
+      'SELECT cdn_egress_quota, cache_miss_egress_quota FROM data_set_egress_quotas WHERE data_set_id = ?',
+    )
+      .bind(testDataSetId)
+      .first()
+
+    // Quotas should NOT be doubled - the same event should be idempotent
+    expect(resultAfterSecond).toStrictEqual(resultAfterFirst)
+  })
+
+  it('processes distinct events with identical payloads but different entity ids', async () => {
+    const CDN_RATE_PER_TIB = 5_000_000_000_000_000_000n
+    const CACHE_MISS_RATE_PER_TIB = 5_000_000_000_000_000_000n
+
+    const testEnv = {
+      ...env,
+      CDN_RATE_PER_TIB: CDN_RATE_PER_TIB.toString(),
+      CACHE_MISS_RATE_PER_TIB: CACHE_MISS_RATE_PER_TIB.toString(),
+    }
+
+    const payload1 = {
+      id: '0xabc123-0', // first entity id
+      data_set_id: testDataSetId,
+      cdn_amount_added: (1n * CDN_RATE_PER_TIB).toString(),
+      cache_miss_amount_added: (2n * CACHE_MISS_RATE_PER_TIB).toString(),
+    }
+
+    const payload2 = {
+      id: '0xdef456-0', // different entity id
+      data_set_id: testDataSetId,
+      cdn_amount_added: (1n * CDN_RATE_PER_TIB).toString(), // same amounts
+      cache_miss_amount_added: (2n * CACHE_MISS_RATE_PER_TIB).toString(),
+    }
+
+    await handleFWSSCDNPaymentRailsToppedUp(testEnv, payload1)
+
+    const resultAfterFirst = await env.DB.prepare(
+      'SELECT cdn_egress_quota, cache_miss_egress_quota FROM data_set_egress_quotas WHERE data_set_id = ?',
+    )
+      .bind(testDataSetId)
+      .first()
+
+    expect(resultAfterFirst).toStrictEqual({
+      cdn_egress_quota: Number(BYTES_PER_TIB),
+      cache_miss_egress_quota: Number(2n * BYTES_PER_TIB),
+    })
+
+    // Call with different entity id - should be processed as new event
+    await handleFWSSCDNPaymentRailsToppedUp(testEnv, payload2)
+
+    const resultAfterSecond = await env.DB.prepare(
+      'SELECT cdn_egress_quota, cache_miss_egress_quota FROM data_set_egress_quotas WHERE data_set_id = ?',
+    )
+      .bind(testDataSetId)
+      .first()
+
+    // Quotas should be doubled - both events are distinct and should be processed
+    expect(resultAfterSecond).toStrictEqual({
+      cdn_egress_quota: Number(2n * BYTES_PER_TIB),
+      cache_miss_egress_quota: Number(4n * BYTES_PER_TIB),
+    })
+  })
+
   it('creates quotas in egress table when data set does not exist', async () => {
     const testEnv = {
       ...env,
@@ -146,6 +246,7 @@ describe('handleFWSSCDNPaymentRailsToppedUp', () => {
     }
 
     const payload = {
+      id: '0xtest-non-existent-0',
       data_set_id: 'non-existent-data-set',
       cdn_amount_added: '5000000000000000000',
       cache_miss_amount_added: '5000000000000000000',
@@ -198,6 +299,7 @@ describe('webhook ordering scenarios', () => {
 
     // Step 1: CDN top-up webhook arrives first
     const topUpPayload = {
+      id: '0xtest-topup-before-create-0',
       data_set_id: testDataSetId,
       cdn_amount_added: '5000000000000000000',
       cache_miss_amount_added: '5000000000000000000',
@@ -294,13 +396,15 @@ describe('webhook ordering scenarios', () => {
 
     // Step 1: First CDN top-up
     await handleFWSSCDNPaymentRailsToppedUp(topUpEnv, {
+      id: '0xtest-multi-topup-0',
       data_set_id: testDataSetId,
       cdn_amount_added: '5000000000000000000',
       cache_miss_amount_added: '5000000000000000000',
     })
 
-    // Step 2: Second CDN top-up
+    // Step 2: Second CDN top-up (different entity id)
     await handleFWSSCDNPaymentRailsToppedUp(topUpEnv, {
+      id: '0xtest-multi-topup-1',
       data_set_id: testDataSetId,
       cdn_amount_added: '5000000000000000000',
       cache_miss_amount_added: '10000000000000000000',
@@ -444,6 +548,7 @@ describe('webhook ordering scenarios', () => {
     }
 
     const topUpPayload = {
+      id: '0xtest-create-before-topup-0',
       data_set_id: testDataSetId,
       cdn_amount_added: '5000000000000000000',
       cache_miss_amount_added: '5000000000000000000',

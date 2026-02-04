@@ -52,7 +52,7 @@ npm run deploy:mainnet
 
 ### Data Flow
 
-1. **indexer** receives webhook events from Goldsky subgraph about on-chain events (data set creation, pieces added/removed, service termination, payment rail top-ups). It processes and stores this data in D1.
+1. **indexer** receives webhook events from Goldsky subgraph about on-chain events (data set creation, pieces added/removed, service termination, payment rail top-ups). It processes and stores this data in D1. **Important:** Webhooks can be called repeatedly for the same event and out of order (e.g., a newer event may arrive before an older one). Handlers must be idempotent and handle out-of-order delivery gracefully.
 2. **piece-retriever** handles CDN requests: validates payer wallet, looks up service providers from D1, retrieves content from providers with caching, logs usage stats
 3. **usage-reporter**, **payment-settler**, and **terminator** run on schedules to report usage to blockchain, settle payments, and terminate services for sanctioned clients respectively
 4. **bad-bits** syncs content denylist to KV storage
@@ -97,6 +97,18 @@ id = "placeholder-id"
 
 Without the top-level placeholder, wrangler marks environment-only bindings as optional (`binding?: Type`), causing TypeScript errors when accessing them.
 
+### Creating KV Namespaces
+
+When a worker needs a new KV namespace, create it using the wrangler CLI before deployment:
+
+1. **Use consistent naming**: Follow the pattern `filbeam-{name}-{env}` (e.g., `filbeam-processed-events-calibration`)
+2. **Create for each environment**:
+   ```bash
+   CLOUDFLARE_ACCOUNT_ID=37573110e38849a343d93b727953188f npx wrangler kv namespace create filbeam-<name>-calibration
+   CLOUDFLARE_ACCOUNT_ID=37573110e38849a343d93b727953188f npx wrangler kv namespace create filbeam-<name>-mainnet
+   ```
+3. **Update wrangler.toml** with the returned namespace IDs
+
 ### Secret Variables (.dev.vars)
 
 Workers that require secrets have `.dev.vars.template` files with placeholder values. Run `node bin/setup-dev-vars.js` to create `.dev.vars` files from templates.
@@ -128,6 +140,12 @@ When adding new functionality that affects existing tests:
 
 - Keep existing tests focused on their original purpose - update them minimally using flexible matchers (e.g., `expect.any(BigInt)`) to accommodate the new behavior
 - Create a dedicated new test to verify the specific new behavior or calculation
+
+When writing tests for indexer webhook handlers:
+
+- **Idempotency**: Test that calling a handler multiple times with the same event produces the same result
+- **Out-of-order delivery**: Test that handlers gracefully handle events arriving out of order (e.g., an update event before the create event)
+- **Cross-handler ordering**: When two handlers touch the same table, test scenarios where their events arrive out of order (e.g., "CDN service terminated for dataset N" arrives before "dataset N created")
 
 ### Code Style
 

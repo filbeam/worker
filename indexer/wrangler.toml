@@ -26,6 +26,11 @@ dataset = "test-settlement-stats"
 binding = "RETRY_QUEUE"
 queue = "test-retry-queue"
 
+# Top-level placeholder for PROCESSED_EVENTS KV to ensure TypeScript types are required
+[[kv_namespaces]]
+binding = "PROCESSED_EVENTS"
+id = "placeholder-id"
+
 [vars]
 GOLDSKY_SUBGRAPH_URL = "https://api.goldsky.com/api/public/project_cmb91qc80slyu01wca6e2eupl/subgraphs/filbeam-alpha-calibnet/1.1.0/gn"
 # Default rate: 7 USDFC per TiB (in 1e18 units)
@@ -65,6 +70,10 @@ dataset = "filbeam_settlement_stats_dev"
 queue = "indexer-retry-queue-dev"
 binding = "RETRY_QUEUE"
 
+[[env.dev.kv_namespaces]]
+binding = "PROCESSED_EVENTS"
+id = "b18c3c10-fake-dev-id"
+
 [env.calibration.vars]
 ENVIRONMENT = "calibration"
 WALLET_SCREENING_BATCH_SIZE = 1
@@ -101,6 +110,10 @@ queue = "indexer-retry-queue-calibration"
 max_batch_size = 100
 max_batch_timeout = 30
 
+[[env.calibration.kv_namespaces]]
+binding = "PROCESSED_EVENTS"
+id = "86018fc9b60a462bbfd3a08c66680ffc"
+
 [env.mainnet.vars]
 ENVIRONMENT = "mainnet"
 WALLET_SCREENING_BATCH_SIZE = 10
@@ -136,3 +149,7 @@ binding = "RETRY_QUEUE"
 queue = "indexer-retry-queue-mainnet"
 max_batch_size = 100
 max_batch_timeout = 30
+
+[[env.mainnet.kv_namespaces]]
+binding = "PROCESSED_EVENTS"
+id = "7304e6155fa04801ae0522a01380e5ef"
