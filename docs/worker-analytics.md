@@ -110,19 +110,20 @@ Analytics are written to the `GOLDSKY_STATS` binding, which maps to environment-
 
 Each data point contains the following fields:
 
-| Field        | Type   | Description                       |
-| ------------ | ------ | --------------------------------- |
-| `doubles[0]` | number | Latest indexed block number       |
-| `doubles[1]` | number | Has indexing errors (1=yes, 0=no) |
+| Field        | Type   | Description                                                             |
+| ------------ | ------ | ----------------------------------------------------------------------- |
+| `doubles[0]` | number | Latest indexed block number                                             |
+| `doubles[1]` | number | Has indexing errors (1=yes, 0=no)                                       |
+| `doubles[2]` | number | Indexer lag in milliseconds (Date.now() - last indexed block timestamp) |
 
 ### Example Queries
 
-#### Latest indexed block over time
+#### Indexer lag over time
 
 ```sql
 SELECT
   toStartOfMinute(timestamp) AS minute,
-  MAX(double1) AS latest_block
+  MAX(double3) / 1000 AS lag_seconds
 FROM filbeam_goldsky_stats_mainnet
 WHERE timestamp > NOW() - INTERVAL '1' HOUR
 GROUP BY minute
