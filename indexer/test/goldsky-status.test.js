@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { env } from 'cloudflare:test'
 import workerImpl from '../bin/indexer.js'
+import { epochToTimestampMs } from '../lib/epoch.js'
 
 describe('checkGoldskyStatus', () => {
   let writeDataPoint
@@ -35,7 +36,7 @@ describe('checkGoldskyStatus', () => {
     await workerImpl.checkGoldskyStatus(testEnv, { fetch: mockFetch })
 
     expect(writeDataPoint).toHaveBeenCalledWith({
-      doubles: [12345, 0],
+      doubles: [12345, 0, expect.any(Number)],
     })
   })
 
@@ -56,7 +57,7 @@ describe('checkGoldskyStatus', () => {
     await workerImpl.checkGoldskyStatus(testEnv, { fetch: mockFetch })
 
     expect(writeDataPoint).toHaveBeenCalledWith({
-      doubles: [67890, 1],
+      doubles: [67890, 1, expect.any(Number)],
     })
   })
 
@@ -84,6 +85,38 @@ describe('checkGoldskyStatus', () => {
     expect(warnSpy).toHaveBeenCalledWith(
       expect.stringContaining('Network error'),
     )
+  })
+
+  it('calculates indexer lag in milliseconds', async () => {
+    const fakeNow = 1700000000000
+    vi.useFakeTimers()
+    vi.setSystemTime(fakeNow)
+
+    const blockNumber = 12345
+    const genesisTimestampMs = Number(env.FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS)
+    const expectedLagMs =
+      fakeNow - epochToTimestampMs(blockNumber, genesisTimestampMs)
+
+    const mockFetch = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          data: {
+            _meta: {
+              hasIndexingErrors: false,
+              block: { number: blockNumber },
+            },
+          },
+        }),
+      ),
+    )
+
+    await workerImpl.checkGoldskyStatus(testEnv, { fetch: mockFetch })
+
+    expect(writeDataPoint).toHaveBeenCalledWith({
+      doubles: [blockNumber, 0, expectedLagMs],
+    })
+
+    vi.useRealTimers()
   })
 
   it('warns and returns without data point when response is malformed', async () => {

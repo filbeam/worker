@@ -16,6 +16,7 @@ import {
 } from '../lib/pdp-verifier-handlers.js'
 import { handleCdnPaymentSettled } from '../lib/filbeam-operator-handlers.js'
 import { screenWallets } from '../lib/wallet-screener.js'
+import { epochToTimestampMs } from '../lib/epoch.js'
 import { CID } from 'multiformats/cid'
 
 export default {
@@ -383,11 +384,18 @@ export default {
 
     const lastIndexedBlock = data._meta.block?.number
     const hasIndexingErrors = data._meta.hasIndexingErrors
+    const lastIndexedTimestampMs = epochToTimestampMs(
+      lastIndexedBlock,
+      Number(env.FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS),
+    )
+    const lagMs = Date.now() - lastIndexedTimestampMs
 
-    console.log('Goldsky status', { lastIndexedBlock, hasIndexingErrors })
+    console.log(
+      `Goldsky status: lagMs=${lagMs} hasIndexingErrors=${hasIndexingErrors} lastIndexedBlock=${lastIndexedBlock}`,
+    )
 
     env.GOLDSKY_STATS.writeDataPoint({
-      doubles: [lastIndexedBlock, hasIndexingErrors ? 1 : 0],
+      doubles: [lastIndexedBlock, hasIndexingErrors ? 1 : 0, lagMs],
     })
   },
 
