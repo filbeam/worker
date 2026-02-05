@@ -122,6 +122,7 @@ export async function withPieces(
   pieceCids,
   ipfsRootCids = [],
 ) {
+  const statements = []
   for (let i = 0; i < pieceIds.length; i += INSERT_PIECES_BATCH_SIZE) {
     const batchPieceIds = pieceIds.slice(i, i + INSERT_PIECES_BATCH_SIZE)
     const batchPieceCids = pieceCids.slice(i, i + INSERT_PIECES_BATCH_SIZE)
@@ -130,26 +131,28 @@ export async function withPieces(
       i + INSERT_PIECES_BATCH_SIZE,
     )
 
-    await env.DB.prepare(
-      `
-      INSERT INTO pieces (
-        id,
-        data_set_id,
-        cid,
-        ipfs_root_cid
-      )
-      VALUES ${batchPieceIds.map(() => '(?, ?, ?, ?)').join(', ')}
-      ON CONFLICT DO NOTHING
-    `,
-    )
-      .bind(
+    statements.push(
+      env.DB.prepare(
+        `
+        INSERT INTO pieces (
+          id,
+          data_set_id,
+          cid,
+          ipfs_root_cid
+        )
+        VALUES ${batchPieceIds.map(() => '(?, ?, ?, ?)').join(', ')}
+        ON CONFLICT DO NOTHING
+      `,
+      ).bind(
         ...batchPieceIds.flatMap((pieceId, j) => [
           String(pieceId),
           String(dataSetId),
           batchPieceCids[j],
           batchIpfsRootCids[j] || null,
         ]),
-      )
-      .run()
+      ),
+    )
   }
+  // https://developers.cloudflare.com/d1/worker-api/d1-database/#batch
+  await env.DB.batch(statements)
 }

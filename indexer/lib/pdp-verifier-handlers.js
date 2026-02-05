@@ -43,16 +43,19 @@ const REMOVE_PIECES_BATCH_SIZE = 50
  * @param {(number | string)[]} pieceIds
  */
 export async function removeDataSetPieces(env, dataSetId, pieceIds) {
+  const statements = []
   for (let i = 0; i < pieceIds.length; i += REMOVE_PIECES_BATCH_SIZE) {
     const batch = pieceIds.slice(i, i + REMOVE_PIECES_BATCH_SIZE)
-    await env.DB.prepare(
-      `
-      INSERT INTO pieces (id, data_set_id, is_deleted)
-      VALUES ${batch.map(() => '(?, ?, TRUE)').join(', ')}
-      ON CONFLICT DO UPDATE set is_deleted = true
-      `,
+    statements.push(
+      env.DB.prepare(
+        `
+        INSERT INTO pieces (id, data_set_id, is_deleted)
+        VALUES ${batch.map(() => '(?, ?, TRUE)').join(', ')}
+        ON CONFLICT DO UPDATE set is_deleted = true
+        `,
+      ).bind(...batch.flatMap((pieceId) => [pieceId, dataSetId])),
     )
-      .bind(...batch.flatMap((pieceId) => [pieceId, dataSetId]))
-      .run()
   }
+
+  await env.DB.batch(statements)
 }
