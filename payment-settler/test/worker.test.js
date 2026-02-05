@@ -139,7 +139,11 @@ describe('payment settler scheduled handler', () => {
         ),
         params: {
           transactionHash: '0xMockTransactionHash',
-          metadata: {},
+          metadata: {
+            onSuccess: 'settlement-confirmed',
+            successData: { dataSetIds: [id1] },
+            retryData: { dataSetIds: [id1] },
+          },
         },
       },
       {
@@ -148,7 +152,11 @@ describe('payment settler scheduled handler', () => {
         ),
         params: {
           transactionHash: '0xMockTransactionHash',
-          metadata: {},
+          metadata: {
+            onSuccess: 'settlement-confirmed',
+            successData: { dataSetIds: [id2] },
+            retryData: { dataSetIds: [id2] },
+          },
         },
       },
     ])
@@ -389,7 +397,11 @@ describe('payment settler scheduled handler', () => {
         ),
         params: {
           transactionHash: '0xMockTransactionHash',
-          metadata: {},
+          metadata: {
+            onSuccess: 'settlement-confirmed',
+            successData: { dataSetIds: [id1] },
+            retryData: { dataSetIds: [id1] },
+          },
         },
       },
       {
@@ -398,7 +410,11 @@ describe('payment settler scheduled handler', () => {
         ),
         params: {
           transactionHash: '0xMockTransactionHash',
-          metadata: {},
+          metadata: {
+            onSuccess: 'settlement-confirmed',
+            successData: { dataSetIds: [id3] },
+            retryData: { dataSetIds: [id3] },
+          },
         },
       },
     ])

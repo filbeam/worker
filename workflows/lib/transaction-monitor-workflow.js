@@ -36,7 +36,7 @@ export class TransactionMonitorWorkflow extends WorkflowEntrypoint {
 
     try {
       // Wait for transaction receipt with timeout
-      await step.do(
+      const receiptInfo = await step.do(
         `wait for transaction receipt ${transactionHash}`,
         {
           timeout: `5 minutes`,
@@ -70,6 +70,7 @@ export class TransactionMonitorWorkflow extends WorkflowEntrypoint {
 
       // Handle success if onSuccess message type is provided
       if (metadata?.onSuccess) {
+        const { blockNumber } = receiptInfo
         await step.do(
           'send confirmation to queue',
           { timeout: '30 seconds' },
@@ -77,6 +78,7 @@ export class TransactionMonitorWorkflow extends WorkflowEntrypoint {
             const message = {
               type: metadata.onSuccess,
               transactionHash,
+              blockNumber,
               ...metadata?.successData,
             }
 

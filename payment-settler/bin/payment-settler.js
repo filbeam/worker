@@ -4,13 +4,26 @@ import {
   settleCDNPaymentRails,
 } from '../lib/rail-settlement.js'
 import { TransactionMonitorWorkflow } from '@filbeam/workflows'
-import { handleTransactionRetryQueueMessage as defaultHandleTransactionRetryQueueMessage } from '../lib/queue-handlers.js'
+import {
+  handleTransactionRetryQueueMessage as defaultHandleTransactionRetryQueueMessage,
+  handleSettlementConfirmedQueueMessage as defaultHandleSettlementConfirmedQueueMessage,
+} from '../lib/queue-handlers.js'
 
 /**
  * @typedef {{
  *   type: 'transaction-retry'
  *   transactionHash: `0x${string}`
+ *   dataSetIds: string[]
  * }} TransactionRetryMessage
+ */
+
+/**
+ * @typedef {{
+ *   type: 'settlement-confirmed'
+ *   transactionHash: `0x${string}`
+ *   blockNumber: string
+ *   dataSetIds: string[]
+ * }} SettlementConfirmedMessage
  */
 
 export default {
@@ -61,12 +74,15 @@ export default {
         ),
       )
 
-      /** @type {`0x${string}`[]} */
-      const transactionHashes = []
+      /** @type {{ transactionHash: `0x${string}`; dataSetIds: string[] }[]} */
+      const successfulBatches = []
       for (let i = 0; i < results.length; i++) {
         const result = results[i]
         if (result.status === 'fulfilled') {
-          transactionHashes.push(result.value)
+          successfulBatches.push({
+            transactionHash: result.value,
+            dataSetIds: batches[i],
+          })
         } else {
           console.error(
             `Failed to settle batch ${i + 1} (data sets: ${batches[i].join(', ')}):`,
@@ -75,20 +91,24 @@ export default {
         }
       }
 
-      if (transactionHashes.length > 0) {
+      if (successfulBatches.length > 0) {
         await env.TRANSACTION_MONITOR_WORKFLOW.createBatch(
-          transactionHashes.map((transactionHash) => ({
+          successfulBatches.map(({ transactionHash, dataSetIds }) => ({
             id: `payment-settler-${transactionHash}-${Date.now()}`,
             params: {
               transactionHash,
-              metadata: {},
+              metadata: {
+                onSuccess: 'settlement-confirmed',
+                successData: { dataSetIds },
+                retryData: { dataSetIds },
+              },
             },
           })),
         )
       }
 
       console.log(
-        `Settled ${transactionHashes.length} of ${batches.length} batches`,
+        `Settled ${successfulBatches.length} of ${batches.length} batches`,
       )
     } catch (error) {
       console.error('Settlement process failed:', error)
@@ -99,7 +119,9 @@ export default {
   /**
    * Queue consumer for transaction-related messages
    *
-   * @param {MessageBatch<TransactionRetryMessage>} batch
+   * @param {MessageBatch<
+   *   TransactionRetryMessage | SettlementConfirmedMessage
+   * >} batch
    * @param {Env} env
    * @param {ExecutionContext} ctx
    */
@@ -109,6 +131,7 @@ export default {
     ctx,
     {
       handleTransactionRetryQueueMessage = defaultHandleTransactionRetryQueueMessage,
+      handleSettlementConfirmedQueueMessage = defaultHandleSettlementConfirmedQueueMessage,
     } = {},
   ) {
     for (const message of batch.messages) {
@@ -119,6 +142,9 @@ export default {
         switch (message.body.type) {
           case 'transaction-retry':
             await handleTransactionRetryQueueMessage(message.body, env)
+            break
+          case 'settlement-confirmed':
+            await handleSettlementConfirmedQueueMessage(message.body, env)
             break
           default:
             throw new Error(

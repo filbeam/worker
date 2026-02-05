@@ -111,6 +111,7 @@ describe('TransactionMonitorWorkflow', () => {
       expect(mockQueue.send).toHaveBeenCalledWith({
         type: 'transaction-confirmed',
         transactionHash,
+        blockNumber: '12345',
         ...successData,
       })
     })
@@ -305,6 +306,7 @@ describe('TransactionMonitorWorkflow', () => {
       expect(mockQueue.send).toHaveBeenCalledWith({
         type: 'custom-success',
         transactionHash,
+        blockNumber: '12345',
         ...successData,
       })
 
