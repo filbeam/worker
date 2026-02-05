@@ -153,6 +153,6 @@ export async function withPieces(
       ),
     )
   }
-  // https://developers.cloudflare.com/d1/worker-api/d1-database/#batch
+
   await env.DB.batch(statements)
 }
