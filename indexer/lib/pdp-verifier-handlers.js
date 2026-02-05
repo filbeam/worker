@@ -38,16 +38,24 @@ export async function insertDataSetPiece(
  * @param {(number | string)[]} pieceIds
  */
 export async function removeDataSetPieces(env, dataSetId, pieceIds) {
-  await env.DB.prepare(
-    `
-    INSERT INTO pieces (id, data_set_id, is_deleted)
-    VALUES ${new Array(pieceIds.length)
-      .fill(null)
-      .map(() => '(?, ?, TRUE)')
-      .join(', ')}
-    ON CONFLICT DO UPDATE set is_deleted = true
-    `,
-  )
-    .bind(...pieceIds.flatMap((pieceId) => [pieceId, dataSetId]))
-    .run()
+  // Cloudflare D1 has a limit of 100 bound parameters per query
+  // Each piece requires 2 parameters (pieceId, dataSetId), so batch size is 50
+  const BATCH_SIZE = 50
+
+  // Process pieces in batches
+  for (let i = 0; i < pieceIds.length; i += BATCH_SIZE) {
+    const batch = pieceIds.slice(i, i + BATCH_SIZE)
+    await env.DB.prepare(
+      `
+      INSERT INTO pieces (id, data_set_id, is_deleted)
+      VALUES ${new Array(batch.length)
+        .fill(null)
+        .map(() => '(?, ?, TRUE)')
+        .join(', ')}
+      ON CONFLICT DO UPDATE set is_deleted = true
+      `,
+    )
+      .bind(...batch.flatMap((pieceId) => [pieceId, dataSetId]))
+      .run()
+  }
 }
