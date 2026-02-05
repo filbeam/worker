@@ -56,3 +56,23 @@ dataSources:
         - event: CDNPaymentRailsToppedUp(indexed uint256,uint256,uint256,uint256,uint256)
           handler: handleCdnPaymentRailsToppedUp
       file: ./src/FilecoinWarmStorageService.ts
+  - kind: ethereum
+    name: FilBeamOperator
+    network: filecoin-testnet
+    source:
+      address: '0x5991E4F9fcEF4AE23959eE03638B4688A7e1EcfF'
+      abi: FilBeamOperator
+      startBlock: 3140000
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.9
+      language: wasm/assemblyscript
+      entities:
+        - CdnPaymentSettled
+      abis:
+        - name: FilBeamOperator
+          file: ./abis/FilBeamOperator.abi.json
+      eventHandlers:
+        - event: CDNSettlement(indexed uint256,uint256)
+          handler: handleCdnPaymentSettled
+      file: ./src/FilBeamOperator.ts

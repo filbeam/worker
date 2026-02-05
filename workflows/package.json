@@ -7,13 +7,13 @@
   "type": "module",
   "main": "lib/transaction-monitor-workflow.js",
   "scripts": {
-    "build:types": "wrangler types --env dev",
+    "build:types": "wrangler types",
     "test": "vitest run"
   },
   "dependencies": {
-    "viem": "^2.44.2"
+    "viem": "^2.45.1"
   },
   "devDependencies": {
-    "@cloudflare/vitest-pool-workers": "^0.12.3"
+    "@cloudflare/vitest-pool-workers": "^0.12.7"
   }
 }

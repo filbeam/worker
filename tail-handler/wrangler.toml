@@ -1,0 +1,31 @@
+name = "filbeam-tail-handler"
+main = "src/index.ts"
+compatibility_date = "2025-09-08"
+compatibility_flags = ["nodejs_compat"]
+logpush = true
+upload_source_maps = true
+
+[[analytics_engine_datasets]]
+binding = "RETRIEVAL_STATS"
+dataset = "test-retrieval-stats"
+
+[env.dev.vars]
+ENVIRONMENT = "dev"
+
+[[env.dev.analytics_engine_datasets]]
+binding = "RETRIEVAL_STATS"
+dataset = "filbeam_retrieval_stats_dev"
+
+[env.calibration.vars]
+ENVIRONMENT = "calibration"
+
+[[env.calibration.analytics_engine_datasets]]
+binding = "RETRIEVAL_STATS"
+dataset = "filbeam_retrieval_stats_calibration"
+
+[env.mainnet.vars]
+ENVIRONMENT = "mainnet"
+
+[[env.mainnet.analytics_engine_datasets]]
+binding = "RETRIEVAL_STATS"
+dataset = "filbeam_retrieval_stats_mainnet"

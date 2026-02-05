@@ -24,6 +24,9 @@ export default {
    * @returns
    */
   async fetch(request, env, ctx, { retrieveFile = defaultRetrieveFile } = {}) {
+    request.signal.addEventListener('abort', () => {
+      console.log('The request was aborted!', { url: request.url })
+    })
     try {
       return await this._fetch(request, env, ctx, { retrieveFile })
     } catch (error) {
@@ -210,8 +213,27 @@ export default {
       /** @type {number | null} */
       let firstByteAt = null
 
-      const { promise: responseFinishedPromise, resolve: responseFinished } =
-        Promise.withResolvers()
+      /** @type {number | null} */
+      let minChunkSize = null
+      /** @type {number | null} */
+      let maxChunkSize = null
+      let bytesReceived = 0
+
+      const logStreamStats = () => {
+        console.log(
+          'Stream stats ' +
+            `minChunkSize=${minChunkSize} ` +
+            `maxChunkSize=${maxChunkSize} ` +
+            `bytesReceived=${bytesReceived} ` +
+            `url=${request.url} ` +
+            `cf-ray=${request.headers.get('cf-ray')}`,
+        )
+        minChunkSize = null
+        maxChunkSize = null
+        bytesReceived = 0
+      }
+
+      const iv = setInterval(logStreamStats, 10_000)
 
       const measureStream = new TransformStream({
         transform(chunk, controller) {
@@ -220,64 +242,94 @@ export default {
             firstByteAt = performance.now()
           }
           egressBytes += chunk.length
+          bytesReceived += chunk.length
+          if (minChunkSize === null || chunk.length < minChunkSize) {
+            minChunkSize = chunk.length
+          }
+          if (maxChunkSize === null || chunk.length > maxChunkSize) {
+            maxChunkSize = chunk.length
+          }
           controller.enqueue(chunk)
+        },
+        flush() {
+          logStreamStats()
+          clearInterval(iv)
         },
       })
 
-      const responseFinishedStream = new TransformStream({
-        flush() {
-          console.log('Response finished')
-          responseFinished(null)
-        },
-      })
-      const returnedStream = retrievalResult.response.body
-        .pipeThrough(measureStream)
-        .pipeThrough(responseFinishedStream)
+      const returnedStream = new TransformStream()
 
       ctx.waitUntil(
         (async () => {
-          await responseFinishedPromise
-          const cacheMissResponseValid =
-            typeof retrievalResult.validate === 'function'
-              ? retrievalResult.validate()
-              : null
-          httpAssert(firstByteAt, 500, 'Should never happen')
-          const lastByteFetchedAt = performance.now()
-
-          if (cacheMissResponseValid === false) {
-            await caches.default.delete(
-              getRetrievalUrl(retrievalCandidate.serviceUrl, pieceCid),
+          try {
+            httpAssert(
+              retrievalResult.response.body,
+              500,
+              'Should never happen',
             )
+            await Promise.all([
+              retrievalResult.response.body.pipeTo(measureStream.writable),
+              measureStream.readable.pipeTo(returnedStream.writable),
+            ])
+            console.log('Response finished')
+
+            const cacheMissResponseValid =
+              typeof retrievalResult.validate === 'function'
+                ? retrievalResult.validate()
+                : null
+            httpAssert(firstByteAt, 500, 'Should never happen')
+            const lastByteFetchedAt = performance.now()
+
+            if (cacheMissResponseValid === false) {
+              await caches.default.delete(
+                getRetrievalUrl(retrievalCandidate.serviceUrl, pieceCid),
+              )
+            }
+
+            await logRetrievalResult(env, {
+              cacheMiss: retrievalResult.cacheMiss,
+              cacheMissResponseValid,
+              responseStatus: retrievalResult.response.status,
+              egressBytes,
+              requestCountryCode,
+              timestamp: requestTimestamp,
+              performanceStats: {
+                fetchTtfb: firstByteAt - fetchStartedAt,
+                fetchTtlb: lastByteFetchedAt - fetchStartedAt,
+                workerTtfb: firstByteAt - workerStartedAt,
+              },
+              dataSetId: retrievalCandidate.dataSetId,
+              botName,
+            })
+
+            await updateDataSetStats(env, {
+              dataSetId: retrievalCandidate.dataSetId,
+              egressBytes,
+              cacheMiss: retrievalResult.cacheMiss,
+              cacheMissResponseValid,
+              enforceEgressQuota: env.ENFORCE_EGRESS_QUOTA,
+            })
+          } catch (err) {
+            console.error('Error in server stream:', err)
+            logStreamStats()
+            clearInterval(iv)
+
+            await logRetrievalResult(env, {
+              cacheMiss: retrievalResult.cacheMiss,
+              cacheMissResponseValid: null,
+              responseStatus: 900,
+              egressBytes,
+              requestCountryCode,
+              timestamp: requestTimestamp,
+              dataSetId: retrievalCandidate.dataSetId,
+              botName,
+            })
           }
-
-          await logRetrievalResult(env, {
-            cacheMiss: retrievalResult.cacheMiss,
-            cacheMissResponseValid,
-            responseStatus: retrievalResult.response.status,
-            egressBytes,
-            requestCountryCode,
-            timestamp: requestTimestamp,
-            performanceStats: {
-              fetchTtfb: firstByteAt - fetchStartedAt,
-              fetchTtlb: lastByteFetchedAt - fetchStartedAt,
-              workerTtfb: firstByteAt - workerStartedAt,
-            },
-            dataSetId: retrievalCandidate.dataSetId,
-            botName,
-          })
-
-          await updateDataSetStats(env, {
-            dataSetId: retrievalCandidate.dataSetId,
-            egressBytes,
-            cacheMiss: retrievalResult.cacheMiss,
-            cacheMissResponseValid,
-            enforceEgressQuota: env.ENFORCE_EGRESS_QUOTA,
-          })
         })(),
       )
 
       // Return immediately, proxying the transformed response
-      const response = new Response(returnedStream, {
+      const response = new Response(returnedStream.readable, {
         status: retrievalResult.response.status,
         statusText: retrievalResult.response.statusText,
         headers: retrievalResult.response.headers,

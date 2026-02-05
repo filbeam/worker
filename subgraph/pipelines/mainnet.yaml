@@ -6,7 +6,7 @@ sources:
     type: subgraph_entity
     subgraphs:
       - name: filbeam-mainnet
-        version: 1.0.0
+        version: 1.1.0
     name: data_set_created
   source__service_provider_registry__product_added:
     type: subgraph_entity
@@ -18,13 +18,13 @@ sources:
     type: subgraph_entity
     subgraphs:
       - name: filbeam-mainnet
-        version: 1.0.0
+        version: 1.1.0
     name: piece_added
   filbeam__service_terminated:
     type: subgraph_entity
     subgraphs:
       - name: filbeam-mainnet
-        version: 1.0.0
+        version: 1.1.0
     name: service_terminated
   source__service_provider_registry__product_updated:
     type: subgraph_entity
@@ -36,20 +36,26 @@ sources:
     type: subgraph_entity
     subgraphs:
       - name: filbeam-mainnet
-        version: 1.0.0
+        version: 1.1.0
     name: pieces_removed
   filbeam__cdn_service_terminated:
     type: subgraph_entity
     subgraphs:
       - name: filbeam-mainnet
-        version: 1.0.0
+        version: 1.1.0
     name: cdn_service_terminated
   filbeam__cdn_payment_rails_topped_up:
     type: subgraph_entity
     subgraphs:
       - name: filbeam-mainnet
-        version: 1.0.0
+        version: 1.1.0
     name: cdn_payment_rails_topped_up
+  filbeam__cdn_payment_settled:
+    type: subgraph_entity
+    subgraphs:
+      - name: filbeam-mainnet
+        version: 1.1.0
+    name: cdn_payment_settled
   source__service_provider_registry__product_removed:
     type: subgraph_entity
     subgraphs:
@@ -112,6 +118,12 @@ sinks:
     secret_name: WEBHOOK_SECRET_CMBHIZHPO0
     one_row_per_request: true
     from: filbeam__cdn_payment_rails_topped_up
+  sink__filbeam_operator__cdn_payment_settled:
+    url: https://index.filcdn.io/filbeam-operator/cdn-payment-settled
+    type: webhook
+    secret_name: WEBHOOK_SECRET_CMBHIZHPO0
+    one_row_per_request: true
+    from: filbeam__cdn_payment_settled
   sink__service_provider_registry__product_removed:
     url: https://index.filcdn.io/service-provider-registry/product-removed
     type: webhook

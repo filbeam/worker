@@ -14,6 +14,22 @@ binding = "DB"
 database_name = "test-db"
 database_id = "8cc92155-16f6-426a-b782-2965e0daf100"
 
+[[queues.producers]]
+binding = "TRANSACTION_QUEUE"
+queue = "test-transaction-queue"
+
+[[workflows]]
+binding = "TRANSACTION_MONITOR_WORKFLOW"
+name = "test-transaction-monitor-workflow"
+class_name = "TransactionMonitorWorkflow"
+
+[vars]
+RPC_URL = "https://api.calibration.node.glif.io/"
+FILBEAM_OPERATOR_CONTRACT_ADDRESS = "0x0000000000000000000000000000000000000000"
+DEFAULT_LOCKUP_PERIOD_DAYS = 30
+FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS = 1667326380000
+SETTLEMENT_BATCH_SIZE = 10
+
 [env.dev.vars]
 ENVIRONMENT = "dev"
 RPC_URL = "https://api.calibration.node.glif.io/"
@@ -47,7 +63,7 @@ RPC_URL = "https://api.calibration.node.glif.io/"
 FILBEAM_OPERATOR_CONTRACT_ADDRESS = "0x5991E4F9fcEF4AE23959eE03638B4688A7e1EcfF"
 DEFAULT_LOCKUP_PERIOD_DAYS = 30 # 30 days lockup period
 FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS = 1667326380000 # Calibration network genesis timestamp in milliseconds
-SETTLEMENT_BATCH_SIZE = 100
+SETTLEMENT_BATCH_SIZE = 50
 
 [[env.calibration.d1_databases]]
 binding = "DB"
@@ -77,7 +93,7 @@ RPC_URL = "https://api.node.glif.io/"
 FILBEAM_OPERATOR_CONTRACT_ADDRESS = "0x9E90749D298C4ca43Bb468CA859Dfe167F9CdCf2"
 DEFAULT_LOCKUP_PERIOD_DAYS = 30 # 30 days lockup period
 FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS = 1598306400000 # Mainnet genesis timestamp in milliseconds
-SETTLEMENT_BATCH_SIZE = 100
+SETTLEMENT_BATCH_SIZE = 50
 
 [[env.mainnet.d1_databases]]
 binding = "DB"

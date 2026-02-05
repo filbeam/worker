@@ -1,0 +1,14 @@
+{
+  "name": "@filbeam/tail-handler",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "build:types": "wrangler types",
+    "deploy:calibration": "wrangler deploy --env calibration",
+    "deploy:mainnet": "wrangler deploy --env mainnet",
+    "start": "wrangler dev --env dev",
+    "test": "vitest run"
+  }
+}

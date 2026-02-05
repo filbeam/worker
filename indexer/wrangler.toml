@@ -14,16 +14,39 @@ binding = "DB"
 database_name = "test-db"
 database_id = "8cc92155-16f6-426a-b782-2965e0daf100"
 
+[[analytics_engine_datasets]]
+binding = "GOLDSKY_STATS"
+dataset = "test-goldsky-stats"
+
+[[analytics_engine_datasets]]
+binding = "SETTLEMENT_STATS"
+dataset = "test-settlement-stats"
+
+[[queues.producers]]
+binding = "RETRY_QUEUE"
+queue = "test-retry-queue"
+
+# Top-level placeholder for PROCESSED_EVENTS KV to ensure TypeScript types are required
+[[kv_namespaces]]
+binding = "PROCESSED_EVENTS"
+id = "placeholder-id"
+
 [vars]
+GOLDSKY_SUBGRAPH_URL = "https://api.goldsky.com/api/public/project_cmb91qc80slyu01wca6e2eupl/subgraphs/filbeam-alpha-calibnet/1.1.0/gn"
 # Default rate: 7 USDFC per TiB (in 1e18 units)
 CDN_RATE_PER_TIB = "7000000000000000000"
 CACHE_MISS_RATE_PER_TIB = "7000000000000000000"
+# Top-level placeholders to ensure TypeScript types are required (not optional)
+WALLET_SCREENING_BATCH_SIZE = 1
+WALLET_SCREENING_STALE_THRESHOLD_MS = 86400000
+DEFAULT_LOCKUP_PERIOD_DAYS = 30
+FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS = 1667326380000
 
 [env.dev.vars]
 ENVIRONMENT = "dev"
 WALLET_SCREENING_BATCH_SIZE = 1
 WALLET_SCREENING_STALE_THRESHOLD_MS = 86400000 # one day
-GOLDSKY_SUBGRAPH_URL="https://api.goldsky.com/api/public/project_cmb91qc80slyu01wca6e2eupl/subgraphs/filbeam-alpha-calibnet/1.0.0/gn"
+GOLDSKY_SUBGRAPH_URL="https://api.goldsky.com/api/public/project_cmb91qc80slyu01wca6e2eupl/subgraphs/filbeam-alpha-calibnet/1.1.0/gn"
 DEFAULT_LOCKUP_PERIOD_DAYS = 30
 FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS = 1667326380000 # Calibration network genesis timestamp in milliseconds
 # 7 USDFC per TiB (in 1e18 units)
@@ -35,13 +58,29 @@ binding = "DB"
 database_name = "dev-db"
 database_id = "8cc92155-16f6-426a-b782-2965e0daf101"
 
+[[env.dev.analytics_engine_datasets]]
+binding = "GOLDSKY_STATS"
+dataset = "filbeam_goldsky_stats_dev"
+
+[[env.dev.analytics_engine_datasets]]
+binding = "SETTLEMENT_STATS"
+dataset = "filbeam_settlement_stats_dev"
+
+[[env.dev.queues.producers]]
+queue = "indexer-retry-queue-dev"
+binding = "RETRY_QUEUE"
+
+[[env.dev.kv_namespaces]]
+binding = "PROCESSED_EVENTS"
+id = "b18c3c10-fake-dev-id"
+
 [env.calibration.vars]
 ENVIRONMENT = "calibration"
 WALLET_SCREENING_BATCH_SIZE = 1
 WALLET_SCREENING_STALE_THRESHOLD_MS = 86400000 # one day
 DEFAULT_LOCKUP_PERIOD_DAYS = 30
 FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS = 1667326380000 # Calibration network genesis timestamp in milliseconds
-GOLDSKY_SUBGRAPH_URL="https://api.goldsky.com/api/public/project_cmb91qc80slyu01wca6e2eupl/subgraphs/filbeam-alpha-calibnet/1.0.0/gn"
+GOLDSKY_SUBGRAPH_URL="https://api.goldsky.com/api/public/project_cmb91qc80slyu01wca6e2eupl/subgraphs/filbeam-calibnet/1.1.0/gn"
 # 7 USDFC per TiB (in 1e18 units)
 CDN_RATE_PER_TIB = "7000000000000000000"
 CACHE_MISS_RATE_PER_TIB = "7000000000000000000"
@@ -50,6 +89,14 @@ CACHE_MISS_RATE_PER_TIB = "7000000000000000000"
 binding = "DB"
 database_name = "filcdn-calibration-db"
 database_id = "78f15bbb-391f-4797-9016-a6cb86c0b9b8"
+
+[[env.calibration.analytics_engine_datasets]]
+binding = "GOLDSKY_STATS"
+dataset = "filbeam_goldsky_stats_calibration"
+
+[[env.calibration.analytics_engine_datasets]]
+binding = "SETTLEMENT_STATS"
+dataset = "filbeam_settlement_stats_calibration"
 
 [env.calibration.triggers]
 crons = ["*/1 * * * *"]  # Run every minute
@@ -63,11 +110,15 @@ queue = "indexer-retry-queue-calibration"
 max_batch_size = 100
 max_batch_timeout = 30
 
+[[env.calibration.kv_namespaces]]
+binding = "PROCESSED_EVENTS"
+id = "86018fc9b60a462bbfd3a08c66680ffc"
+
 [env.mainnet.vars]
 ENVIRONMENT = "mainnet"
 WALLET_SCREENING_BATCH_SIZE = 10
 WALLET_SCREENING_STALE_THRESHOLD_MS = 21600000 # 6 hours
-GOLDSKY_SUBGRAPH_URL="https://api.goldsky.com/api/public/project_cmb91qc80slyu01wca6e2eupl/subgraphs/filbeam-alpha-mainnet/1.0.0/gn"
+GOLDSKY_SUBGRAPH_URL="https://api.goldsky.com/api/public/project_cmb91qc80slyu01wca6e2eupl/subgraphs/filbeam-mainnet/1.1.0/gn"
 DEFAULT_LOCKUP_PERIOD_DAYS = 30
 FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS = 1598306400000 # Mainnet genesis timestamp in milliseconds
 # 7 USDFC per TiB (in 1e18 units)
@@ -78,6 +129,14 @@ CACHE_MISS_RATE_PER_TIB = "7000000000000000000"
 binding = "DB"
 database_name = "filcdn-mainnet-db"
 database_id = "e8de6418-2cb7-4413-9ba0-a9c8aacf9a66"
+
+[[env.mainnet.analytics_engine_datasets]]
+binding = "GOLDSKY_STATS"
+dataset = "filbeam_goldsky_stats_mainnet"
+
+[[env.mainnet.analytics_engine_datasets]]
+binding = "SETTLEMENT_STATS"
+dataset = "filbeam_settlement_stats_mainnet"
 
 [env.mainnet.triggers]
 crons = ["*/1 * * * *"]  # Run every minute
@@ -90,3 +149,7 @@ binding = "RETRY_QUEUE"
 queue = "indexer-retry-queue-mainnet"
 max_batch_size = 100
 max_batch_timeout = 30
+
+[[env.mainnet.kv_namespaces]]
+binding = "PROCESSED_EVENTS"
+id = "7304e6155fa04801ae0522a01380e5ef"

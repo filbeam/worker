@@ -14,6 +14,20 @@ binding = "DB"
 database_name = "test-db"
 database_id = "8cc92155-16f6-426a-b782-2965e0daf100"
 
+[[queues.producers]]
+binding = "TRANSACTION_QUEUE"
+queue = "test-transaction-queue"
+
+[[workflows]]
+binding = "TRANSACTION_MONITOR_WORKFLOW"
+name = "test-transaction-monitor-workflow"
+class_name = "TransactionMonitorWorkflow"
+
+# Top-level placeholders to ensure TypeScript types are required (not optional)
+[vars]
+RPC_URL = "https://api.calibration.node.glif.io/"
+FILBEAM_OPERATOR_CONTRACT_ADDRESS = "0x0000000000000000000000000000000000000000"
+
 [env.dev.vars]
 ENVIRONMENT = "dev"
 RPC_URL = "https://api.calibration.node.glif.io/"

@@ -1,0 +1,170 @@
+# AGENTS
+
+Filecoin Beam is the incentivized data delivery layer for Filecoin. FilBeam is implemented as a Cloudflare Workers monorepo that retrieves and caches content from Filecoin PDP (Proof of Data Possession) Service Providers. All traffic coming to and from Filecoin Beam is paid for on-chain.
+
+## Common Commands
+
+```bash
+# Install dependencies
+npm install
+
+# Run all tests
+npm test
+
+# Run tests for a specific worker
+npm test -w piece-retriever
+
+# Fix linting and formatting
+npm run lint:fix
+
+# Update TypeScript definitions after changing env bindings
+npm run build:types
+
+# Start a worker locally
+npm start -w piece-retriever
+npm start -w indexer
+
+# Reset local database
+rm -rf db/.wrangler
+
+# Deploy
+npm run deploy:calibration
+npm run deploy:mainnet
+```
+
+## Architecture
+
+### Monorepo Structure (npm workspaces)
+
+- @./piece-retriever - Main CDN worker handling content retrieval requests
+- @./indexer - Processes blockchain events from Goldsky subgraph webhooks and stores in D1
+- @./usage-reporter - Scheduled worker reporting egress usage to blockchain
+- @./payment-settler - Scheduled worker settling payment rails
+- @./terminator - Scheduled worker terminating services for sanctioned clients
+- @./bad-bits - Scheduled worker updating content denylist
+- @./stats-api - Public statistics API
+- @./workflows - Shared Cloudflare Workflows (TransactionMonitorWorkflow)
+- @./retrieval - Shared library (address validation, bad-bits, http-assert, stats)
+- @./db - Shared D1 database migrations
+- @./subgraph - GraphQL subgraph definitions for Goldsky/The Graph
+- @./x402-piece-gateway - x402 gateway worker for pieces with enabled x402 payments
+- @./tail-handler - Tail worker collecting telemetry to Analytics Engine
+
+### Data Flow
+
+1. **indexer** receives webhook events from Goldsky subgraph about on-chain events (data set creation, pieces added/removed, service termination, payment rail top-ups). It processes and stores this data in D1. **Important:** Webhooks can be called repeatedly for the same event and out of order (e.g., a newer event may arrive before an older one). Handlers must be idempotent and handle out-of-order delivery gracefully.
+2. **piece-retriever** handles CDN requests: validates payer wallet, looks up service providers from D1, retrieves content from providers with caching, logs usage stats
+3. **usage-reporter**, **payment-settler**, and **terminator** run on schedules to report usage to blockchain, settle payments, and terminate services for sanctioned clients respectively
+4. **bad-bits** syncs content denylist to KV storage
+
+### Key Technologies
+
+- **Runtime**: Cloudflare Workers with D1 (SQLite), KV, R2, Queues, Workflows
+- **Language**: JavaScript ES modules with JSDoc type annotations
+- **Blockchain**: Viem for Filecoin interactions
+- **Testing**: Vitest with @cloudflare/vitest-pool-workers
+
+### Environment Configuration
+
+Each worker has a `wrangler.toml` with three environments:
+
+- `dev` - Local development
+- `calibration` - Filecoin testnet (staging)
+- `mainnet` - Production
+
+### Adding Bindings to wrangler.toml
+
+When adding new bindings (KV namespaces, queues, workflows, analytics datasets, or vars) to a worker:
+
+1. **Add to all environments** - Add the binding to `[env.dev]`, `[env.calibration]`, and `[env.mainnet]` sections as needed
+2. **Add top-level placeholder** - Also add the binding at the top level (outside any `[env.*]` section) with a placeholder value. This ensures the binding is marked as **required** (not optional) in generated TypeScript types.
+3. **Regenerate types** - Run `npm run build:types` to update `worker-configuration.d.ts`
+
+Example for adding a KV namespace:
+
+```toml
+# Top-level placeholder (ensures TypeScript types are required)
+[[kv_namespaces]]
+binding = "MY_KV"
+id = "placeholder-id"
+
+[env.dev.kv_namespaces]
+# ... actual dev config
+
+[env.calibration.kv_namespaces]
+# ... actual calibration config
+```
+
+Without the top-level placeholder, wrangler marks environment-only bindings as optional (`binding?: Type`), causing TypeScript errors when accessing them.
+
+### Creating KV Namespaces
+
+When a worker needs a new KV namespace, create it using the wrangler CLI before deployment:
+
+1. **Use consistent naming**: Follow the pattern `filbeam-{name}-{env}` (e.g., `filbeam-processed-events-calibration`)
+2. **Create for each environment**:
+   ```bash
+   CLOUDFLARE_ACCOUNT_ID=37573110e38849a343d93b727953188f npx wrangler kv namespace create filbeam-<name>-calibration
+   CLOUDFLARE_ACCOUNT_ID=37573110e38849a343d93b727953188f npx wrangler kv namespace create filbeam-<name>-mainnet
+   ```
+3. **Update wrangler.toml** with the returned namespace IDs
+
+### Secret Variables (.dev.vars)
+
+Workers that require secrets have `.dev.vars.template` files with placeholder values. Run `node bin/setup-dev-vars.js` to create `.dev.vars` files from templates.
+
+When adding a new secret variable to a worker:
+
+1. Add the variable to the worker's `.dev.vars.template` file with a placeholder value
+2. Run `node bin/setup-dev-vars.js` to update your local `.dev.vars` (or manually add the new variable)
+
+### Database
+
+Migrations are in `@./db/migrations/`. Applied automatically during deployment and tests via `wrangler d1 migrations apply`. All workers share the same D1 database.
+
+### Analytics
+
+See [docs/worker-analytics.md](docs/worker-analytics.md) for worker telemetry schema and example queries. Follow the instructions in that file when adding a new analytics dataset.
+
+### Testing
+
+Each worker has its own `vitest.config.js` that:
+
+- Uses `@cloudflare/vitest-pool-workers` for Workers runtime simulation
+- Loads D1 migrations from `db/migrations/` via setup files
+- Runs with `singleWorker: true` to avoid parallel test isolation issues
+
+Tests are colocated in `test/` directories within each worker.
+
+When adding new functionality that affects existing tests:
+
+- Keep existing tests focused on their original purpose - update them minimally using flexible matchers (e.g., `expect.any(BigInt)`) to accommodate the new behavior
+- Create a dedicated new test to verify the specific new behavior or calculation
+
+When writing tests for indexer webhook handlers:
+
+- **Idempotency**: Test that calling a handler multiple times with the same event produces the same result
+- **Out-of-order delivery**: Test that handlers gracefully handle events arriving out of order (e.g., an update event before the create event)
+- **Cross-handler ordering**: When two handlers touch the same table, test scenarios where their events arrive out of order (e.g., "CDN service terminated for dataset N" arrives before "dataset N created")
+
+### Code Style
+
+- ESLint via neostandard (style rules disabled, using Prettier)
+- TypeScript for type checking only (no transpilation)
+- Auto-generated types via `wrangler types` in `worker-configuration.d.ts`
+
+### Workflow
+
+- Make sure to add or change tests when adding new or changing existing code
+- Always run `npm run lint:fix` and `npm test` after adding new code
+- Run `npm install` to update `package-lock.json` whenever you add, remove, or change dependencies
+- Use comments sparingly. Only comment complex code.
+- Always follow existing code style
+- When testing object values always test them as a whole, not just individual properties
+- When testing array values always test them against the full array, not just individual items
+- Use partial matches (e.g., `expect.objectContaining()`, `expect.arrayContaining()`) when testing only relevant parts of the data; use `expect.any(Number)` for dynamic values like timestamps or IDs. This makes tests easier to understand by not relying on default values and avoids broken tests when defaults change
+- Update [docs/worker-analytics.md](docs/worker-analytics.md) when changing analytics schemas
+
+## Adding a New Worker
+
+See [docs/adding-new-worker.md](docs/adding-new-worker.md) for detailed instructions.

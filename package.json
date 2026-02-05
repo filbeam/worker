@@ -9,12 +9,14 @@
     "bad-bits",
     "indexer",
     "piece-retriever",
+    "tail-handler",
     "terminator",
     "workflows",
     "usage-reporter",
     "payment-settler",
     "retrieval",
-    "stats-api"
+    "stats-api",
+    "x402-piece-gateway"
   ],
   "scripts": {
     "build:types": "npm run build:types --workspaces --if-present",
@@ -28,13 +30,13 @@
   "prettier": "@checkernetwork/prettier-config",
   "devDependencies": {
     "@checkernetwork/prettier-config": "^1.0.1",
-    "@cloudflare/vitest-pool-workers": "^0.12.3",
+    "@cloudflare/vitest-pool-workers": "^0.12.7",
     "@npmcli/map-workspaces": "^5.0.3",
-    "@types/node": "^25.0.8",
+    "@types/node": "^25.2.0",
     "neostandard": "^0.12.1",
-    "prettier": "^3.8.0",
+    "prettier": "^3.8.1",
     "typescript": "^5.9.3",
     "vitest": "3.1.4",
-    "wrangler": "^4.59.1"
+    "wrangler": "^4.61.0"
   }
 }

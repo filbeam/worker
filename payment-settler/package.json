@@ -7,7 +7,7 @@
   "type": "module",
   "main": "bin/payment-settler.js",
   "scripts": {
-    "build:types": "wrangler types --env dev",
+    "build:types": "wrangler types",
     "deploy:calibration": "wrangler deploy --env calibration",
     "deploy:mainnet": "wrangler deploy --env mainnet",
     "start": "wrangler d1 migrations apply dev-db --local --env dev --cwd ../db  && wrangler dev --env dev",
@@ -15,9 +15,9 @@
   },
   "dependencies": {
     "@filbeam/workflows": "^1.0.0",
-    "viem": "^2.44.2"
+    "viem": "^2.45.1"
   },
   "devDependencies": {
-    "@cloudflare/vitest-pool-workers": "^0.12.3"
+    "@cloudflare/vitest-pool-workers": "^0.12.7"
   }
 }

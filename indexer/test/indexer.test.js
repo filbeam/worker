@@ -1463,6 +1463,55 @@ describe('POST /fwss/service-terminated', () => {
   })
 })
 
+describe('POST /filbeam-operator/cdn-payment-settled', () => {
+  it('returns 400 if payload is invalid', async () => {
+    const req = new Request(
+      'https://host/filbeam-operator/cdn-payment-settled',
+      {
+        method: 'POST',
+        headers: {
+          [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+        },
+        body: JSON.stringify({}),
+      },
+    )
+    const res = await workerImpl.fetch(req, env)
+    expect(res.status).toBe(400)
+    expect(await res.text()).toBe('Bad Request')
+  })
+
+  it('stores cdn_payments_settled_until for a data set', async () => {
+    const dataSetId = randomId()
+    const req = new Request(
+      'https://host/filbeam-operator/cdn-payment-settled',
+      {
+        method: 'POST',
+        headers: {
+          [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+        },
+        body: JSON.stringify({
+          data_set_id: dataSetId,
+          block_number: 12345,
+        }),
+      },
+    )
+    const res = await workerImpl.fetch(req, env)
+    expect(res.status).toBe(200)
+    expect(await res.text()).toBe('OK')
+
+    const row = await env.DB.prepare(
+      'SELECT id, usage_reported_until, cdn_payments_settled_until FROM data_sets WHERE id = ?',
+    )
+      .bind(dataSetId)
+      .first()
+    expect(row).toEqual({
+      id: dataSetId,
+      usage_reported_until: '1970-01-01T00:00:00.000Z',
+      cdn_payments_settled_until: '2022-11-06T01:05:30.000Z',
+    })
+  })
+})
+
 describe('POST /fwss/cdn-payment-rails-topped-up', () => {
   beforeEach(async () => {
     await env.DB.exec('DELETE FROM data_sets')
@@ -1567,6 +1616,7 @@ describe('POST /fwss/cdn-payment-rails-topped-up', () => {
         [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
       },
       body: JSON.stringify({
+        id: '0xtest-calc-stores-0',
         data_set_id: dataSetId,
         cdn_amount_added: '5000000000000000000', // 5 USDFC
         cache_miss_amount_added: '10000000000000000000', // 10 USDFC
@@ -1606,6 +1656,7 @@ describe('POST /fwss/cdn-payment-rails-topped-up', () => {
         [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
       },
       body: JSON.stringify({
+        id: '0xtest-zero-lockup-0',
         data_set_id: dataSetId,
         cdn_amount_added: '0',
         cache_miss_amount_added: '0',
@@ -1646,6 +1697,7 @@ describe('POST /fwss/cdn-payment-rails-topped-up', () => {
           [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
         },
         body: JSON.stringify({
+          id: '0xtest-accum-existing-0',
           data_set_id: dataSetId,
           cdn_amount_added: '5000000000000000000',
           cache_miss_amount_added: '10000000000000000000',
@@ -1654,13 +1706,14 @@ describe('POST /fwss/cdn-payment-rails-topped-up', () => {
       env,
     )
 
-    // Second top-up with additional amounts
+    // Second top-up with additional amounts (different entity id)
     const req = new Request('https://host/fwss/cdn-payment-rails-topped-up', {
       method: 'POST',
       headers: {
         [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
       },
       body: JSON.stringify({
+        id: '0xtest-accum-existing-1',
         data_set_id: dataSetId,
         cdn_amount_added: '5000000000000000000', // 5 USDFC more
         cache_miss_amount_added: '10000000000000000000', // 10 USDFC more
@@ -1696,6 +1749,7 @@ describe('POST /fwss/cdn-payment-rails-topped-up', () => {
         [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
       },
       body: JSON.stringify({
+        id: '0xtest-creates-dataset-0',
         data_set_id: dataSetId,
         cdn_amount_added: '5000000000000000000',
         cache_miss_amount_added: '10000000000000000000',

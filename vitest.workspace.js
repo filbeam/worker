@@ -3,6 +3,7 @@ import { defineWorkspace } from 'vitest/config'
 export default defineWorkspace([
   'indexer',
   'piece-retriever',
+  'tail-handler',
   'bad-bits',
   'terminator',
   'workflows',
@@ -10,4 +11,5 @@ export default defineWorkspace([
   'payment-settler',
   'retrieval',
   'stats-api',
+  'x402-piece-gateway',
 ])

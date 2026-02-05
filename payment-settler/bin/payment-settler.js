@@ -50,25 +50,46 @@ export default {
 
       const chainClient = getChainClient(env)
 
-      const transactionHashes = await Promise.all(
-        batches.map((batch) =>
-          settleCDNPaymentRails({ env, dataSetIds: batch, ...chainClient }),
+      const results = await Promise.allSettled(
+        batches.map((batch, ix) =>
+          settleCDNPaymentRails({
+            env,
+            batchId: `batch-${ix}`,
+            dataSetIds: batch,
+            ...chainClient,
+          }),
         ),
       )
 
-      console.log(`Settlement transactions sent: ${transactionHashes}`)
+      /** @type {`0x${string}`[]} */
+      const transactionHashes = []
+      for (let i = 0; i < results.length; i++) {
+        const result = results[i]
+        if (result.status === 'fulfilled') {
+          transactionHashes.push(result.value)
+        } else {
+          console.error(
+            `Failed to settle batch ${i + 1} (data sets: ${batches[i].join(', ')}):`,
+            result.reason,
+          )
+        }
+      }
 
-      await env.TRANSACTION_MONITOR_WORKFLOW.createBatch(
-        transactionHashes.map((transactionHash) => ({
-          id: `payment-settler-${transactionHash}-${Date.now()}`,
-          params: {
-            transactionHash,
-            metadata: {},
-          },
-        })),
+      if (transactionHashes.length > 0) {
+        await env.TRANSACTION_MONITOR_WORKFLOW.createBatch(
+          transactionHashes.map((transactionHash) => ({
+            id: `payment-settler-${transactionHash}-${Date.now()}`,
+            params: {
+              transactionHash,
+              metadata: {},
+            },
+          })),
+        )
+      }
+
+      console.log(
+        `Settled ${transactionHashes.length} of ${batches.length} batches`,
       )
-
-      console.log(`Settled ${dataSetIds.length} data sets`)
     } catch (error) {
       console.error('Settlement process failed:', error)
       throw error
