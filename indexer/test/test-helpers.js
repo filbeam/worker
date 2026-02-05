@@ -117,28 +117,36 @@ export async function withPieces(
   pieceCids,
   ipfsRootCids = [],
 ) {
-  await env.DB.prepare(
-    `
-    INSERT INTO pieces (
-      id,
-      data_set_id,
-      cid,
-      ipfs_root_cid
+  // Cloudflare D1 has a limit of 100 bound parameters per query
+  // Each piece requires 4 parameters (pieceId, dataSetId, cid, ipfsRootCid), so batch size is 25
+  const BATCH_SIZE = 25
+
+  // Process pieces in batches
+  for (let i = 0; i < pieceIds.length; i += BATCH_SIZE) {
+    const batch = pieceIds.slice(i, i + BATCH_SIZE)
+    await env.DB.prepare(
+      `
+      INSERT INTO pieces (
+        id,
+        data_set_id,
+        cid,
+        ipfs_root_cid
+      )
+      VALUES ${new Array(batch.length)
+        .fill(null)
+        .map(() => '(?, ?, ?, ?)')
+        .join(', ')}
+      ON CONFLICT DO NOTHING
+    `,
     )
-    VALUES ${new Array(pieceIds.length)
-      .fill(null)
-      .map(() => '(?, ?, ?, ?)')
-      .join(', ')}
-    ON CONFLICT DO NOTHING
-  `,
-  )
-    .bind(
-      ...pieceIds.flatMap((pieceId, i) => [
-        String(pieceId),
-        String(dataSetId),
-        pieceCids[i],
-        ipfsRootCids[i] || null,
-      ]),
-    )
-    .run()
+      .bind(
+        ...batch.flatMap((pieceId, idx) => [
+          String(pieceId),
+          String(dataSetId),
+          pieceCids[i + idx],
+          ipfsRootCids[i + idx] || null,
+        ]),
+      )
+      .run()
+  }
 }

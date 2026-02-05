@@ -808,6 +808,43 @@ describe('piece-retriever.indexer', () => {
         )
       }
     })
+
+    it('deletes large number of pieces (140) without exceeding SQL parameter limit', async () => {
+      const dataSetId = randomId()
+      // Create 140 piece IDs (as in the issue)
+      const pieceIds = Array.from({ length: 140 }, (_, i) => i.toString())
+      const pieceCids = Array.from({ length: 140 }, () => randomId())
+
+      // Add pieces to database first
+      await withPieces(env, dataSetId, pieceIds, pieceCids)
+
+      // Now remove all 140 pieces
+      const req = new Request('https://host/pdp-verifier/pieces-removed', {
+        method: 'POST',
+        headers: {
+          [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+        },
+        body: JSON.stringify({
+          data_set_id: dataSetId,
+          piece_ids: pieceIds,
+        }),
+      })
+
+      const res = await workerImpl.fetch(req, env, CTX, {})
+      expect(res.status).toBe(200)
+      expect(await res.text()).toBe('OK')
+
+      // Verify all pieces are marked as deleted
+      const { results: pieces } = await env.DB.prepare(
+        'SELECT * FROM pieces WHERE data_set_id = ?',
+      )
+        .bind(dataSetId)
+        .all()
+      expect(pieces.length).toBe(140)
+      for (const piece of pieces) {
+        expect(piece.is_deleted).toBe(1)
+      }
+    })
   })
 
   describe('POST /service-provider-registry/product-added', () => {
