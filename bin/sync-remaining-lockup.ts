@@ -24,6 +24,7 @@ import { createPublicClient, http } from 'viem'
 import { filecoin, filecoinCalibration } from 'viem/chains'
 
 const BYTES_PER_TIB = 1024n ** 4n
+const ATTO_PER_USDFC = 10n ** 18n
 const CDN_RATE_PER_TIB = 7_000_000_000_000_000_000n
 const CACHE_MISS_RATE_PER_TIB = 7_000_000_000_000_000_000n
 
@@ -249,20 +250,18 @@ for (const dataset of datasets) {
   const cacheMissQuota =
     (effectiveCacheMissLockup * BYTES_PER_TIB) / CACHE_MISS_RATE_PER_TIB
 
-  const cdnIndicator =
-    cdnQuota < d1CdnQuota ? '↓' : cdnQuota > d1CdnQuota ? '↑' : '='
-  const cacheMissIndicator =
-    cacheMissQuota < d1CacheMissQuota
-      ? '↓'
-      : cacheMissQuota > d1CacheMissQuota
-        ? '↑'
-        : '='
-  console.log(
-    `  CDN lockup: ${cdnLockupFixed}, unsettled: ${cdnUnsettled}, effective: ${effectiveCdnLockup}, on-chain quota: ${cdnQuota}, D1 quota: ${d1CdnQuota} ${cdnIndicator}`,
-  )
-  console.log(
-    `  Cache-miss lockup: ${cacheMissLockupFixed}, unsettled: ${cacheMissUnsettled}, effective: ${effectiveCacheMissLockup}, on-chain quota: ${cacheMissQuota}, D1 quota: ${d1CacheMissQuota} ${cacheMissIndicator}`,
-  )
+  const fmtChange = (onChain: bigint, d1: bigint) => {
+    const delta = onChain - d1
+    const prefix = delta > 0n ? '+' : ''
+    const sign = onChain < d1 ? '↓' : '✓'
+    return `${sign} delta: ${prefix}${fmtTiB(delta)}`
+  }
+
+  const fmtLine = (label: string, onChain: bigint, d1: bigint, lockup: bigint, unsettled: bigint, effective: bigint) =>
+    `  ${label.padEnd(10)} ${fmtChange(onChain, d1)}, lockup: ${fmtUsdfc(lockup)}, unsettled: ${fmtUsdfc(unsettled)}, effective: ${fmtUsdfc(effective)}, on-chain quota: ${fmtTiB(onChain)}, D1 quota: ${fmtTiB(d1)}`
+
+  console.log(fmtLine('CDN', cdnQuota, d1CdnQuota, cdnLockupFixed, cdnUnsettled, effectiveCdnLockup))
+  console.log(fmtLine('Cache-miss', cacheMissQuota, d1CacheMissQuota, cacheMissLockupFixed, cacheMissUnsettled, effectiveCacheMissLockup))
 
   results.push({ dataSetId, cdnQuota, cacheMissQuota })
 }
@@ -289,8 +288,8 @@ console.log(
 for (const { dataSetId, cdnQuota, cacheMissQuota } of results) {
   console.log(
     String(dataSetId).padEnd(20) +
-      String(cdnQuota).padEnd(30) +
-      String(cacheMissQuota).padEnd(30),
+      fmtTiB(cdnQuota).padEnd(30) +
+      fmtTiB(cacheMissQuota).padEnd(30),
   )
 }
 
@@ -299,3 +298,23 @@ console.log('\nTo apply, run:')
 console.log(
   `  CLOUDFLARE_ACCOUNT_ID=${CLOUDFLARE_ACCOUNT_ID} npx wrangler d1 execute ${config.dbName} --remote --file ${sqlFile}`,
 )
+
+// --- Formatting helpers ---
+
+function fmtUsdfc(attoUsdfc: bigint) {
+  const whole = attoUsdfc / ATTO_PER_USDFC
+  const frac = ((attoUsdfc % ATTO_PER_USDFC) * 1000n) / ATTO_PER_USDFC
+  const sign = attoUsdfc < 0n ? '-' : ''
+  const absWhole = whole < 0n ? -whole : whole
+  const absFrac = frac < 0n ? -frac : frac
+  return `${sign}$${absWhole}.${String(absFrac).padStart(3, '0')}`
+}
+
+function fmtTiB(bytes: bigint) {
+  const whole = bytes / BYTES_PER_TIB
+  const frac = ((bytes % BYTES_PER_TIB) * 1000n) / BYTES_PER_TIB
+  const sign = bytes < 0n ? '-' : ''
+  const absWhole = whole < 0n ? -whole : whole
+  const absFrac = frac < 0n ? -frac : frac
+  return `${sign}${absWhole}.${String(absFrac).padStart(3, '0')} TiB`
+}
