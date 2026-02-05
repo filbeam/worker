@@ -4,15 +4,16 @@
 Sync remaining lockup quotas from on-chain data to D1.
 
 Reads the remaining lockup (lockupFixed) for CDN and cache-miss payment rails
-from the FilecoinPay contract, converts them to egress quotas, and generates
-SQL that caps D1 quotas to match on-chain values.
+from the FilecoinPay contract, deducts reported-but-unsettled usage from the
+FilBeamOperator contract, converts the effective lockup to egress quotas, and
+generates SQL that caps D1 quotas to match on-chain values.
 
 The generated SQL uses MIN() to ensure quotas are only decreased, never
 increased. This is a one-way sync to prevent over-spending beyond what's
 locked up on-chain.
 
 Usage:
-  GLIF_TOKEN=<token> node bin/sync-remaining-lockup.js <calibration|mainnet>
+  GLIF_TOKEN=<token> node bin/sync-remaining-lockup.ts <calibration|mainnet>
 
 Requires: GLIF_TOKEN environment variable for authenticated Glif RPC access.
 */
@@ -29,13 +30,15 @@ const CACHE_MISS_RATE_PER_TIB = 7_000_000_000_000_000_000n
 const NETWORK_CONFIG = {
   calibration: {
     chain: filecoinCalibration,
-    fwssAddress: '0x02925630df557F957f70E112bA06e50965417CA0',
+    fwssAddress: '0x02925630df557F957f70E112bA06e50965417CA0' as const,
+    operatorAddress: '0x5991E4F9fcEF4AE23959eE03638B4688A7e1EcfF' as const,
     rpcUrl: 'https://api.calibration.node.glif.io/rpc/v1',
     dbName: 'filcdn-calibration-db',
   },
   mainnet: {
     chain: filecoin,
-    fwssAddress: '0x8408502033C418E1bbC97cE9ac48E5528F371A9f',
+    fwssAddress: '0x8408502033C418E1bbC97cE9ac48E5528F371A9f' as const,
+    operatorAddress: '0x9E90749D298C4ca43Bb468CA859Dfe167F9CdCf2' as const,
     rpcUrl: 'https://api.node.glif.io/rpc/v1',
     dbName: 'filcdn-mainnet-db',
   },
@@ -78,7 +81,7 @@ const stateViewAbi = [
     ],
     stateMutability: 'view',
   },
-]
+] as const
 
 const filecoinPayAbi = [
   {
@@ -107,7 +110,14 @@ const filecoinPayAbi = [
     ],
     stateMutability: 'view',
   },
-]
+] as const
+
+const filBeamOperatorAbi = JSON.parse(
+  readFileSync(
+    new URL('../subgraph/abis/FilBeamOperator.abi.json', import.meta.url),
+    'utf-8',
+  ),
+)
 
 // Space Meridian / FilBeam Cloudflare account
 const CLOUDFLARE_ACCOUNT_ID = '37573110e38849a343d93b727953188f'
@@ -116,7 +126,7 @@ const CLOUDFLARE_ACCOUNT_ID = '37573110e38849a343d93b727953188f'
 const network = process.argv[2]
 if (network !== 'calibration' && network !== 'mainnet') {
   console.error(
-    'Usage: node bin/sync-remaining-lockup.js <calibration|mainnet>',
+    'Usage: node bin/sync-remaining-lockup.ts <calibration|mainnet>',
   )
   process.exit(1)
 }
@@ -132,10 +142,16 @@ const config = NETWORK_CONFIG[network]
 // Query D1 for datasets with CDN enabled
 console.log(`Querying D1 for datasets with CDN enabled on ${network}...`)
 const d1Output = execSync(
-  `CLOUDFLARE_ACCOUNT_ID=${CLOUDFLARE_ACCOUNT_ID} npx wrangler d1 execute ${config.dbName} --remote --command "SELECT id FROM data_sets WHERE with_cdn = 1" --json`,
+  `CLOUDFLARE_ACCOUNT_ID=${CLOUDFLARE_ACCOUNT_ID} npx wrangler d1 execute ${config.dbName} --remote --command "SELECT ds.id, q.cdn_egress_quota, q.cache_miss_egress_quota FROM data_sets ds JOIN data_set_egress_quotas q ON ds.id = q.data_set_id WHERE ds.with_cdn = 1" --json`,
   { encoding: 'utf-8' },
 )
-let d1Result
+let d1Result: Array<{
+  results: Array<{
+    id: string
+    cdn_egress_quota: number
+    cache_miss_egress_quota: number
+  }>
+}>
 try {
   d1Result = JSON.parse(d1Output)
 } catch {
@@ -143,10 +159,10 @@ try {
   console.error(d1Output)
   process.exit(1)
 }
-const dataSetIds = d1Result[0].results.map((row) => row.id)
-console.log(`Found ${dataSetIds.length} dataset(s) with CDN enabled`)
+const datasets = d1Result[0].results
+console.log(`Found ${datasets.length} dataset(s) with CDN enabled`)
 
-if (dataSetIds.length === 0) {
+if (datasets.length === 0) {
   console.log('No datasets with CDN enabled. Nothing to do.')
   process.exit(0)
 }
@@ -161,7 +177,7 @@ const publicClient = createPublicClient({ chain: config.chain, transport })
 
 // Discover contract addresses from FWSS
 console.log('Discovering contract addresses...')
-const [viewContractAddress, paymentsContractAddress] = await Promise.all([
+const [viewContractAddress, paymentsContractAddress] = (await Promise.all([
   publicClient.readContract({
     address: config.fwssAddress,
     abi: fwssAbi,
@@ -172,13 +188,16 @@ const [viewContractAddress, paymentsContractAddress] = await Promise.all([
     abi: fwssAbi,
     functionName: 'paymentsContractAddress',
   }),
-])
+])) as [`0x${string}`, `0x${string}`]
 console.log(`  StateView: ${viewContractAddress}`)
 console.log(`  FilecoinPay: ${paymentsContractAddress}`)
 
 // Process each dataset
 const results = []
-for (const dataSetId of dataSetIds) {
+for (const dataset of datasets) {
+  const dataSetId = dataset.id
+  const d1CdnQuota = BigInt(dataset.cdn_egress_quota)
+  const d1CacheMissQuota = BigInt(dataset.cache_miss_egress_quota)
   console.log(`\nProcessing dataset ${dataSetId}...`)
 
   // Get rail IDs from StateView
@@ -192,46 +211,57 @@ for (const dataSetId of dataSetIds) {
   const { cdnRailId, cacheMissRailId } = dataSetInfo
   console.log(`  CDN rail: ${cdnRailId}, Cache-miss rail: ${cacheMissRailId}`)
 
-  // Get lockupFixed for both rails
-  let cdnLockupFixed, cacheMissLockupFixed
-  try {
-    const cdnRail = await publicClient.readContract({
+  // Get lockupFixed for both rails and unsettled usage in parallel
+  const [cdnRail, cacheMissRail, usage] = await Promise.all([
+    publicClient.readContract({
       address: paymentsContractAddress,
       abi: filecoinPayAbi,
       functionName: 'getRail',
       args: [cdnRailId],
-    })
-    cdnLockupFixed = cdnRail.lockupFixed
-  } catch (err) {
-    console.warn(
-      `  Warning: Failed to read CDN rail ${cdnRailId} (may be terminated): ${err.message}`,
-    )
-    cdnLockupFixed = 0n
-  }
-
-  try {
-    const cacheMissRail = await publicClient.readContract({
+    }),
+    publicClient.readContract({
       address: paymentsContractAddress,
       abi: filecoinPayAbi,
       functionName: 'getRail',
       args: [cacheMissRailId],
-    })
-    cacheMissLockupFixed = cacheMissRail.lockupFixed
-  } catch (err) {
-    console.warn(
-      `  Warning: Failed to read cache-miss rail ${cacheMissRailId} (may be terminated): ${err.message}`,
-    )
-    cacheMissLockupFixed = 0n
-  }
+    }),
+    publicClient.readContract({
+      address: config.operatorAddress,
+      abi: filBeamOperatorAbi,
+      functionName: 'dataSetUsage',
+      args: [BigInt(dataSetId)],
+    }) as Promise<readonly [bigint, bigint, bigint]>,
+  ])
 
-  // Convert lockupFixed to quota
-  const cdnQuota = (cdnLockupFixed * BYTES_PER_TIB) / CDN_RATE_PER_TIB
+  const cdnLockupFixed = cdnRail.lockupFixed
+  const cacheMissLockupFixed = cacheMissRail.lockupFixed
+  const [cdnUnsettled, cacheMissUnsettled] = usage
+
+  // Deduct unsettled usage from lockup before converting to quota
+  const effectiveCdnLockup =
+    cdnLockupFixed > cdnUnsettled ? cdnLockupFixed - cdnUnsettled : 0n
+  const effectiveCacheMissLockup =
+    cacheMissLockupFixed > cacheMissUnsettled
+      ? cacheMissLockupFixed - cacheMissUnsettled
+      : 0n
+
+  const cdnQuota = (effectiveCdnLockup * BYTES_PER_TIB) / CDN_RATE_PER_TIB
   const cacheMissQuota =
-    (cacheMissLockupFixed * BYTES_PER_TIB) / CACHE_MISS_RATE_PER_TIB
+    (effectiveCacheMissLockup * BYTES_PER_TIB) / CACHE_MISS_RATE_PER_TIB
 
-  console.log(`  CDN lockup: ${cdnLockupFixed}, quota: ${cdnQuota}`)
+  const cdnIndicator =
+    cdnQuota < d1CdnQuota ? '↓' : cdnQuota > d1CdnQuota ? '↑' : '='
+  const cacheMissIndicator =
+    cacheMissQuota < d1CacheMissQuota
+      ? '↓'
+      : cacheMissQuota > d1CacheMissQuota
+        ? '↑'
+        : '='
   console.log(
-    `  Cache-miss lockup: ${cacheMissLockupFixed}, quota: ${cacheMissQuota}`,
+    `  CDN lockup: ${cdnLockupFixed}, unsettled: ${cdnUnsettled}, effective: ${effectiveCdnLockup}, on-chain quota: ${cdnQuota}, D1 quota: ${d1CdnQuota} ${cdnIndicator}`,
+  )
+  console.log(
+    `  Cache-miss lockup: ${cacheMissLockupFixed}, unsettled: ${cacheMissUnsettled}, effective: ${effectiveCacheMissLockup}, on-chain quota: ${cacheMissQuota}, D1 quota: ${d1CacheMissQuota} ${cacheMissIndicator}`,
   )
 
   results.push({ dataSetId, cdnQuota, cacheMissQuota })

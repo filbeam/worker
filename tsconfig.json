@@ -40,5 +40,5 @@
       "path": "x402-piece-gateway/tsconfig.json"
     }
   ],
-  "include": ["bin/*.js"]
+  "include": ["bin/*.js", "bin/*.ts"]
 }
