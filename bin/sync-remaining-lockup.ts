@@ -257,11 +257,36 @@ for (const dataset of datasets) {
     return `${sign} delta: ${prefix}${fmtTiB(delta)}`
   }
 
-  const fmtLine = (label: string, onChain: bigint, d1: bigint, lockup: bigint, unsettled: bigint, effective: bigint) =>
+  const fmtLine = (
+    label: string,
+    onChain: bigint,
+    d1: bigint,
+    lockup: bigint,
+    unsettled: bigint,
+    effective: bigint,
+  ) =>
     `  ${label.padEnd(10)} ${fmtChange(onChain, d1)}, lockup: ${fmtUsdfc(lockup)}, unsettled: ${fmtUsdfc(unsettled)}, effective: ${fmtUsdfc(effective)}, on-chain quota: ${fmtTiB(onChain)}, D1 quota: ${fmtTiB(d1)}`
 
-  console.log(fmtLine('CDN', cdnQuota, d1CdnQuota, cdnLockupFixed, cdnUnsettled, effectiveCdnLockup))
-  console.log(fmtLine('Cache-miss', cacheMissQuota, d1CacheMissQuota, cacheMissLockupFixed, cacheMissUnsettled, effectiveCacheMissLockup))
+  console.log(
+    fmtLine(
+      'CDN',
+      cdnQuota,
+      d1CdnQuota,
+      cdnLockupFixed,
+      cdnUnsettled,
+      effectiveCdnLockup,
+    ),
+  )
+  console.log(
+    fmtLine(
+      'Cache-miss',
+      cacheMissQuota,
+      d1CacheMissQuota,
+      cacheMissLockupFixed,
+      cacheMissUnsettled,
+      effectiveCacheMissLockup,
+    ),
+  )
 
   results.push({ dataSetId, cdnQuota, cacheMissQuota })
 }
