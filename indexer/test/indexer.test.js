@@ -808,6 +808,36 @@ describe('piece-retriever.indexer', () => {
         )
       }
     })
+
+    it('deletes many pieces for a data set (batched)', async () => {
+      const dataSetId = randomId()
+      const pieceIds = Array.from({ length: 150 }, (_, i) => String(i))
+      const pieceCids = Array.from({ length: 150 }, () => randomId())
+
+      await withPieces(env, dataSetId, pieceIds, pieceCids)
+
+      const req = new Request('https://host/pdp-verifier/pieces-removed', {
+        method: 'POST',
+        headers: {
+          [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+        },
+        body: JSON.stringify({
+          data_set_id: dataSetId,
+          piece_ids: pieceIds,
+        }),
+      })
+
+      const res = await workerImpl.fetch(req, env, CTX, {})
+      expect(res.status).toBe(200)
+      expect(await res.text()).toBe('OK')
+
+      const { results: pieces } = await env.DB.prepare(
+        'SELECT * FROM pieces WHERE data_set_id = ? AND is_deleted = TRUE',
+      )
+        .bind(dataSetId)
+        .all()
+      expect(pieces.length).toBe(150)
+    })
   })
 
   describe('POST /service-provider-registry/product-added', () => {
