@@ -32,22 +32,30 @@ export async function insertDataSetPiece(
     .run()
 }
 
+// D1 has a limit of 100 bound parameters per query
+// https://developers.cloudflare.com/d1/platform/limits/
+// With 2 parameters per piece (pieceId, dataSetId), we can process 50 pieces per batch
+const REMOVE_PIECES_BATCH_SIZE = 50
+
 /**
  * @param {{ DB: D1Database }} env
  * @param {number | string} dataSetId
  * @param {(number | string)[]} pieceIds
  */
 export async function removeDataSetPieces(env, dataSetId, pieceIds) {
-  await env.DB.prepare(
-    `
-    INSERT INTO pieces (id, data_set_id, is_deleted)
-    VALUES ${new Array(pieceIds.length)
-      .fill(null)
-      .map(() => '(?, ?, TRUE)')
-      .join(', ')}
-    ON CONFLICT DO UPDATE set is_deleted = true
-    `,
-  )
-    .bind(...pieceIds.flatMap((pieceId) => [pieceId, dataSetId]))
-    .run()
+  const statements = []
+  for (let i = 0; i < pieceIds.length; i += REMOVE_PIECES_BATCH_SIZE) {
+    const batch = pieceIds.slice(i, i + REMOVE_PIECES_BATCH_SIZE)
+    statements.push(
+      env.DB.prepare(
+        `
+        INSERT INTO pieces (id, data_set_id, is_deleted)
+        VALUES ${batch.map(() => '(?, ?, TRUE)').join(', ')}
+        ON CONFLICT DO UPDATE set is_deleted = true
+        `,
+      ).bind(...batch.flatMap((pieceId) => [pieceId, dataSetId])),
+    )
+  }
+
+  await env.DB.batch(statements)
 }
