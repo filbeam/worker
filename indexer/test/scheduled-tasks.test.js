@@ -38,7 +38,7 @@ describe('scheduled monitoring', () => {
     )
     expect(mockFetch).toHaveBeenCalledTimes(1)
     expect(writeDataPoint).toHaveBeenCalledWith({
-      doubles: [100, 0],
+      doubles: [100, 0, expect.any(Number)],
     })
   })
 })
