@@ -163,9 +163,9 @@ Each data point contains the following fields:
 
 | Field        | Type   | Description                                                                          |
 | ------------ | ------ | ------------------------------------------------------------------------------------ |
-| `doubles[0]` | number | CDN payments settled until timestamp (ms since Unix epoch)                           |
-| `doubles[1]` | number | Settlement lag in milliseconds (Date.now() - doubles[0])                             |
-| `blobs[0]`   | string | Data set ID with oldest unsettled CDN usage, or empty string if all usage is settled |
+| `doubles[0]` | number | Waiting since: `usage_reported_until` of the data set waiting longest (ms since epoch)|
+| `doubles[1]` | number | Waiting for (ms): `Date.now() - doubles[0]`                                          |
+| `blobs[0]`   | string | Data set ID waiting longest, or empty string if no data set is waiting               |
 
 ### Example Queries
 

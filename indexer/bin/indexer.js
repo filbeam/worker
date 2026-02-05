@@ -395,22 +395,23 @@ export default {
   async reportSettlementStats(env) {
     /**
      * @type {{
-     *   id: string
-     *   cdn_payments_settled_until: string
+     *   data_set_id: string
+     *   waiting_since: string
      * } | null}
      */
-    const row = await env.DB.prepare(
+    // Find the data set waiting longest for settlement
+    const waitingLongest = await env.DB.prepare(
       `
-      SELECT id, cdn_payments_settled_until
+      SELECT id AS data_set_id, usage_reported_until AS waiting_since
       FROM data_sets
       WHERE usage_reported_until > cdn_payments_settled_until
-      ORDER BY cdn_payments_settled_until ASC
+      ORDER BY usage_reported_until ASC
       LIMIT 1
     `,
     ).first()
 
-    if (!row) {
-      console.log('No data sets with unsettled CDN usage')
+    if (!waitingLongest) {
+      console.log('No data sets waiting for settlement')
       env.SETTLEMENT_STATS.writeDataPoint({
         doubles: [Date.now(), 0],
         blobs: [''],
@@ -418,16 +419,16 @@ export default {
       return
     }
 
-    const timestampMs = new Date(row.cdn_payments_settled_until).getTime()
-    const lagMs = Date.now() - timestampMs
+    const waitingSinceMs = new Date(waitingLongest.waiting_since).getTime()
+    const waitingMs = Date.now() - waitingSinceMs
 
     console.log(
-      `Oldest unsettled CDN usage: data_set=${row.id}, cdn_payments_settled_until=${row.cdn_payments_settled_until}, lag_ms=${lagMs}`,
+      `Reported usage waiting longest for settlement: data_set=${waitingLongest.data_set_id}, waiting_since=${waitingLongest.waiting_since}, waiting_ms=${waitingMs}`,
     )
 
     env.SETTLEMENT_STATS.writeDataPoint({
-      doubles: [timestampMs, lagMs],
-      blobs: [row.id],
+      doubles: [waitingSinceMs, waitingMs],
+      blobs: [waitingLongest.data_set_id],
     })
   },
 }
