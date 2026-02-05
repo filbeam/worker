@@ -28,19 +28,17 @@ describe('reportSettlementStats', () => {
 
     await workerImpl.reportSettlementStats(testEnv)
 
-    const cdnPaymentsSettledUntilMs = new Date(
-      '2022-11-01T12:00:00.000Z',
-    ).getTime()
+    const usageReportedUntilMs = new Date('2022-11-02T00:00:00.000Z').getTime()
     const nowMs = new Date('2022-11-02T12:00:00.000Z').getTime()
     expect(writeDataPoint).toHaveBeenCalledWith({
-      doubles: [cdnPaymentsSettledUntilMs, nowMs - cdnPaymentsSettledUntilMs],
+      doubles: [usageReportedUntilMs, nowMs - usageReportedUntilMs],
       blobs: ['ds-1'],
     })
   })
 
-  it('picks the data set with the oldest cdn_payments_settled_until', async () => {
+  it('picks the data set with the oldest usage_reported_until', async () => {
     await testEnv.DB.prepare(
-      `INSERT INTO data_sets (id, with_cdn, usage_reported_until, cdn_payments_settled_until) VALUES ('ds-old', FALSE, '2022-11-02T00:00:00.000Z', '2022-11-01T00:00:00.000Z')`,
+      `INSERT INTO data_sets (id, with_cdn, usage_reported_until, cdn_payments_settled_until) VALUES ('ds-old', FALSE, '2022-11-01T00:00:00.000Z', '2022-10-31T00:00:00.000Z')`,
     ).run()
     await testEnv.DB.prepare(
       `INSERT INTO data_sets (id, with_cdn, usage_reported_until, cdn_payments_settled_until) VALUES ('ds-new', FALSE, '2022-11-02T00:00:00.000Z', '2022-11-01T12:00:00.000Z')`,
@@ -54,6 +52,23 @@ describe('reportSettlementStats', () => {
         expect.any(Number),
       ],
       blobs: ['ds-old'],
+    })
+  })
+
+  it('calculates lag from usage_reported_until, not cdn_payments_settled_until', async () => {
+    vi.setSystemTime(new Date('2026-02-05T15:18:57.908Z'))
+
+    await testEnv.DB.prepare(
+      `INSERT INTO data_sets (id, with_cdn, usage_reported_until, cdn_payments_settled_until) VALUES ('ds-11322', FALSE, '2026-02-05T00:29:30.000Z', '1970-01-01T00:00:00.000Z')`,
+    ).run()
+
+    await workerImpl.reportSettlementStats(testEnv)
+
+    const usageReportedUntilMs = new Date('2026-02-05T00:29:30.000Z').getTime()
+    const nowMs = new Date('2026-02-05T15:18:57.908Z').getTime()
+    expect(writeDataPoint).toHaveBeenCalledWith({
+      doubles: [usageReportedUntilMs, nowMs - usageReportedUntilMs],
+      blobs: ['ds-11322'],
     })
   })
 
