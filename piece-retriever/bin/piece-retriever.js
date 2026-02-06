@@ -103,6 +103,7 @@ export default {
       let retrievalCandidate
       let retrievalResult
       const retrievalAttempts = []
+      const allCandidates = [...retrievalCandidates]
 
       while (retrievalCandidates.length > 0) {
         const retrievalCandidateIndex = Math.floor(
@@ -169,7 +170,7 @@ export default {
           {
             status: 502,
             headers: new Headers({
-              'FB-Data-Set-ID': retrievalAttempts
+              'X-Data-Set-ID': retrievalAttempts
                 .map((a) => a.dataSetId)
                 .join(','),
             }),
@@ -200,22 +201,16 @@ export default {
           retrievalResult.response,
         )
         setContentSecurityPolicy(response)
-        response.headers.set('FB-Data-Set-ID', retrievalCandidate.dataSetId)
-        response.headers.set(
-          'Cache-Control',
-          `public, max-age=${env.CLIENT_CACHE_TTL}`,
-        )
-        response.headers.set(
-          'FB-Cdn-Egress-Remaining',
-          String(retrievalCandidate.cdnEgressQuota),
-        )
-        response.headers.set(
-          'FB-Cache-Miss-Egress-Remaining',
-          String(retrievalCandidate.cacheMissEgressQuota),
+        setDiagnosticHeaders(
+          response,
+          retrievalCandidate,
+          allCandidates,
+          env.CLIENT_CACHE_TTL,
         )
         return response
       }
 
+      // Stream, count bytes and validate (a cache miss)
       let egressBytes = 0
       /** @type {number | null} */
       let firstByteAt = null
@@ -327,24 +322,18 @@ export default {
         })(),
       )
 
+      // Return immediately, proxying the transformed response
       const response = new Response(returnedStream.readable, {
         status: retrievalResult.response.status,
         statusText: retrievalResult.response.statusText,
         headers: retrievalResult.response.headers,
       })
       setContentSecurityPolicy(response)
-      response.headers.set('FB-Data-Set-ID', retrievalCandidate.dataSetId)
-      response.headers.set(
-        'Cache-Control',
-        `public, max-age=${env.CLIENT_CACHE_TTL}`,
-      )
-      response.headers.set(
-        'FB-Cdn-Egress-Remaining',
-        String(retrievalCandidate.cdnEgressQuota),
-      )
-      response.headers.set(
-        'FB-Cache-Miss-Egress-Remaining',
-        String(retrievalCandidate.cacheMissEgressQuota),
+      setDiagnosticHeaders(
+        response,
+        retrievalCandidate,
+        allCandidates,
+        env.CLIENT_CACHE_TTL,
       )
       return response
     } catch (error) {
@@ -407,4 +396,56 @@ function getErrorHttpStatusMessage(error) {
       : 'Internal Server Error'
 
   return { status, message }
+}
+
+/**
+ * Sets diagnostic headers on the response.
+ *
+ * @param {Response} response - The response to set headers on.
+ * @param {any} selectedCandidate - The candidate that was used for retrieval.
+ * @param {any[]} allCandidates - All retrieval candidates.
+ * @param {number} clientCacheTtl - The client cache TTL in seconds.
+ */
+function setDiagnosticHeaders(
+  response,
+  selectedCandidate,
+  allCandidates,
+  clientCacheTtl,
+) {
+  response.headers.set('X-Data-Set-ID', selectedCandidate.dataSetId)
+  response.headers.set('Cache-Control', `public, max-age=${clientCacheTtl}`)
+
+  const totalCdnEgressQuota = allCandidates.reduce(
+    (acc, curr) => acc + curr.cdnEgressQuota,
+    0n,
+  )
+  const totalCacheMissEgressQuota = allCandidates.reduce(
+    (acc, curr) => acc + curr.cacheMissEgressQuota,
+    0n,
+  )
+
+  const datasetCdnEgressQuota = allCandidates
+    .filter((c) => c.dataSetId === selectedCandidate.dataSetId)
+    .reduce((acc, curr) => acc + curr.cdnEgressQuota, 0n)
+
+  const datasetCacheMissEgressQuota = allCandidates
+    .filter((c) => c.dataSetId === selectedCandidate.dataSetId)
+    .reduce((acc, curr) => acc + curr.cacheMissEgressQuota, 0n)
+
+  response.headers.set(
+    'X-Cdn-Egress-Remaining',
+    String(datasetCdnEgressQuota),
+  )
+  response.headers.set(
+    'X-Cache-Miss-Egress-Remaining',
+    String(datasetCacheMissEgressQuota),
+  )
+  response.headers.set(
+    'X-Total-Cdn-Egress-Remaining',
+    String(totalCdnEgressQuota),
+  )
+  response.headers.set(
+    'X-Total-Cache-Miss-Egress-Remaining',
+    String(totalCacheMissEgressQuota),
+  )
 }

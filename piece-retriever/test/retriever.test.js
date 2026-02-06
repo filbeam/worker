@@ -586,7 +586,7 @@ describe('piece-retriever.fetch', () => {
     )
   })
 
-  it('returns data set ID in the FB-Data-Set-ID response header', async () => {
+  it('returns data set ID in the X-Data-Set-ID response header', async () => {
     const { pieceCid, dataSetId } = CONTENT_STORED_ON_CALIBRATION[0]
     const mockRetrieveFile = vi.fn().mockResolvedValue({
       response: new Response('hello'),
@@ -598,7 +598,7 @@ describe('piece-retriever.fetch', () => {
       retrieveFile: mockRetrieveFile,
     })
     expect(await res.text()).toBe('hello')
-    expect(res.headers.get('FB-Data-Set-ID')).toBe(String(dataSetId))
+    expect(res.headers.get('X-Data-Set-ID')).toBe(String(dataSetId))
     await waitOnExecutionContext(ctx)
   })
 
@@ -633,7 +633,7 @@ describe('piece-retriever.fetch', () => {
     ])
   })
 
-  it('returns data set ID in the FB-Data-Set-ID response header when the response body is empty', async () => {
+  it('returns data set ID in the X-Data-Set-ID response header when the response body is empty', async () => {
     const { pieceCid, dataSetId } = CONTENT_STORED_ON_CALIBRATION[0]
     const mockRetrieveFile = vi.fn().mockResolvedValue({
       response: new Response(null, { status: 404 }),
@@ -646,7 +646,7 @@ describe('piece-retriever.fetch', () => {
     })
     await waitOnExecutionContext(ctx)
     expect(res.body).toBeNull()
-    expect(res.headers.get('FB-Data-Set-ID')).toBe(String(dataSetId))
+    expect(res.headers.get('X-Data-Set-ID')).toBe(String(dataSetId))
   })
 
   it('supports HEAD requests', async () => {
@@ -981,7 +981,7 @@ describe('piece-retriever.fetch', () => {
     expect(await res.text()).toMatch(
       /^No available service provider found. Attempted: ID=/,
     )
-    expect(res.headers.get('FB-Data-Set-ID')).toBe(String(dataSetId))
+    expect(res.headers.get('X-Data-Set-ID')).toBe(String(dataSetId))
 
     const result = await env.DB.prepare(
       'SELECT * FROM retrieval_logs WHERE data_set_id = ?',
@@ -1077,10 +1077,16 @@ describe('piece-retriever.fetch', () => {
     await waitOnExecutionContext(ctx)
 
     expect(res.status).toBe(200)
-    expect(res.headers.get('FB-Cdn-Egress-Remaining')).toBe(
+    expect(res.headers.get('X-Total-Cdn-Egress-Remaining')).toBe(
       String(cdnEgressQuota),
     )
-    expect(res.headers.get('FB-Cache-Miss-Egress-Remaining')).toBe(
+    expect(res.headers.get('X-Cdn-Egress-Remaining')).toBe(
+      String(cdnEgressQuota),
+    )
+    expect(res.headers.get('X-Total-Cache-Miss-Egress-Remaining')).toBe(
+      String(cacheMissEgressQuota),
+    )
+    expect(res.headers.get('X-Cache-Miss-Egress-Remaining')).toBe(
       String(cacheMissEgressQuota),
     )
   })
@@ -1129,12 +1135,90 @@ describe('piece-retriever.fetch', () => {
     await waitOnExecutionContext(ctx)
 
     expect(res.status).toBe(200)
-    expect(res.headers.get('FB-Cdn-Egress-Remaining')).toBe(
+    expect(res.headers.get('X-Total-Cdn-Egress-Remaining')).toBe(
       String(cdnEgressQuota),
     )
-    expect(res.headers.get('FB-Cache-Miss-Egress-Remaining')).toBe(
+    expect(res.headers.get('X-Cdn-Egress-Remaining')).toBe(
+      String(cdnEgressQuota),
+    )
+    expect(res.headers.get('X-Total-Cache-Miss-Egress-Remaining')).toBe(
       String(cacheMissEgressQuota),
     )
+    expect(res.headers.get('X-Cache-Miss-Egress-Remaining')).toBe(
+      String(cacheMissEgressQuota),
+    )
+  })
+  it('sums egress remaining headers for multiple candidates', async () => {
+    const dataSetId1 = 'dataset-1'
+    const dataSetId2 = 'dataset-2'
+    const pieceCid = 'bagaMultipleCandidates'
+    const cdnEgressQuota1 = 100
+    const cacheMissEgressQuota1 = 50
+    const cdnEgressQuota2 = 200
+    const cacheMissEgressQuota2 = 150
+
+    // Candidate for dataset 1
+    await withDataSetPieces(env, {
+      dataSetId: dataSetId1,
+      withCDN: true,
+      cdnEgressQuota: cdnEgressQuota1,
+      cacheMissEgressQuota: cacheMissEgressQuota1,
+      pieceCid,
+    })
+    await withApprovedProvider(env, {
+      id: 'svc-1',
+      serviceUrl: 'https://svc-1.example/',
+    })
+
+    // Candidate for dataset 2
+    await withDataSetPieces(env, {
+      dataSetId: dataSetId2,
+      withCDN: true,
+      cdnEgressQuota: cdnEgressQuota2,
+      cacheMissEgressQuota: cacheMissEgressQuota2,
+      pieceCid,
+    })
+    await withApprovedProvider(env, {
+      id: 'svc-2',
+      serviceUrl: 'https://svc-2.example/',
+    })
+
+    const mockRetrieveFile = vi.fn().mockResolvedValue({
+      response: new Response('hello'),
+      cacheMiss: true,
+    })
+
+    const ctx = createExecutionContext()
+    const req = withRequest(defaultPayerAddress, pieceCid)
+    const res = await worker.fetch(req, env, ctx, {
+      retrieveFile: mockRetrieveFile,
+    })
+    await waitOnExecutionContext(ctx)
+
+    expect(res.status).toBe(402)
+
+    const totalCdn = Number(res.headers.get('X-Total-Cdn-Egress-Remaining'))
+    const totalCacheMiss = Number(
+      res.headers.get('X-Total-Cache-Miss-Egress-Remaining'),
+    )
+    expect(totalCdn).toBe(cdnEgressQuota1 + cdnEgressQuota2)
+    expect(totalCacheMiss).toBe(cacheMissEgressQuota1 + cacheMissEgressQuota2)
+
+    const pickedDataSetId = res.headers.get('X-Data-Set-ID')
+    const datasetCdn = Number(res.headers.get('X-Cdn-Egress-Remaining'))
+    const datasetCacheMiss = Number(
+      res.headers.get('X-Cache-Miss-Egress-Remaining'),
+    )
+
+    if (pickedDataSetId === dataSetId1) {
+      expect(datasetCdn).toBe(cdnEgressQuota1)
+      expect(datasetCacheMiss).toBe(cacheMissEgressQuota1)
+    } else if (pickedDataSetId === dataSetId2) {
+      expect(datasetCdn).toBe(cdnEgressQuota2)
+      expect(datasetCacheMiss).toBe(cacheMissEgressQuota2)
+    } else {
+      throw new Error(`Unexpected pickedDataSetId: ${pickedDataSetId}`)
+    }
   })
 
   it('stores bot name in retrieval logs when SP returns 502', async () => {
@@ -1208,6 +1292,6 @@ describe('piece-retriever.fetch', () => {
     expect(await res.text()).toMatch(
       /^No available service provider found. Attempted: ID=/,
     )
-    expect(res.headers.get('FB-Data-Set-ID')).toBe(String(dataSetId))
+    expect(res.headers.get('X-Data-Set-ID')).toBe(String(dataSetId))
   })
 })
