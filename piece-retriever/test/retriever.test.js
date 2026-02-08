@@ -1160,6 +1160,8 @@ describe('piece-retriever.fetch', () => {
     // Candidate for dataset 1
     await withDataSetPieces(env, {
       dataSetId: dataSetId1,
+      serviceProviderId: 'svc-1',
+      payerAddress: defaultPayerAddress,
       withCDN: true,
       cdnEgressQuota: cdnEgressQuota1,
       cacheMissEgressQuota: cacheMissEgressQuota1,
@@ -1173,6 +1175,8 @@ describe('piece-retriever.fetch', () => {
     // Candidate for dataset 2
     await withDataSetPieces(env, {
       dataSetId: dataSetId2,
+      serviceProviderId: 'svc-2',
+      payerAddress: defaultPayerAddress,
       withCDN: true,
       cdnEgressQuota: cdnEgressQuota2,
       cacheMissEgressQuota: cacheMissEgressQuota2,
@@ -1184,7 +1188,7 @@ describe('piece-retriever.fetch', () => {
     })
 
     const mockRetrieveFile = vi.fn().mockResolvedValue({
-      response: new Response('hello'),
+      response: new Response('hello', { status: 402 }),
       cacheMiss: true,
     })
 
@@ -1193,6 +1197,7 @@ describe('piece-retriever.fetch', () => {
     const res = await worker.fetch(req, env, ctx, {
       retrieveFile: mockRetrieveFile,
     })
+    await res.text()
     await waitOnExecutionContext(ctx)
 
     expect(res.status).toBe(402)

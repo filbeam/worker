@@ -201,11 +201,10 @@ export default {
           retrievalResult.response,
         )
         setContentSecurityPolicy(response)
-        setDiagnosticHeaders(
-          response,
-          retrievalCandidate,
-          allCandidates,
-          env.CLIENT_CACHE_TTL,
+        setDiagnosticHeaders(response, retrievalCandidate, allCandidates)
+        response.headers.set(
+          'Cache-Control',
+          `public, max-age=${env.CLIENT_CACHE_TTL}`,
         )
         return response
       }
@@ -329,11 +328,10 @@ export default {
         headers: retrievalResult.response.headers,
       })
       setContentSecurityPolicy(response)
-      setDiagnosticHeaders(
-        response,
-        retrievalCandidate,
-        allCandidates,
-        env.CLIENT_CACHE_TTL,
+      setDiagnosticHeaders(response, retrievalCandidate, allCandidates)
+      response.headers.set(
+        'Cache-Control',
+        `public, max-age=${env.CLIENT_CACHE_TTL}`,
       )
       return response
     } catch (error) {
@@ -404,16 +402,9 @@ function getErrorHttpStatusMessage(error) {
  * @param {Response} response - The response to set headers on.
  * @param {any} selectedCandidate - The candidate that was used for retrieval.
  * @param {any[]} allCandidates - All retrieval candidates.
- * @param {number} clientCacheTtl - The client cache TTL in seconds.
  */
-function setDiagnosticHeaders(
-  response,
-  selectedCandidate,
-  allCandidates,
-  clientCacheTtl,
-) {
+function setDiagnosticHeaders(response, selectedCandidate, allCandidates) {
   response.headers.set('X-Data-Set-ID', selectedCandidate.dataSetId)
-  response.headers.set('Cache-Control', `public, max-age=${clientCacheTtl}`)
 
   const totalCdnEgressQuota = allCandidates.reduce(
     (acc, curr) => acc + curr.cdnEgressQuota,
@@ -432,10 +423,7 @@ function setDiagnosticHeaders(
     .filter((c) => c.dataSetId === selectedCandidate.dataSetId)
     .reduce((acc, curr) => acc + curr.cacheMissEgressQuota, 0n)
 
-  response.headers.set(
-    'X-Cdn-Egress-Remaining',
-    String(datasetCdnEgressQuota),
-  )
+  response.headers.set('X-Cdn-Egress-Remaining', String(datasetCdnEgressQuota))
   response.headers.set(
     'X-Cache-Miss-Egress-Remaining',
     String(datasetCacheMissEgressQuota),
