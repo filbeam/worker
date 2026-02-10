@@ -1056,7 +1056,6 @@ describe('piece-retriever.fetch', () => {
       withCDN: true,
       cdnEgressQuota,
       cacheMissEgressQuota,
-      pieceId: 'p-snap-empty',
       pieceCid,
     })
     await withApprovedProvider(env, {
