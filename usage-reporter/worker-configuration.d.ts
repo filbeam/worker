@@ -10,7 +10,7 @@ declare namespace Cloudflare {
 		RPC_URL: "https://api.calibration.node.glif.io/" | "https://api.node.glif.io/";
 		FILBEAM_OPERATOR_CONTRACT_ADDRESS: "0x0000000000000000000000000000000000000000" | "0x5991E4F9fcEF4AE23959eE03638B4688A7e1EcfF" | "0x9E90749D298C4ca43Bb468CA859Dfe167F9CdCf2";
 		FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS: "1667326380000" | "1598306400000";
-		FILBEAM_CONTROLLER_PRIVATE_KEY: string;
+		FILBEAM_OPERATOR_CONTROLLER_PRIVATE_KEY: string;
 		DB: D1Database;
 		TRANSACTION_QUEUE: Queue;
 		TRANSACTION_MONITOR_WORKFLOW: Workflow<Parameters<import("./bin/usage-reporter").TransactionMonitorWorkflow['run']>[0]['payload']>;
@@ -21,7 +21,7 @@ type StringifyValues<EnvType extends Record<string, unknown>> = {
 	[Binding in keyof EnvType]: EnvType[Binding] extends string ? EnvType[Binding] : string;
 };
 declare namespace NodeJS {
-	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "ENVIRONMENT" | "RPC_URL" | "FILBEAM_OPERATOR_CONTRACT_ADDRESS" | "FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS" | "FILBEAM_CONTROLLER_PRIVATE_KEY">> {}
+	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "ENVIRONMENT" | "RPC_URL" | "FILBEAM_OPERATOR_CONTRACT_ADDRESS" | "FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS" | "FILBEAM_OPERATOR_CONTROLLER_PRIVATE_KEY">> {}
 }
 
 // Begin runtime types

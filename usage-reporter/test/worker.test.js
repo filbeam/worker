@@ -50,7 +50,7 @@ describe('usage reporter worker scheduled entrypoint', () => {
   const mockEnv = {
     ...env,
     FILBEAM_OPERATOR_CONTRACT_ADDRESS: '0xMockFilBeamAddress',
-    FILBEAM_CONTROLLER_PRIVATE_KEY: '0xMockPrivateKey',
+    FILBEAM_OPERATOR_CONTROLLER_PRIVATE_KEY: '0xMockPrivateKey',
     TRANSACTION_MONITOR_WORKFLOW: mockWorkflow,
   }
 

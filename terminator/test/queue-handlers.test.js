@@ -14,7 +14,7 @@ const createMockEnv = (env) => ({
   ENVIRONMENT: 'calibration',
   RPC_URL: 'https://api.calibration.node.glif.io/',
   FILBEAM_OPERATOR_CONTRACT_ADDRESS: '0xcontract',
-  FILBEAM_CONTROLLER_PRIVATE_KEY: '0xprivatekey',
+  FILBEAM_OPERATOR_CONTROLLER_PRIVATE_KEY: '0xprivatekey',
   TRANSACTION_MONITOR_WORKFLOW: {
     create: vi.fn().mockResolvedValue(undefined),
   },

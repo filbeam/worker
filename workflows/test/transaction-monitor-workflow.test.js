@@ -17,13 +17,13 @@ describe('TransactionMonitorWorkflow', () => {
    *   TRANSACTION_QUEUE: { send: (message: any) => Promise<void> }
    *   ENVIRONMENT: string
    *   RPC_URL: string
-   *   FILBEAM_CONTROLLER_PRIVATE_KEY: string
+   *   FILBEAM_OPERATOR_CONTROLLER_PRIVATE_KEY: string
    * }}
    */
   const mockEnv = {
     ...env,
     TRANSACTION_QUEUE: mockQueue,
-    FILBEAM_CONTROLLER_PRIVATE_KEY: '0x1234',
+    FILBEAM_OPERATOR_CONTROLLER_PRIVATE_KEY: '0x1234',
   }
 
   afterEach(() => {
