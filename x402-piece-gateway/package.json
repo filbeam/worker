@@ -13,7 +13,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "viem": "^2.45.3",
+    "viem": "^2.46.1",
     "x402": "^1.0.1"
   }
 }
