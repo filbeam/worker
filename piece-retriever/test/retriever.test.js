@@ -667,6 +667,38 @@ describe('piece-retriever.fetch', () => {
     await waitOnExecutionContext(ctx)
   })
 
+  it('logs 0 egress bytes for HEAD responses without a body', async () => {
+    const mockRetrieveFile = vi.fn().mockResolvedValue({
+      response: new Response(null, { status: 200 }),
+      cacheMiss: true,
+    })
+    const ctx = createExecutionContext()
+    const req = withRequest(defaultPayerAddress, realPieceCid, 'HEAD')
+    const res = await worker.fetch(req, env, ctx, {
+      retrieveFile: mockRetrieveFile,
+    })
+    expect(res.status).toBe(200)
+    expect(res.body).toBeNull()
+    await waitOnExecutionContext(ctx)
+
+    const { results } = await env.DB.prepare(
+      `SELECT response_status, egress_bytes
+       FROM retrieval_logs
+       WHERE data_set_id = ?
+       ORDER BY id DESC
+       LIMIT 1`,
+    )
+      .bind(String(realDataSetId))
+      .all()
+
+    expect(results).toStrictEqual([
+      {
+        response_status: 200,
+        egress_bytes: 0,
+      },
+    ])
+  })
+
   it('rejects retrieval requests for CIDs found in the Bad Bits denylist', async () => {
     await withBadBits(env, realPieceCid)
 

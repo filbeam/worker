@@ -208,6 +208,26 @@ describe('retrieveFile', () => {
     expect(result.validate).toBe(null)
   })
 
+  it('returns successful HEAD responses without requiring a body', async () => {
+    cachesMock.match.mockResolvedValueOnce(null)
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      new Response(null, { status: 200 }),
+    )
+    const ctx = createExecutionContext()
+    const result = await retrieveFile(
+      ctx,
+      baseUrl,
+      pieceCid,
+      new Request(baseUrl, { method: 'HEAD' }),
+      null,
+      { addCacheMissResponseValidation: true },
+    )
+    await waitOnExecutionContext(ctx)
+    expect(result.response.status).toBe(200)
+    expect(result.response.body).toBeNull()
+    expect(result.validate).toBe(null)
+  })
+
   it('validates an invalid cache miss response', async () => {
     cachesMock.match.mockResolvedValueOnce(null)
     fetchMock

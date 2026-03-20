@@ -1,4 +1,3 @@
-import assert from 'node:assert/strict'
 import { createPieceCIDStream } from './piece.js'
 
 /**
@@ -51,9 +50,7 @@ export async function retrieveFile(
       },
       signal,
     })
-    if (response.ok) {
-      assert(response.body)
-
+    if (response.ok && response.body) {
       console.log(
         `Cache miss response validation is ${addCacheMissResponseValidation ? 'enabled' : 'disabled'}`,
       )
