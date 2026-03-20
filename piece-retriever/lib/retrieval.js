@@ -69,6 +69,12 @@ export async function retrieveFile(
           response,
         )
       }
+    } else if (response.ok) {
+      // Successful HEAD responses do not have a readable body. Without a body,
+      // there is nothing to validate or wrap in a transform stream.
+      console.log(
+        'Skipping cache miss response validation for bodyless response',
+      )
     }
   }
 

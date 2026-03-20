@@ -682,7 +682,7 @@ describe('piece-retriever.fetch', () => {
     await waitOnExecutionContext(ctx)
 
     const { results } = await env.DB.prepare(
-      `SELECT response_status, egress_bytes
+      `SELECT data_set_id, response_status, egress_bytes, cache_miss
        FROM retrieval_logs
        WHERE data_set_id = ?
        ORDER BY id DESC
@@ -693,8 +693,10 @@ describe('piece-retriever.fetch', () => {
 
     expect(results).toStrictEqual([
       {
+        data_set_id: String(realDataSetId),
         response_status: 200,
         egress_bytes: 0,
+        cache_miss: 1,
       },
     ])
   })
