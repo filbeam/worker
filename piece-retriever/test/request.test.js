@@ -13,6 +13,7 @@ describe('parseRequest', () => {
     expect(result).toEqual({
       payerWalletAddress: TEST_WALLET,
       pieceCid: TEST_CID,
+      validateCacheMissResponse: false,
     })
   })
 
@@ -24,6 +25,7 @@ describe('parseRequest', () => {
     expect(result).toEqual({
       payerWalletAddress: TEST_WALLET,
       pieceCid: TEST_CID,
+      validateCacheMissResponse: false,
     })
   })
 
@@ -49,6 +51,7 @@ describe('parseRequest', () => {
     expect(result).toEqual({
       payerWalletAddress: TEST_WALLET,
       pieceCid: TEST_CID,
+      validateCacheMissResponse: false,
     })
   })
 })

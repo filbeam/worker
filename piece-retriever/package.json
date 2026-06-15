@@ -7,13 +7,15 @@
   "type": "module",
   "main": "bin/indexer.js",
   "scripts": {
-    "build:types": "wrangler types --env dev",
+    "build:types": "wrangler types",
     "deploy:calibration": "wrangler deploy --env calibration",
     "deploy:mainnet": "wrangler deploy --env mainnet",
     "start": "wrangler d1 migrations apply dev-db --local --env dev --cwd ../db && wrangler dev --env dev",
     "test": "wrangler d1 migrations apply test-db --local --cwd ../db && vitest run"
   },
   "dependencies": {
-    "@filbeam/retrieval": "^1.0.0"
+    "@filbeam/retrieval": "^1.0.0",
+    "fr32-sha2-256-trunc254-padded-binary-tree-multihash": "^3.3.0",
+    "multiformats": "^13.4.2"
   }
 }

@@ -14,7 +14,9 @@ import {
   removeDataSetPieces,
   insertDataSetPiece,
 } from '../lib/pdp-verifier-handlers.js'
+import { handleCdnPaymentSettled } from '../lib/filbeam-operator-handlers.js'
 import { screenWallets } from '../lib/wallet-screener.js'
+import { epochToTimestampMs } from '../lib/epoch.js'
 import { CID } from 'multiformats/cid'
 
 export default {
@@ -110,6 +112,12 @@ export default {
           ? null
           : payload.metadata_values[ipfsRootCidIndex]
 
+      const x402PriceIndex = payload.metadata_keys.indexOf('x402Price')
+      const x402PriceRaw =
+        x402PriceIndex === -1 ? null : payload.metadata_values[x402PriceIndex]
+      const x402Price =
+        x402PriceRaw && /^\d+$/.test(x402PriceRaw) ? x402PriceRaw : null
+
       console.log(
         `New piece (piece_id=${pieceId}, piece_cid=${pieceCid}, data_set_id=${payload.data_set_id} metadata_keys=[${payload.metadata_keys.join(', ')}], metadata_values=[${payload.metadata_values.join(
           ', ',
@@ -122,6 +130,7 @@ export default {
         pieceId,
         pieceCid,
         ipfsRootCid,
+        x402Price,
       )
 
       return new Response('OK', { status: 200 })
@@ -209,6 +218,7 @@ export default {
       return await handleProviderRemoved(env, providerId)
     } else if (pathname === '/fwss/cdn-payment-rails-topped-up') {
       if (
+        typeof payload.id !== 'string' ||
         typeof payload.data_set_id !== 'string' ||
         typeof payload.cdn_amount_added !== 'string' ||
         typeof payload.cache_miss_amount_added !== 'string'
@@ -229,6 +239,24 @@ export default {
         return new Response('Internal Server Error', { status: 500 })
       }
 
+      return new Response('OK', { status: 200 })
+    } else if (pathname === '/filbeam-operator/cdn-payment-settled') {
+      if (
+        typeof payload.data_set_id !== 'string' ||
+        typeof payload.block_number !== 'number'
+      ) {
+        console.error(
+          'FilBeamOperator.CdnPaymentSettled: Invalid payload',
+          payload,
+        )
+        return new Response('Bad Request', { status: 400 })
+      }
+
+      console.log(
+        `CDN payment settled (data_set_id=${payload.data_set_id}, block_number=${payload.block_number})`,
+      )
+
+      await handleCdnPaymentSettled(env, payload)
       return new Response('OK', { status: 200 })
     } else {
       return new Response('Not Found', { status: 404 })
@@ -292,6 +320,7 @@ export default {
         staleThresholdMs: Number(env.WALLET_SCREENING_STALE_THRESHOLD_MS),
         checkIfAddressIsSanctioned,
       }),
+      this.reportSettlementStats(env),
     ])
     const errors = results
       .filter((r) => r.status === 'rejected')
@@ -309,39 +338,104 @@ export default {
    * @param {typeof globalThis.fetch} options.fetch
    */
   async checkGoldskyStatus(env, { fetch }) {
-    const [subgraph] = await Promise.allSettled([
-      (async () => {
-        const res = await fetch(env.GOLDSKY_SUBGRAPH_URL, {
-          method: 'POST',
-          body: JSON.stringify({
-            query: `
-              query {
-                _meta {
-                  hasIndexingErrors
-                  block {
-                    number
-                  }
-                }
-              }
-            `,
-          }),
-        })
-        const { data } = await res.json()
-        return data
-      })(),
-      // (placeholder for more data-fetching steps)
-    ])
-    const alerts = []
-    if (subgraph.status === 'rejected') {
-      alerts.push(
-        `Can't access subgraph: ${subgraph.reason.stack ?? subgraph.reason.message ?? subgraph.reason}`,
+    const query = `
+      query {
+        _meta {
+          hasIndexingErrors
+          block {
+            number
+          }
+        }
+      }
+    `
+
+    /** @type {Response} */
+    let res
+    try {
+      res = await fetch(env.GOLDSKY_SUBGRAPH_URL, {
+        method: 'POST',
+        body: JSON.stringify({ query }),
+      })
+    } catch (err) {
+      console.warn(
+        `Goldsky fetch failed: ${err instanceof Error ? err.message : String(err)}`,
       )
-    } else if (subgraph.value._meta.hasIndexingErrors) {
-      alerts.push('Goldsky has indexing errors')
+      return
     }
-    // (placeholder for more alerting conditions)
-    if (alerts.length) {
-      throw new Error(alerts.join(' & '))
+
+    if (!res.ok) {
+      let errorText
+      try {
+        errorText = await res.text()
+      } catch (err) {
+        const details = err instanceof Error ? err.stack : String(err)
+        errorText = 'Error reading response body: ' + details
+      }
+      console.warn(`Goldsky returned ${res.status}: ${errorText}`)
+      return
     }
+
+    const { data } = await res.json()
+
+    if (typeof data?._meta !== 'object' || data?._meta === null) {
+      console.warn(`Unexpected Goldsky response: ${JSON.stringify(data)}`)
+      return
+    }
+
+    const lastIndexedBlock = data._meta.block?.number
+    const hasIndexingErrors = data._meta.hasIndexingErrors
+    const lastIndexedTimestampMs = epochToTimestampMs(
+      lastIndexedBlock,
+      Number(env.FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS),
+    )
+    const lagMs = Date.now() - lastIndexedTimestampMs
+
+    console.log(
+      `Goldsky status: lagMs=${lagMs} hasIndexingErrors=${hasIndexingErrors} lastIndexedBlock=${lastIndexedBlock}`,
+    )
+
+    env.GOLDSKY_STATS.writeDataPoint({
+      doubles: [lastIndexedBlock, hasIndexingErrors ? 1 : 0, lagMs],
+    })
+  },
+
+  /** @param {Env} env */
+  async reportSettlementStats(env) {
+    /**
+     * @type {{
+     *   id: string
+     *   cdn_payments_settled_until: string
+     * } | null}
+     */
+    const row = await env.DB.prepare(
+      `
+      SELECT id, cdn_payments_settled_until
+      FROM data_sets
+      WHERE usage_reported_until > cdn_payments_settled_until
+      ORDER BY cdn_payments_settled_until ASC
+      LIMIT 1
+    `,
+    ).first()
+
+    if (!row) {
+      console.log('No data sets with unsettled CDN usage')
+      env.SETTLEMENT_STATS.writeDataPoint({
+        doubles: [Date.now(), 0],
+        blobs: [''],
+      })
+      return
+    }
+
+    const timestampMs = new Date(row.cdn_payments_settled_until).getTime()
+    const lagMs = Date.now() - timestampMs
+
+    console.log(
+      `Oldest unsettled CDN usage: data_set=${row.id}, cdn_payments_settled_until=${row.cdn_payments_settled_until}, lag_ms=${lagMs}`,
+    )
+
+    env.SETTLEMENT_STATS.writeDataPoint({
+      doubles: [timestampMs, lagMs],
+      blobs: [row.id],
+    })
   },
 }

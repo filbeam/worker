@@ -1,3 +1,4 @@
 worker-configuration.d.ts
 subgraph/generated/
 subgraph/tests/.latest.json
+.claude/*.local.json

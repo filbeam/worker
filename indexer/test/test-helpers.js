@@ -110,6 +110,11 @@ export async function withDataSet(
   return dataSetId
 }
 
+// D1 has a limit of 100 bound parameters per query
+// https://developers.cloudflare.com/d1/platform/limits/
+// With 4 parameters per piece, we can process 25 pieces per batch
+const INSERT_PIECES_BATCH_SIZE = 25
+
 export async function withPieces(
   env,
   dataSetId,
@@ -117,28 +122,37 @@ export async function withPieces(
   pieceCids,
   ipfsRootCids = [],
 ) {
-  await env.DB.prepare(
-    `
-    INSERT INTO pieces (
-      id,
-      data_set_id,
-      cid,
-      ipfs_root_cid
+  const statements = []
+  for (let i = 0; i < pieceIds.length; i += INSERT_PIECES_BATCH_SIZE) {
+    const batchPieceIds = pieceIds.slice(i, i + INSERT_PIECES_BATCH_SIZE)
+    const batchPieceCids = pieceCids.slice(i, i + INSERT_PIECES_BATCH_SIZE)
+    const batchIpfsRootCids = ipfsRootCids.slice(
+      i,
+      i + INSERT_PIECES_BATCH_SIZE,
     )
-    VALUES ${new Array(pieceIds.length)
-      .fill(null)
-      .map(() => '(?, ?, ?, ?)')
-      .join(', ')}
-    ON CONFLICT DO NOTHING
-  `,
-  )
-    .bind(
-      ...pieceIds.flatMap((pieceId, i) => [
-        String(pieceId),
-        String(dataSetId),
-        pieceCids[i],
-        ipfsRootCids[i] || null,
-      ]),
+
+    statements.push(
+      env.DB.prepare(
+        `
+        INSERT INTO pieces (
+          id,
+          data_set_id,
+          cid,
+          ipfs_root_cid
+        )
+        VALUES ${batchPieceIds.map(() => '(?, ?, ?, ?)').join(', ')}
+        ON CONFLICT DO NOTHING
+      `,
+      ).bind(
+        ...batchPieceIds.flatMap((pieceId, j) => [
+          String(pieceId),
+          String(dataSetId),
+          batchPieceCids[j],
+          batchIpfsRootCids[j] || null,
+        ]),
+      ),
     )
-    .run()
+  }
+
+  await env.DB.batch(statements)
 }

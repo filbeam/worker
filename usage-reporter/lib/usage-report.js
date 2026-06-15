@@ -23,7 +23,7 @@ export async function aggregateUsageData(db, upToTimestampMs) {
       -- Note: cdn_bytes tracks all egress (cache hits + cache misses)
       -- cache_miss_bytes tracks only cache misses (subset of cdn_bytes)
       SUM(rl.egress_bytes) as cdn_bytes,
-      SUM(CASE WHEN rl.cache_miss = 1 THEN rl.egress_bytes ELSE 0 END) as cache_miss_bytes
+      SUM(CASE WHEN rl.cache_miss = 1 AND rl.cache_miss_response_valid = 1 THEN rl.egress_bytes ELSE 0 END) as cache_miss_bytes
     FROM retrieval_logs rl
     INNER JOIN data_sets ds ON rl.data_set_id = ds.id
     WHERE rl.timestamp > datetime(ds.usage_reported_until)

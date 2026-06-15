@@ -30,6 +30,8 @@ describe('stats-api.fetch', () => {
       cdnEgressQuota: '1000000',
       cacheMissEgressQuota: '2000000',
     })
+
+    expect(res.headers.get('Access-Control-Allow-Origin')).toBe('*')
   })
 
   it('returns 404 for non-existent data set', async () => {

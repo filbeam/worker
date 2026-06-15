@@ -1,0 +1,10 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "outDir": "dist",
+    "allowImportingTsExtensions": true
+  },
+  "include": ["src/**/*.ts", "*.d.ts"],
+  "exclude": ["dist"]
+}

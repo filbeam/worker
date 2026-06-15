@@ -158,7 +158,9 @@ describe('parseRequest', () => {
     const slug = `1-${encodedDataSetId}-${encodedPieceId}`
     const subpath = '/file.txt'
 
-    const request = new Request(`https://${slug}${DNS_ROOT}${subpath}?foo=bar&baz=qux`)
+    const request = new Request(
+      `https://${slug}${DNS_ROOT}${subpath}?foo=bar&baz=qux`,
+    )
     const result = parseRequest(request, { DNS_ROOT, BOT_TOKENS })
 
     expect(result).toEqual({
@@ -177,7 +179,9 @@ describe('parseRequest', () => {
     const slug = `1-${encodedDataSetId}-${encodedPieceId}`
     const subpath = '/path/to/file.txt'
 
-    const request = new Request(`https://${slug}${DNS_ROOT}${subpath}?format=car`)
+    const request = new Request(
+      `https://${slug}${DNS_ROOT}${subpath}?format=car`,
+    )
     const result = parseRequest(request, { DNS_ROOT, BOT_TOKENS })
 
     expect(result).toEqual({

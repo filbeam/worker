@@ -80,10 +80,8 @@ export default {
     const workerStartedAt = performance.now()
     const requestCountryCode = request.headers.get('CF-IPCountry')
 
-    const { dataSetId, pieceId, ipfsSubpath, ipfsFormat, botName } = parseRequest(
-      request,
-      env,
-    )
+    const { dataSetId, pieceId, ipfsSubpath, ipfsFormat, botName } =
+      parseRequest(request, env)
 
     try {
       // Timestamp to measure file retrieval performance (from cache and from SP)
@@ -138,6 +136,7 @@ export default {
         ctx.waitUntil(
           logRetrievalResult(env, {
             cacheMiss,
+            cacheMissResponseValid: null,
             responseStatus: originResponse.status,
             egressBytes: 0,
             requestCountryCode,
@@ -169,6 +168,7 @@ export default {
 
           await logRetrievalResult(env, {
             cacheMiss,
+            cacheMissResponseValid: null,
             responseStatus: originResponse.status,
             egressBytes,
             requestCountryCode,
@@ -179,7 +179,7 @@ export default {
               workerTtfb: firstByteAt - workerStartedAt,
             },
             dataSetId,
-            botName
+            botName,
           })
 
           await updateDataSetStats(env, {
@@ -222,6 +222,7 @@ export default {
       ctx.waitUntil(
         logRetrievalResult(env, {
           cacheMiss: null,
+          cacheMissResponseValid: null,
           responseStatus: status,
           egressBytes: null,
           requestCountryCode,

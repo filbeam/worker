@@ -51,6 +51,7 @@ describe('usage report', () => {
           dataSetId: '1',
           egressBytes: 500,
           cacheMiss: 1,
+          cacheMissResponseValid: 1,
         })
 
         await withRetrievalLog(env, {
@@ -58,6 +59,7 @@ describe('usage report', () => {
           dataSetId: '2',
           egressBytes: 3000,
           cacheMiss: 1,
+          cacheMissResponseValid: 1,
         })
 
         await withRetrievalLog(env, {
@@ -129,6 +131,7 @@ describe('usage report', () => {
           responseStatus: 500,
           egressBytes: 300,
           cacheMiss: 1,
+          cacheMissResponseValid: 1,
         })
 
         const usageData = await aggregateUsageData(
@@ -226,6 +229,7 @@ describe('usage report', () => {
           dataSetId: '3',
           egressBytes: 500,
           cacheMiss: 1,
+          cacheMissResponseValid: 1,
         })
 
         const usageData = await aggregateUsageData(
@@ -272,6 +276,35 @@ describe('usage report', () => {
           dataSetId: '2',
           egressBytes: 2000,
           cacheMiss: 0,
+        })
+
+        const usageData = await aggregateUsageData(
+          env.DB,
+          EPOCH_100_TIMESTAMP_MS,
+        )
+
+        expect(usageData).toStrictEqual([
+          {
+            data_set_id: '1',
+            cdn_bytes: 1000,
+            cache_miss_bytes: 0,
+          },
+        ])
+      })
+
+      it('should not count invalid cache miss responses towards cache miss bytes', async () => {
+        await withDataSet(env, {
+          id: '1',
+          usageReportedUntil: EPOCH_99_TIMESTAMP_ISO,
+          pendingUsageReportTxHash: null,
+        })
+
+        await withRetrievalLog(env, {
+          timestamp: EPOCH_100_TIMESTAMP_ISO,
+          dataSetId: '1',
+          egressBytes: 1000,
+          cacheMiss: 1,
+          cacheMissResponseValid: 0,
         })
 
         const usageData = await aggregateUsageData(

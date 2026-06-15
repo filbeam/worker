@@ -21,6 +21,9 @@ jobs:
           - '@graphprotocol/'
           - vite
           - '@npmcli/'
+          - prettier
+          - multiformats
+          - validator
     steps:
       - name: Dependabot metadata
         id: metadata

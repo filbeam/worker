@@ -157,6 +157,7 @@ describe('updateDataSetStats', () => {
       dataSetId: DATA_SET_ID,
       egressBytes: EGRESS_BYTES,
       cacheMiss: true,
+      cacheMissResponseValid: true,
       enforceEgressQuota: true,
     })
 
@@ -180,6 +181,43 @@ describe('updateDataSetStats', () => {
       initialCacheMissQuota - EGRESS_BYTES,
     )
   })
+
+  it("doesn't decrement cache miss quota when enforceEgressQuota is true but the response was invalid", async () => {
+    const DATA_SET_ID = 'test-data-set-enforce'
+    const EGRESS_BYTES = 100
+    const initialCdnQuota = 500
+    const initialCacheMissQuota = 300
+
+    await withDataSet(env, {
+      dataSetId: DATA_SET_ID,
+      cdnEgressQuota: initialCdnQuota,
+      cacheMissEgressQuota: initialCacheMissQuota,
+    })
+
+    await updateDataSetStats(env, {
+      dataSetId: DATA_SET_ID,
+      egressBytes: EGRESS_BYTES,
+      cacheMiss: true,
+      cacheMissResponseValid: false,
+      enforceEgressQuota: true,
+    })
+
+    const dataSetResult = await env.DB.prepare(
+      `SELECT total_egress_bytes_used FROM data_sets WHERE id = ?`,
+    )
+      .bind(DATA_SET_ID)
+      .first()
+
+    const quotaResult = await env.DB.prepare(
+      `SELECT cdn_egress_quota, cache_miss_egress_quota FROM data_set_egress_quotas WHERE data_set_id = ?`,
+    )
+      .bind(DATA_SET_ID)
+      .first()
+
+    expect(dataSetResult.total_egress_bytes_used).toBe(EGRESS_BYTES)
+    expect(quotaResult.cdn_egress_quota).toBe(initialCdnQuota - EGRESS_BYTES)
+    expect(quotaResult.cache_miss_egress_quota).toBe(initialCacheMissQuota)
+  })
 })
 
 describe('logRetrievalResult', () => {
@@ -189,6 +227,7 @@ describe('logRetrievalResult', () => {
     await logRetrievalResult(env, {
       dataSetId: DATA_SET_ID,
       cacheMiss: false,
+      cacheMissResponseValid: null,
       egressBytes: 1234,
       responseStatus: 200,
       timestamp: new Date().toISOString(),

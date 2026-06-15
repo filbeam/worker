@@ -52,31 +52,41 @@ describe('retrieveFile', () => {
   })
 
   it('uses the default cacheTtl if not provided', async () => {
-    cachesMock.match.mockResolvedValueOnce(null)
-    fetchMock
-      .get(baseUrl)
-      .intercept({ path: `/piece/${pieceCid}` })
-      .reply(200)
+    let requestedCfOptions = 'fetch() was not called'
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      requestedCfOptions = init?.cf
+      return new Response(200)
+    })
     const ctx = createExecutionContext()
     await retrieveFile(ctx, baseUrl, pieceCid, new Request(baseUrl))
     await waitOnExecutionContext(ctx)
-    expect(cachesMock.put.mock.calls[0][1].headers.get('Cache-Control')).toBe(
-      'public, max-age=86400',
-    )
+    expect(requestedCfOptions).toEqual({
+      cacheTtlByStatus: {
+        '200-299': 86400,
+        404: 0,
+        '500-599': 0,
+      },
+      cacheEverything: true,
+    })
   })
 
   it('uses the provided cacheTtl', async () => {
-    cachesMock.match.mockResolvedValueOnce(null)
-    fetchMock
-      .get(baseUrl)
-      .intercept({ path: `/piece/${pieceCid}` })
-      .reply(200)
+    let requestedCfOptions = 'fetch() was not called'
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      requestedCfOptions = init?.cf
+      return new Response(200)
+    })
     const ctx = createExecutionContext()
     await retrieveFile(ctx, baseUrl, pieceCid, new Request(baseUrl), 1234)
     await waitOnExecutionContext(ctx)
-    expect(cachesMock.put.mock.calls[0][1].headers.get('Cache-Control')).toBe(
-      'public, max-age=1234',
-    )
+    expect(requestedCfOptions).toEqual({
+      cacheTtlByStatus: {
+        '200-299': 1234,
+        404: 0,
+        '500-599': 0,
+      },
+      cacheEverything: true,
+    })
   })
 
   it('returns the cached response', async () => {
@@ -111,8 +121,9 @@ describe('retrieveFile', () => {
     expect(result.response).toMatchObject(response)
   })
 
-  it('caches and returns a newly cached response', async () => {
+  it('returns the response from the origin', async () => {
     cachesMock.match.mockResolvedValueOnce(null)
+
     fetchMock
       .get(baseUrl)
       .intercept({ path: `/piece/${pieceCid}` })
@@ -131,7 +142,6 @@ describe('retrieveFile', () => {
     await waitOnExecutionContext(ctx)
     expect(result.response.status).toBe(201)
     expect(result.response.headers.get('foo')).toBe('bar')
-    expect(cachesMock.put.mock.calls[0][0]).toBe(`${baseUrl}/piece/${pieceCid}`)
   })
 
   it('supports range requests (uncached)', async () => {
@@ -179,6 +189,75 @@ describe('retrieveFile', () => {
     await waitOnExecutionContext(ctx)
     expect(result.response.status).toBe(206)
     expect(result.response.headers.get('content-range')).toBe('bytes 0-1/100')
+  })
+
+  it("by default doesn't validate cache miss responses", async () => {
+    cachesMock.match.mockResolvedValueOnce(null)
+    fetchMock
+      .get(baseUrl)
+      .intercept({ path: `/piece/${pieceCid}` })
+      .reply(200, 'invalid')
+    const ctx = createExecutionContext()
+    const result = await retrieveFile(
+      ctx,
+      baseUrl,
+      pieceCid,
+      new Request(baseUrl),
+    )
+    await waitOnExecutionContext(ctx)
+    expect(result.validate).toBe(null)
+  })
+
+  it('validates an invalid cache miss response', async () => {
+    cachesMock.match.mockResolvedValueOnce(null)
+    fetchMock
+      .get(baseUrl)
+      .intercept({ path: `/piece/${pieceCid}` })
+      .reply(200, 'invalid')
+    const ctx = createExecutionContext()
+    const result = await retrieveFile(
+      ctx,
+      baseUrl,
+      pieceCid,
+      new Request(baseUrl),
+      null,
+      { addCacheMissResponseValidation: true },
+    )
+    await waitOnExecutionContext(ctx)
+    expect(result.validate).toBeInstanceOf(Function)
+    expect(result.validate()).toBe(false)
+  })
+
+  it('validates a valid cache miss response', async () => {
+    // Hash of `'valid'`
+    const pieceCid =
+      'bafkzcibcpibpuevmzufhyt73qvctc7ndhfpl7peuihgkl6mepmrm3w3rzwnnofa'
+    cachesMock.match.mockResolvedValueOnce(null)
+    fetchMock
+      .get(baseUrl)
+      .intercept({
+        path: `/piece/${pieceCid}`,
+      })
+      .reply(200, 'valid')
+    const ctx = createExecutionContext()
+    const result = await retrieveFile(
+      ctx,
+      baseUrl,
+      pieceCid,
+      new Request(baseUrl),
+      null,
+      { addCacheMissResponseValidation: true },
+    )
+    const reader = result.response.body.getReader()
+    while (true) {
+      const { done } = await reader.read()
+      if (done) {
+        break
+      }
+    }
+    await waitOnExecutionContext(ctx)
+    expect(result.validate).toBeInstanceOf(Function)
+    expect(result.validate()).toBe(true)
   })
 })
 

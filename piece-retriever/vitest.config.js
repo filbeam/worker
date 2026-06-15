@@ -11,6 +11,7 @@ export default defineWorkersProject(async () => {
   return {
     test: {
       setupFiles: ['./test/apply-migrations.js'],
+      restoreMocks: true,
       poolOptions: {
         workers: {
           singleWorker: true,

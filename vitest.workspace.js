@@ -4,6 +4,7 @@ export default defineWorkspace([
   'indexer',
   'ipfs-retriever',
   'piece-retriever',
+  'tail-handler',
   'bad-bits',
   'terminator',
   'workflows',
@@ -11,4 +12,5 @@ export default defineWorkspace([
   'payment-settler',
   'retrieval',
   'stats-api',
+  'x402-piece-gateway',
 ])

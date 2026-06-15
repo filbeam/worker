@@ -3,6 +3,7 @@ main = "bin/scheduler.js"
 compatibility_date = "2025-09-08"
 compatibility_flags = ["nodejs_compat"]
 logpush = true
+upload_source_maps = true
 
 [observability]
 enabled = true
@@ -11,6 +12,10 @@ head_sampling_rate = 1
 [[kv_namespaces]]
 binding = "BAD_BITS_KV"
 id = "8cc92155-16f6-426a-b782-2965e0daf100"
+
+[[r2_buckets]]
+binding = "BAD_BITS_R2"
+bucket_name = "test-bad-bits"
 
 [env.dev.vars]
 ENVIRONMENT = "dev"

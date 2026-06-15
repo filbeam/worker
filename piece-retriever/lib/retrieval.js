@@ -1,3 +1,6 @@
+import assert from 'node:assert/strict'
+import { createPieceCIDStream } from './piece.js'
+
 /**
  * Retrieves the file under the pieceCID from the constructed URL.
  *
@@ -9,10 +12,13 @@
  * @param {object} [options] - Optional parameters.
  * @param {AbortSignal} [options.signal] - An optional AbortSignal to cancel the
  *   fetch request.
+ * @param {boolean} [options.addCacheMissResponseValidation=false] Default is
+ *   `false`
  * @returns {Promise<{
  *   response: Response
  *   cacheMiss: boolean
  *   url: string
+ *   validate: function | null
  * }>}
  *   - The response from the fetch request, the cache miss and the content length.
  */
@@ -22,56 +28,54 @@ export async function retrieveFile(
   pieceCid,
   request,
   cacheTtl = 86400,
-  { signal } = {},
+  { signal, addCacheMissResponseValidation = false } = {},
 ) {
   const url = getRetrievalUrl(baseUrl, pieceCid)
 
   const cacheKey = new Request(url, request)
   let response = await caches.default.match(cacheKey)
   let cacheMiss = true
+  let validate = null
 
   if (response) {
     cacheMiss = false
   } else {
-    response = await fetch(url, { signal })
+    response = await fetch(url, {
+      cf: {
+        cacheTtlByStatus: {
+          '200-299': cacheTtl,
+          404: 0,
+          '500-599': 0,
+        },
+        cacheEverything: true,
+      },
+      signal,
+    })
     if (response.ok) {
-      const [body1, body2] = response.body?.tee() ?? [null, null]
-      ctx.waitUntil(
-        caches.default.put(
-          url,
-          new Response(body1, {
-            ...response,
-            headers: {
-              ...Object.fromEntries(response.headers),
-              'Cache-Control': `public, max-age=${cacheTtl}`,
-            },
-          }),
-        ),
+      assert(response.body)
+
+      console.log(
+        `Cache miss response validation is ${addCacheMissResponseValidation ? 'enabled' : 'disabled'}`,
       )
-      response = new Response(body2, response)
+      if (addCacheMissResponseValidation) {
+        const responseStream = response.body
+        const { stream: pieceCidStream, getPieceCID } = createPieceCIDStream()
+        validate = () => {
+          const calculatedPieceCid = getPieceCID()
+          return (
+            calculatedPieceCid !== null &&
+            calculatedPieceCid.toString() === pieceCid
+          )
+        }
+        response = new Response(
+          responseStream.pipeThrough(pieceCidStream),
+          response,
+        )
+      }
     }
   }
 
-  return { response, cacheMiss, url }
-}
-
-/**
- * Measures the egress of a request by reading from a readable stream and return
- * the total number of bytes transferred.
- *
- * @param {ReadableStreamDefaultReader<Uint8Array>} reader - The reader for the
- *   readable stream.
- * @returns {Promise<number>} - A promise that resolves to the total number of
- *   bytes transferred.
- */
-export async function measureStreamedEgress(reader) {
-  let total = 0
-  while (true) {
-    const { done, value } = await reader.read()
-    if (done) break
-    total += value.length
-  }
-  return total
+  return { response, cacheMiss, url, validate }
 }
 
 /**

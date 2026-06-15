@@ -11,6 +11,7 @@ import { httpAssert } from '@filbeam/retrieval'
  *   payerWalletAddress?: string
  *   pieceCid?: string
  *   botName?: string
+ *   validateCacheMissResponse: boolean
  * }}
  */
 export function parseRequest(request, { DNS_ROOT, BOT_TOKENS }) {
@@ -34,8 +35,9 @@ export function parseRequest(request, { DNS_ROOT, BOT_TOKENS }) {
   )
 
   const botName = checkBotAuthorization(request, { BOT_TOKENS })
+  const validateCacheMissResponse = url.searchParams.has('validate')
 
-  return { payerWalletAddress, pieceCid, botName }
+  return { payerWalletAddress, pieceCid, botName, validateCacheMissResponse }
 }
 
 /**

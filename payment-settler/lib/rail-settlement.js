@@ -1,3 +1,6 @@
+/** @import {PublicClient, WalletClient, PrivateKeyAccount} from 'viem' */
+import filbeamAbi from '../lib/FilBeamOperator.abi.json'
+
 /**
  * Fetches data sets that need CDN payment rail settlement
  *
@@ -27,4 +30,37 @@ export async function getDataSetsForSettlement(db) {
     .all()
 
   return result.results.map((row) => String(row.id))
+}
+
+/**
+ * @param {object} args
+ * @param {Env} args.env
+ * @param {string} args.batchId
+ * @param {PublicClient} args.publicClient
+ * @param {WalletClient} args.walletClient
+ * @param {PrivateKeyAccount} args.account
+ * @param {string[]} args.dataSetIds
+ * @returns {Promise<`0x${string}`>}
+ */
+export async function settleCDNPaymentRails({
+  env,
+  batchId,
+  publicClient,
+  walletClient,
+  account,
+  dataSetIds,
+}) {
+  console.log(`[${batchId}] Settling ${dataSetIds.length} data sets...`)
+
+  const { request } = await publicClient.simulateContract({
+    account,
+    abi: filbeamAbi,
+    address: env.FILBEAM_OPERATOR_CONTRACT_ADDRESS,
+    functionName: 'settleCDNPaymentRails',
+    args: [dataSetIds.map((id) => BigInt(id))],
+  })
+
+  const txHash = await walletClient.writeContract(request)
+  console.log(`[${batchId}] Settlement transaction sent: ${txHash}`)
+  return txHash
 }

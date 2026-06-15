@@ -1,5 +1,5 @@
 import { createPublicClient, createWalletClient, http } from 'viem'
-import { privateKeyToAccount } from 'viem/accounts'
+import { privateKeyToAccount, nonceManager } from 'viem/accounts'
 import { filecoinCalibration, filecoin } from 'viem/chains'
 
 /** @param {Env} env */
@@ -16,6 +16,7 @@ export function getChainClient(env) {
     /** @type {`0x${string}`} */ (
       env.FILBEAM_OPERATOR_PAYMENT_SETTLER_PRIVATE_KEY
     ),
+    { nonceManager },
   )
 
   const walletClient = createWalletClient({

@@ -351,6 +351,7 @@ describe('Egress Quota Management', () => {
       dataSetId,
       egressBytes,
       cacheMiss: false,
+      cacheMissResponseValid: null,
       enforceEgressQuota: true,
     })
 
@@ -384,6 +385,7 @@ describe('Egress Quota Management', () => {
       dataSetId,
       egressBytes,
       cacheMiss: true,
+      cacheMissResponseValid: true,
       enforceEgressQuota: true,
     })
 
@@ -396,6 +398,40 @@ describe('Egress Quota Management', () => {
     expect(result).toStrictEqual({
       cdn_egress_quota: 900,
       cache_miss_egress_quota: 900,
+    })
+  })
+
+  it("doesn't decrement cache miss quota on cache miss when the response was invalid", async () => {
+    const dataSetId = 'test-quota-decrement-miss'
+    const initialQuota = 1000
+    const egressBytes = 100
+
+    await withDataSet(env, {
+      dataSetId,
+      serviceProviderId: APPROVED_SERVICE_PROVIDER_ID,
+      payerAddress: '0xtest',
+      withCDN: true,
+      cdnEgressQuota: initialQuota,
+      cacheMissEgressQuota: initialQuota,
+    })
+
+    await updateDataSetStats(env, {
+      dataSetId,
+      egressBytes,
+      cacheMiss: true,
+      cacheMissResponseValid: false,
+      enforceEgressQuota: true,
+    })
+
+    const result = await env.DB.prepare(
+      'SELECT cdn_egress_quota, cache_miss_egress_quota FROM data_set_egress_quotas WHERE data_set_id = ?',
+    )
+      .bind(dataSetId)
+      .first()
+
+    expect(result).toStrictEqual({
+      cdn_egress_quota: 900,
+      cache_miss_egress_quota: 1000,
     })
   })
 
@@ -418,6 +454,7 @@ describe('Egress Quota Management', () => {
       dataSetId,
       egressBytes,
       cacheMiss: true,
+      cacheMissResponseValid: true,
       enforceEgressQuota: true,
     })
 

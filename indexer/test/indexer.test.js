@@ -592,6 +592,117 @@ describe('piece-retriever.indexer', () => {
         },
       ])
     })
+
+    it('inserts a piece with x402Price metadata', async () => {
+      const dataSetId = randomId()
+      const pieceCid =
+        'bafkzcibey3nqcc3d7ifp7bg6acsm3geafyb5dx26ughkimgdudg4qsxu7racjkzhcq'
+      const x402Price = '1000000'
+      const req = new Request('https://host/fwss/piece-added', {
+        method: 'POST',
+        headers: {
+          [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+        },
+        body: JSON.stringify({
+          data_set_id: dataSetId.toString(),
+          piece_id: '42',
+          piece_cid: TEST_CID_HEX,
+          metadata_keys: ['x402Price'],
+          metadata_values: [x402Price],
+          block_number: 1337,
+        }),
+      })
+      const res = await workerImpl.fetch(req, env, CTX)
+      expect(res.status).toBe(200)
+      expect(await res.text()).toBe('OK')
+
+      const { results: pieces } = await env.DB.prepare(
+        'SELECT id, cid, x402_price FROM pieces WHERE data_set_id = ? AND is_deleted IS FALSE ORDER BY id',
+      )
+        .bind(dataSetId)
+        .all()
+      expect(pieces).toEqual([
+        {
+          id: '42',
+          cid: pieceCid,
+          x402_price: x402Price,
+        },
+      ])
+    })
+
+    it('rejects invalid x402Price (not a numeric string)', async () => {
+      const dataSetId = randomId()
+      const cid =
+        'bafkzcibey3nqcc3d7ifp7bg6acsm3geafyb5dx26ughkimgdudg4qsxu7racjkzhcq'
+      const invalidPrice = 'not-a-number'
+      const req = new Request('https://host/fwss/piece-added', {
+        method: 'POST',
+        headers: {
+          [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+        },
+        body: JSON.stringify({
+          data_set_id: dataSetId.toString(),
+          piece_id: '42',
+          piece_cid: TEST_CID_HEX,
+          metadata_keys: ['x402Price'],
+          metadata_values: [invalidPrice],
+        }),
+      })
+      const res = await workerImpl.fetch(req, env, CTX)
+      expect(res.status).toBe(200)
+      expect(await res.text()).toBe('OK')
+
+      const { results: pieces } = await env.DB.prepare(
+        'SELECT id, cid, x402_price FROM pieces WHERE data_set_id = ? AND is_deleted IS FALSE ORDER BY id',
+      )
+        .bind(dataSetId)
+        .all()
+      // Invalid price should result in null
+      expect(pieces).toEqual([
+        {
+          id: '42',
+          cid,
+          x402_price: null,
+        },
+      ])
+    })
+
+    it('rejects x402Price with decimal values', async () => {
+      const dataSetId = randomId()
+      const cid =
+        'bafkzcibey3nqcc3d7ifp7bg6acsm3geafyb5dx26ughkimgdudg4qsxu7racjkzhcq'
+      const invalidPrice = '100.50'
+      const req = new Request('https://host/fwss/piece-added', {
+        method: 'POST',
+        headers: {
+          [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+        },
+        body: JSON.stringify({
+          data_set_id: dataSetId.toString(),
+          piece_id: '42',
+          piece_cid: TEST_CID_HEX,
+          metadata_keys: ['x402Price'],
+          metadata_values: [invalidPrice],
+        }),
+      })
+      const res = await workerImpl.fetch(req, env, CTX)
+      expect(res.status).toBe(200)
+      expect(await res.text()).toBe('OK')
+
+      const { results: pieces } = await env.DB.prepare(
+        'SELECT id, cid, x402_price FROM pieces WHERE data_set_id = ? AND is_deleted IS FALSE ORDER BY id',
+      )
+        .bind(dataSetId)
+        .all()
+      // Invalid price should result in null
+      expect(pieces).toEqual([
+        {
+          id: '42',
+          cid,
+          x402_price: null,
+        },
+      ])
+    })
   })
 
   describe('POST /pdp-verifier/pieces-removed', () => {
@@ -696,6 +807,36 @@ describe('piece-retriever.indexer', () => {
           'bafkzcibey3nqcc3d7ifp7bg6acsm3geafyb5dx26ughkimgdudg4qsxu7racjkzhcq',
         )
       }
+    })
+
+    it('deletes many pieces for a data set (batched)', async () => {
+      const dataSetId = randomId()
+      const pieceIds = Array.from({ length: 150 }, (_, i) => String(i))
+      const pieceCids = Array.from({ length: 150 }, () => randomId())
+
+      await withPieces(env, dataSetId, pieceIds, pieceCids)
+
+      const req = new Request('https://host/pdp-verifier/pieces-removed', {
+        method: 'POST',
+        headers: {
+          [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+        },
+        body: JSON.stringify({
+          data_set_id: dataSetId,
+          piece_ids: pieceIds,
+        }),
+      })
+
+      const res = await workerImpl.fetch(req, env, CTX, {})
+      expect(res.status).toBe(200)
+      expect(await res.text()).toBe('OK')
+
+      const { results: pieces } = await env.DB.prepare(
+        'SELECT * FROM pieces WHERE data_set_id = ? AND is_deleted = TRUE',
+      )
+        .bind(dataSetId)
+        .all()
+      expect(pieces.length).toBe(150)
     })
   })
 
@@ -1352,6 +1493,55 @@ describe('POST /fwss/service-terminated', () => {
   })
 })
 
+describe('POST /filbeam-operator/cdn-payment-settled', () => {
+  it('returns 400 if payload is invalid', async () => {
+    const req = new Request(
+      'https://host/filbeam-operator/cdn-payment-settled',
+      {
+        method: 'POST',
+        headers: {
+          [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+        },
+        body: JSON.stringify({}),
+      },
+    )
+    const res = await workerImpl.fetch(req, env)
+    expect(res.status).toBe(400)
+    expect(await res.text()).toBe('Bad Request')
+  })
+
+  it('stores cdn_payments_settled_until for a data set', async () => {
+    const dataSetId = randomId()
+    const req = new Request(
+      'https://host/filbeam-operator/cdn-payment-settled',
+      {
+        method: 'POST',
+        headers: {
+          [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
+        },
+        body: JSON.stringify({
+          data_set_id: dataSetId,
+          block_number: 12345,
+        }),
+      },
+    )
+    const res = await workerImpl.fetch(req, env)
+    expect(res.status).toBe(200)
+    expect(await res.text()).toBe('OK')
+
+    const row = await env.DB.prepare(
+      'SELECT id, usage_reported_until, cdn_payments_settled_until FROM data_sets WHERE id = ?',
+    )
+      .bind(dataSetId)
+      .first()
+    expect(row).toEqual({
+      id: dataSetId,
+      usage_reported_until: '1970-01-01T00:00:00.000Z',
+      cdn_payments_settled_until: '2022-11-06T01:05:30.000Z',
+    })
+  })
+})
+
 describe('POST /fwss/cdn-payment-rails-topped-up', () => {
   beforeEach(async () => {
     await env.DB.exec('DELETE FROM data_sets')
@@ -1456,6 +1646,7 @@ describe('POST /fwss/cdn-payment-rails-topped-up', () => {
         [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
       },
       body: JSON.stringify({
+        id: '0xtest-calc-stores-0',
         data_set_id: dataSetId,
         cdn_amount_added: '5000000000000000000', // 5 USDFC
         cache_miss_amount_added: '10000000000000000000', // 10 USDFC
@@ -1495,6 +1686,7 @@ describe('POST /fwss/cdn-payment-rails-topped-up', () => {
         [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
       },
       body: JSON.stringify({
+        id: '0xtest-zero-lockup-0',
         data_set_id: dataSetId,
         cdn_amount_added: '0',
         cache_miss_amount_added: '0',
@@ -1535,6 +1727,7 @@ describe('POST /fwss/cdn-payment-rails-topped-up', () => {
           [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
         },
         body: JSON.stringify({
+          id: '0xtest-accum-existing-0',
           data_set_id: dataSetId,
           cdn_amount_added: '5000000000000000000',
           cache_miss_amount_added: '10000000000000000000',
@@ -1543,13 +1736,14 @@ describe('POST /fwss/cdn-payment-rails-topped-up', () => {
       env,
     )
 
-    // Second top-up with additional amounts
+    // Second top-up with additional amounts (different entity id)
     const req = new Request('https://host/fwss/cdn-payment-rails-topped-up', {
       method: 'POST',
       headers: {
         [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
       },
       body: JSON.stringify({
+        id: '0xtest-accum-existing-1',
         data_set_id: dataSetId,
         cdn_amount_added: '5000000000000000000', // 5 USDFC more
         cache_miss_amount_added: '10000000000000000000', // 10 USDFC more
@@ -1585,6 +1779,7 @@ describe('POST /fwss/cdn-payment-rails-topped-up', () => {
         [env.SECRET_HEADER_KEY]: env.SECRET_HEADER_VALUE,
       },
       body: JSON.stringify({
+        id: '0xtest-creates-dataset-0',
         data_set_id: dataSetId,
         cdn_amount_added: '5000000000000000000',
         cache_miss_amount_added: '10000000000000000000',

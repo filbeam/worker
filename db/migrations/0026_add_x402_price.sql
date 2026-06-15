@@ -1,0 +1,1 @@
+ALTER TABLE pieces ADD COLUMN x402_price TEXT;
