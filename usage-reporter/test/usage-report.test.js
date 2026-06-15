@@ -2,6 +2,7 @@ import { describe, it, expect, afterEach } from 'vitest'
 import { env } from 'cloudflare:test'
 import {
   aggregateUsageData,
+  aggregateUsageByDataSet,
   prepareUsageReportData,
 } from '../lib/usage-report.js'
 import {
@@ -22,16 +23,19 @@ describe('usage report', () => {
     })
 
     describe('aggregateUsageData', () => {
-      it('should aggregate usage data by cache miss status', async () => {
+      it('aggregates cdn and cache-miss bytes per data set', async () => {
         await withDataSet(env, {
           id: '1',
+          cdnRailId: 'rail-1',
           usageReportedUntil: EPOCH_99_TIMESTAMP_ISO,
         })
         await withDataSet(env, {
           id: '2',
+          cdnRailId: 'rail-2',
           usageReportedUntil: EPOCH_99_TIMESTAMP_ISO,
         })
 
+        // Excluded: timestamp equals usage_reported_until (not strictly greater)
         await withRetrievalLog(env, {
           timestamp: EPOCH_99_TIMESTAMP_ISO,
           dataSetId: '1',
@@ -62,16 +66,10 @@ describe('usage report', () => {
           cacheMissResponseValid: 1,
         })
 
+        // Excluded: timestamp after the target
         await withRetrievalLog(env, {
           timestamp: EPOCH_101_TIMESTAMP_ISO,
           dataSetId: '1',
-          egressBytes: 9999,
-          cacheMiss: 0,
-        })
-
-        await withRetrievalLog(env, {
-          timestamp: EPOCH_101_TIMESTAMP_ISO,
-          dataSetId: '2',
           egressBytes: 9999,
           cacheMiss: 0,
         })
@@ -81,23 +79,63 @@ describe('usage report', () => {
           EPOCH_100_TIMESTAMP_MS,
         )
 
-        expect(usageData).toStrictEqual([
-          {
-            data_set_id: '1',
-            cdn_bytes: 2500,
-            cache_miss_bytes: 500,
-          },
-          {
-            data_set_id: '2',
-            cdn_bytes: 3000,
-            cache_miss_bytes: 3000,
-          },
-        ])
+        expect(usageData).toStrictEqual({
+          usageByDataSet: [
+            { data_set_id: '1', cdn_bytes: 2500, cache_miss_bytes: 500 },
+            { data_set_id: '2', cdn_bytes: 3000, cache_miss_bytes: 3000 },
+          ],
+          dataSetIds: ['1', '2'],
+        })
       })
 
+      it('reports each member of a shared CDN group as its own data set', async () => {
+        await withDataSet(env, {
+          id: '1',
+          cdnRailId: 'shared-rail',
+          usageReportedUntil: EPOCH_99_TIMESTAMP_ISO,
+        })
+        await withDataSet(env, {
+          id: '2',
+          cdnRailId: 'shared-rail',
+          usageReportedUntil: EPOCH_99_TIMESTAMP_ISO,
+        })
+
+        await withRetrievalLog(env, {
+          timestamp: EPOCH_100_TIMESTAMP_ISO,
+          dataSetId: '1',
+          egressBytes: 1000,
+          cacheMiss: 0,
+        })
+        await withRetrievalLog(env, {
+          timestamp: EPOCH_100_TIMESTAMP_ISO,
+          dataSetId: '2',
+          egressBytes: 2000,
+          cacheMiss: 1,
+          cacheMissResponseValid: 1,
+        })
+
+        const usageData = await aggregateUsageData(
+          env.DB,
+          EPOCH_100_TIMESTAMP_MS,
+        )
+
+        // Bandwidth is aggregated onto the shared rail on-chain; the worker
+        // reports per data set so each contributes its own egress.
+        expect(usageData).toStrictEqual({
+          usageByDataSet: [
+            { data_set_id: '1', cdn_bytes: 1000, cache_miss_bytes: 0 },
+            { data_set_id: '2', cdn_bytes: 2000, cache_miss_bytes: 2000 },
+          ],
+          dataSetIds: ['1', '2'],
+        })
+      })
+    })
+
+    describe('aggregateUsageByDataSet', () => {
       it('should include non-200 responses but filter out null egress_bytes', async () => {
         await withDataSet(env, {
           id: '1',
+          cdnRailId: 'rail-1',
           usageReportedUntil: EPOCH_99_TIMESTAMP_ISO,
         })
 
@@ -134,32 +172,28 @@ describe('usage report', () => {
           cacheMissResponseValid: 1,
         })
 
-        const usageData = await aggregateUsageData(
-          env.DB,
-          EPOCH_100_TIMESTAMP_MS,
-        )
+        const usage = await aggregateUsageByDataSet(env.DB, EPOCH_100_TIMESTAMP_MS)
 
-        expect(usageData).toStrictEqual([
-          {
-            data_set_id: '1',
-            cdn_bytes: 1800,
-            cache_miss_bytes: 300,
-          },
+        expect(usage).toStrictEqual([
+          { data_set_id: '1', cdn_bytes: 1800, cache_miss_bytes: 300 },
         ])
       })
 
       it('should only aggregate data for datasets with usage_reported_until < upToTimestamp', async () => {
-        await withDataSet(env, { id: '1' })
+        await withDataSet(env, { id: '1', cdnRailId: 'rail-1' })
         await withDataSet(env, {
           id: '2',
+          cdnRailId: 'rail-2',
           usageReportedUntil: EPOCH_98_TIMESTAMP_ISO,
         })
         await withDataSet(env, {
           id: '3',
+          cdnRailId: 'rail-3',
           usageReportedUntil: EPOCH_99_TIMESTAMP_ISO,
         })
         await withDataSet(env, {
           id: '4',
+          cdnRailId: 'rail-4',
           usageReportedUntil: EPOCH_100_TIMESTAMP_ISO,
         })
 
@@ -172,94 +206,26 @@ describe('usage report', () => {
           })
         }
 
-        const usageData = await aggregateUsageData(
-          env.DB,
-          EPOCH_100_TIMESTAMP_MS,
-        )
+        const usage = await aggregateUsageByDataSet(env.DB, EPOCH_100_TIMESTAMP_MS)
 
-        expect(usageData).toStrictEqual([
-          {
-            data_set_id: '1',
-            cdn_bytes: 1000,
-            cache_miss_bytes: 0,
-          },
-          {
-            data_set_id: '2',
-            cdn_bytes: 1000,
-            cache_miss_bytes: 0,
-          },
-          {
-            data_set_id: '3',
-            cdn_bytes: 1000,
-            cache_miss_bytes: 0,
-          },
-        ])
-      })
-
-      it('should filter out datasets with zero cdn and cache-miss bytes', async () => {
-        await withDataSet(env, {
-          id: '1',
-          usageReportedUntil: EPOCH_99_TIMESTAMP_ISO,
-        })
-        await withDataSet(env, {
-          id: '2',
-          usageReportedUntil: EPOCH_99_TIMESTAMP_ISO,
-        })
-        await withDataSet(env, {
-          id: '3',
-          usageReportedUntil: EPOCH_99_TIMESTAMP_ISO,
-        })
-
-        await withRetrievalLog(env, {
-          timestamp: EPOCH_100_TIMESTAMP_ISO,
-          dataSetId: '1',
-          egressBytes: 1000,
-          cacheMiss: 0,
-        })
-
-        await withRetrievalLog(env, {
-          timestamp: EPOCH_100_TIMESTAMP_ISO,
-          dataSetId: '2',
-          egressBytes: null,
-          cacheMiss: 0,
-        })
-
-        await withRetrievalLog(env, {
-          timestamp: EPOCH_100_TIMESTAMP_ISO,
-          dataSetId: '3',
-          egressBytes: 500,
-          cacheMiss: 1,
-          cacheMissResponseValid: 1,
-        })
-
-        const usageData = await aggregateUsageData(
-          env.DB,
-          EPOCH_100_TIMESTAMP_MS,
-        )
-
-        expect(usageData).toStrictEqual([
-          {
-            data_set_id: '1',
-            cdn_bytes: 1000,
-            cache_miss_bytes: 0,
-          },
-          {
-            data_set_id: '3',
-            cdn_bytes: 500,
-            cache_miss_bytes: 500,
-          },
+        expect(usage).toStrictEqual([
+          { data_set_id: '1', cdn_bytes: 1000, cache_miss_bytes: 0 },
+          { data_set_id: '2', cdn_bytes: 1000, cache_miss_bytes: 0 },
+          { data_set_id: '3', cdn_bytes: 1000, cache_miss_bytes: 0 },
         ])
       })
 
       it('should exclude datasets with pending usage report transactions', async () => {
         await withDataSet(env, {
           id: '1',
+          cdnRailId: 'rail-1',
           usageReportedUntil: EPOCH_99_TIMESTAMP_ISO,
           pendingUsageReportTxHash: null,
         })
 
         await withDataSet(env, {
           id: '2',
+          cdnRailId: 'rail-2',
           usageReportedUntil: EPOCH_99_TIMESTAMP_ISO,
           pendingUsageReportTxHash: '0x123abc',
         })
@@ -278,21 +244,14 @@ describe('usage report', () => {
           cacheMiss: 0,
         })
 
-        const usageData = await aggregateUsageData(
-          env.DB,
-          EPOCH_100_TIMESTAMP_MS,
-        )
+        const usage = await aggregateUsageByDataSet(env.DB, EPOCH_100_TIMESTAMP_MS)
 
-        expect(usageData).toStrictEqual([
-          {
-            data_set_id: '1',
-            cdn_bytes: 1000,
-            cache_miss_bytes: 0,
-          },
+        expect(usage).toStrictEqual([
+          { data_set_id: '1', cdn_bytes: 1000, cache_miss_bytes: 0 },
         ])
       })
 
-      it('should not count invalid cache miss responses towards cache miss bytes', async () => {
+      it('should only count valid cache miss responses', async () => {
         await withDataSet(env, {
           id: '1',
           usageReportedUntil: EPOCH_99_TIMESTAMP_ISO,
@@ -307,76 +266,32 @@ describe('usage report', () => {
           cacheMissResponseValid: 0,
         })
 
-        const usageData = await aggregateUsageData(
-          env.DB,
-          EPOCH_100_TIMESTAMP_MS,
-        )
+        const usage = await aggregateUsageByDataSet(env.DB, EPOCH_100_TIMESTAMP_MS)
 
-        expect(usageData).toStrictEqual([
-          {
-            data_set_id: '1',
-            cdn_bytes: 1000,
-            cache_miss_bytes: 0,
-          },
+        // Egress still counts toward bandwidth, but invalid cache-miss does not
+        expect(usage).toStrictEqual([
+          { data_set_id: '1', cdn_bytes: 1000, cache_miss_bytes: 0 },
         ])
       })
     })
   })
 
   describe('prepareUsageReportData', () => {
-    it('should prepare batch data for contract call', () => {
-      const usageData = [
-        {
-          data_set_id: '1',
-          cdn_bytes: 1000,
-          cache_miss_bytes: 500,
-        },
-        {
-          data_set_id: '2',
-          cdn_bytes: 2000,
-          cache_miss_bytes: 0,
-        },
-        {
-          data_set_id: '3',
-          cdn_bytes: 0,
-          cache_miss_bytes: 3000,
-        },
-      ]
+    it('produces parallel per-data-set arrays for recordUsageRollups', () => {
+      const usageData = {
+        usageByDataSet: [
+          { data_set_id: '1', cdn_bytes: 1000, cache_miss_bytes: 500 },
+          { data_set_id: '3', cdn_bytes: 2000, cache_miss_bytes: 3000 },
+        ],
+        dataSetIds: ['1', '3'],
+      }
 
       const batchData = prepareUsageReportData(usageData)
 
       expect(batchData).toStrictEqual({
-        dataSetIds: ['1', '2', '3'],
-        cdnBytesUsed: [1000n, 2000n, 0n],
-        cacheMissBytesUsed: [500n, 0n, 3000n],
-      })
-    })
-
-    it('should process all datasets', () => {
-      const usageData = [
-        {
-          data_set_id: '1',
-          cdn_bytes: 1000,
-          cache_miss_bytes: 500,
-        },
-        {
-          data_set_id: '2',
-          cdn_bytes: 2000,
-          cache_miss_bytes: 0,
-        },
-        {
-          data_set_id: '3',
-          cdn_bytes: 0,
-          cache_miss_bytes: 3000,
-        },
-      ]
-
-      const batchData = prepareUsageReportData(usageData)
-
-      expect(batchData).toStrictEqual({
-        dataSetIds: ['1', '2', '3'],
-        cdnBytesUsed: [1000n, 2000n, 0n],
-        cacheMissBytesUsed: [500n, 0n, 3000n],
+        dataSetIds: ['1', '3'],
+        cdnBytesUsed: [1000n, 2000n],
+        cacheMissBytesUsed: [500n, 3000n],
       })
     })
   })

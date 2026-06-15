@@ -1,6 +1,9 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { env } from 'cloudflare:test'
-import { getDataSetsForSettlement } from '../lib/rail-settlement.js'
+import {
+  getDataSetsForSettlement,
+  getCDNRailsForSettlement,
+} from '../lib/rail-settlement.js'
 import {
   withDataSet,
   withWallet,
@@ -562,6 +565,82 @@ describe('rail settlement', () => {
       const dataSetIds = await getDataSetsForSettlement(env.DB)
 
       expect(dataSetIds).toStrictEqual([id2])
+    })
+  })
+
+  describe('getCDNRailsForSettlement', () => {
+    beforeEach(async () => {
+      await env.DB.prepare('DELETE FROM data_sets').run()
+      await env.DB.prepare('DELETE FROM wallet_details').run()
+    })
+
+    it('returns one rail for data sets that share a cdn_rail_id', async () => {
+      const id1 = nextId()
+      const id2 = nextId()
+
+      await withDataSet(env, {
+        id: id1,
+        withCDN: true,
+        cdnRailId: 'shared-rail',
+        usageReportedUntil: getDaysAgo(5),
+      })
+      await withDataSet(env, {
+        id: id2,
+        withCDN: true,
+        cdnRailId: 'shared-rail',
+        usageReportedUntil: getDaysAgo(10),
+      })
+
+      const cdnRailIds = await getCDNRailsForSettlement(env.DB)
+
+      expect(cdnRailIds).toStrictEqual(['shared-rail'])
+    })
+
+    it('excludes terminated, sanctioned, inactive and null-rail data sets', async () => {
+      const sanctionedAddress = '0xSanctionedRail'
+      await withWallet(env, sanctionedAddress, true)
+
+      // Eligible
+      await withDataSet(env, {
+        id: nextId(),
+        withCDN: true,
+        cdnRailId: 'rail-eligible',
+        usageReportedUntil: getDaysAgo(5),
+      })
+      // Terminated
+      await withDataSet(env, {
+        id: nextId(),
+        withCDN: true,
+        cdnRailId: 'rail-terminated',
+        terminateServiceTxHash: '0xabc',
+        usageReportedUntil: getDaysAgo(5),
+      })
+      // Sanctioned payer
+      await withDataSet(env, {
+        id: nextId(),
+        withCDN: true,
+        cdnRailId: 'rail-sanctioned',
+        payerAddress: sanctionedAddress,
+        usageReportedUntil: getDaysAgo(5),
+      })
+      // No recent usage
+      await withDataSet(env, {
+        id: nextId(),
+        withCDN: true,
+        cdnRailId: 'rail-stale',
+        usageReportedUntil: getDaysAgo(45),
+      })
+      // Null cdn_rail_id
+      await withDataSet(env, {
+        id: nextId(),
+        withCDN: true,
+        cdnRailId: null,
+        usageReportedUntil: getDaysAgo(5),
+      })
+
+      const cdnRailIds = await getCDNRailsForSettlement(env.DB)
+
+      expect(cdnRailIds).toStrictEqual(['rail-eligible'])
     })
   })
 })
