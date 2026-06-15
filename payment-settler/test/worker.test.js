@@ -157,11 +157,11 @@ describe('payment settler scheduled handler', () => {
               onSuccess: 'settlement-confirmed',
               successData: {
                 settlementType: 'bandwidth',
-                ids: [`rail-${id1}`],
+                ids: [String(Number(id1) + 1000)],
               },
               retryData: {
                 settlementType: 'bandwidth',
-                ids: [`rail-${id1}`],
+                ids: [String(Number(id1) + 1000)],
               },
             },
           },
@@ -176,11 +176,11 @@ describe('payment settler scheduled handler', () => {
               onSuccess: 'settlement-confirmed',
               successData: {
                 settlementType: 'bandwidth',
-                ids: [`rail-${id2}`],
+                ids: [String(Number(id2) + 1000)],
               },
               retryData: {
                 settlementType: 'bandwidth',
-                ids: [`rail-${id2}`],
+                ids: [String(Number(id2) + 1000)],
               },
             },
           },

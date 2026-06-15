@@ -18,8 +18,10 @@ export async function withDataSet(
     terminateServiceTxHash = null,
     lockupUnlocksAt = null,
     usageReportedUntil = null,
-    cdnRailId = `rail-${id}`,
-    cacheMissRailId = `cache-miss-rail-${id}`,
+    // Rail ids are uint256 on-chain, so keep fixtures numeric (the settler
+    // converts them with BigInt).
+    cdnRailId = String(Number(id) + 1000),
+    cacheMissRailId = String(Number(id) + 2000),
   },
 ) {
   // Ensure service provider exists
