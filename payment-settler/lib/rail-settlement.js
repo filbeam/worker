@@ -82,7 +82,9 @@ export async function settleCacheMissPaymentRails({
   account,
   dataSetIds,
 }) {
-  console.log(`[${batchId}] Settling cache-miss for ${dataSetIds.length} data sets...`)
+  console.log(
+    `[${batchId}] Settling cache-miss for ${dataSetIds.length} data sets...`,
+  )
 
   const { request } = await publicClient.simulateContract({
     account,
@@ -117,7 +119,9 @@ export async function settleCDNBandwidthRails({
   account,
   cdnRailIds,
 }) {
-  console.log(`[${batchId}] Settling bandwidth for ${cdnRailIds.length} rails...`)
+  console.log(
+    `[${batchId}] Settling bandwidth for ${cdnRailIds.length} rails...`,
+  )
 
   const { request } = await publicClient.simulateContract({
     account,

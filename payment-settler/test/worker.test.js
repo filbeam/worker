@@ -396,7 +396,9 @@ describe('payment settler scheduled handler', () => {
     expect(workflows).toHaveLength(5)
     for (const workflow of workflows) {
       expect(workflow).toStrictEqual({
-        id: expect.stringMatching(/^payment-settler-0xMockTransactionHash-\d+$/),
+        id: expect.stringMatching(
+          /^payment-settler-0xMockTransactionHash-\d+$/,
+        ),
         params: {
           transactionHash: '0xMockTransactionHash',
           metadata: {

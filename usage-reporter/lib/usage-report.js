@@ -4,10 +4,10 @@
  *
  * Usage is reported per data set: `cdn_bytes` is all egress (cache hits and
  * misses), `cache_miss_bytes` is the cache-miss subset. The FilBeamOperator
- * contract resolves each data set to its shared `cdn_rail_id` and aggregates the
- * bandwidth onto that rail, so multiple data sets in one CDN subscription settle
- * bandwidth once. Cache-miss stays per data set (each copy is served by a
- * different provider, a different payee).
+ * contract resolves each data set to its shared `cdn_rail_id` and aggregates
+ * the bandwidth onto that rail, so multiple data sets in one CDN subscription
+ * settle bandwidth once. Cache-miss stays per data set (each copy is served by
+ * a different provider, a different payee).
  *
  * @param {D1Database} db
  * @param {number} upToTimestampMs - Target timestamp in milliseconds
@@ -58,12 +58,17 @@ export async function aggregateUsageByDataSet(db, upToTimestampMs) {
  * a target timestamp.
  *
  * Usage is reported per data set. dataSetIds lists every data set that
- * contributed, used to advance the per-data-set usage_reported_until watermark.
+ * contributed, used to advance the per-data-set usage_reported_until
+ * watermark.
  *
  * @param {D1Database} db
  * @param {number} upToTimestampMs - Target timestamp in milliseconds
  * @returns {Promise<{
- *   usageByDataSet: { data_set_id: string; cdn_bytes: number; cache_miss_bytes: number }[]
+ *   usageByDataSet: {
+ *     data_set_id: string
+ *     cdn_bytes: number
+ *     cache_miss_bytes: number
+ *   }[]
  *   dataSetIds: string[]
  * }>}
  */
@@ -81,7 +86,11 @@ export async function aggregateUsageData(db, upToTimestampMs) {
  * `recordUsageRollups(toEpoch, dataSetIds, cdnBytesUsed, cacheMissBytesUsed)`.
  *
  * @param {{
- *   usageByDataSet: { data_set_id: string; cdn_bytes: number; cache_miss_bytes: number }[]
+ *   usageByDataSet: {
+ *     data_set_id: string
+ *     cdn_bytes: number
+ *     cache_miss_bytes: number
+ *   }[]
  * }} usageData
  * @returns {{
  *   dataSetIds: string[]

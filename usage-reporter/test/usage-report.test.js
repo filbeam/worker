@@ -172,7 +172,10 @@ describe('usage report', () => {
           cacheMissResponseValid: 1,
         })
 
-        const usage = await aggregateUsageByDataSet(env.DB, EPOCH_100_TIMESTAMP_MS)
+        const usage = await aggregateUsageByDataSet(
+          env.DB,
+          EPOCH_100_TIMESTAMP_MS,
+        )
 
         expect(usage).toStrictEqual([
           { data_set_id: '1', cdn_bytes: 1800, cache_miss_bytes: 300 },
@@ -206,7 +209,10 @@ describe('usage report', () => {
           })
         }
 
-        const usage = await aggregateUsageByDataSet(env.DB, EPOCH_100_TIMESTAMP_MS)
+        const usage = await aggregateUsageByDataSet(
+          env.DB,
+          EPOCH_100_TIMESTAMP_MS,
+        )
 
         expect(usage).toStrictEqual([
           { data_set_id: '1', cdn_bytes: 1000, cache_miss_bytes: 0 },
@@ -244,7 +250,10 @@ describe('usage report', () => {
           cacheMiss: 0,
         })
 
-        const usage = await aggregateUsageByDataSet(env.DB, EPOCH_100_TIMESTAMP_MS)
+        const usage = await aggregateUsageByDataSet(
+          env.DB,
+          EPOCH_100_TIMESTAMP_MS,
+        )
 
         expect(usage).toStrictEqual([
           { data_set_id: '1', cdn_bytes: 1000, cache_miss_bytes: 0 },
@@ -266,7 +275,10 @@ describe('usage report', () => {
           cacheMissResponseValid: 0,
         })
 
-        const usage = await aggregateUsageByDataSet(env.DB, EPOCH_100_TIMESTAMP_MS)
+        const usage = await aggregateUsageByDataSet(
+          env.DB,
+          EPOCH_100_TIMESTAMP_MS,
+        )
 
         // Egress still counts toward bandwidth, but invalid cache-miss does not
         expect(usage).toStrictEqual([
