@@ -1,14 +1,14 @@
 import { describe, it, beforeAll } from 'vitest'
 import assert from 'node:assert/strict'
 import {
-  getStorageProviderAndValidatePayerByWalletAndCid,
-  getStorageProviderAndValidatePayerByDataSetAndPiece,
+  getRetrievalCandidatesByWalletAndCid,
+  getRetrievalCandidatesByDataSetAndPiece,
   getSlugForWalletAndCid,
 } from '../lib/store.js'
 import { env } from 'cloudflare:test'
 import { withDataSetPiece, withApprovedProvider } from './test-data-builders.js'
 
-describe('getStorageProviderAndValidatePayerByWalletAndCid', () => {
+describe('getRetrievalCandidatesByWalletAndCid', () => {
   const APPROVED_SERVICE_PROVIDER_ID = '20'
   beforeAll(async () => {
     await withApprovedProvider(env, {
@@ -33,19 +33,22 @@ describe('getStorageProviderAndValidatePayerByWalletAndCid', () => {
       .bind('piece-1', dataSetId, 'baga4piece', ipfsRootCid)
       .run()
 
-    const result = await getStorageProviderAndValidatePayerByWalletAndCid(
+    const result = await getRetrievalCandidatesByWalletAndCid(
       env,
       payerAddress,
       ipfsRootCid,
     )
-    assert.strictEqual(result.serviceProviderId, APPROVED_SERVICE_PROVIDER_ID)
+    assert.strictEqual(
+      result[0].serviceProviderId,
+      APPROVED_SERVICE_PROVIDER_ID,
+    )
   })
 
   it('throws error if ipfsRootCid not found', async () => {
     const payerAddress = '0x1234567890abcdef1234567890abcdef12345678'
     await assert.rejects(
       async () =>
-        await getStorageProviderAndValidatePayerByWalletAndCid(
+        await getRetrievalCandidatesByWalletAndCid(
           env,
           payerAddress,
           'nonexistent-cid',
@@ -70,11 +73,7 @@ describe('getStorageProviderAndValidatePayerByWalletAndCid', () => {
 
     await assert.rejects(
       async () =>
-        await getStorageProviderAndValidatePayerByWalletAndCid(
-          env,
-          payerAddress,
-          cid,
-        ),
+        await getRetrievalCandidatesByWalletAndCid(env, payerAddress, cid),
       /no associated service provider/,
     )
   })
@@ -101,11 +100,7 @@ describe('getStorageProviderAndValidatePayerByWalletAndCid', () => {
 
     await assert.rejects(
       async () =>
-        await getStorageProviderAndValidatePayerByWalletAndCid(
-          env,
-          payerAddress,
-          cid,
-        ),
+        await getRetrievalCandidatesByWalletAndCid(env, payerAddress, cid),
       /There is no Filecoin Warm Storage Service deal for payer/,
     )
   })
@@ -127,11 +122,7 @@ describe('getStorageProviderAndValidatePayerByWalletAndCid', () => {
 
     await assert.rejects(
       async () =>
-        await getStorageProviderAndValidatePayerByWalletAndCid(
-          env,
-          payerAddress,
-          cid,
-        ),
+        await getRetrievalCandidatesByWalletAndCid(env, payerAddress, cid),
       /withCDN=false/,
     )
   })
@@ -150,13 +141,16 @@ describe('getStorageProviderAndValidatePayerByWalletAndCid', () => {
       ).bind('piece-3', dataSetId, 'bagatest', cid),
     ])
 
-    const result = await getStorageProviderAndValidatePayerByWalletAndCid(
+    const result = await getRetrievalCandidatesByWalletAndCid(
       env,
       payerAddress,
       cid,
     )
 
-    assert.strictEqual(result.serviceProviderId, APPROVED_SERVICE_PROVIDER_ID)
+    assert.strictEqual(
+      result[0].serviceProviderId,
+      APPROVED_SERVICE_PROVIDER_ID,
+    )
   })
   it('returns the service provider first in the ordering when multiple service providers share the same ipfsRootCid', async () => {
     const dataSetId1 = 'data-set-a'
@@ -200,12 +194,12 @@ describe('getStorageProviderAndValidatePayerByWalletAndCid', () => {
       .run()
 
     // Should return only the serviceProviderId1 which is the first in the ordering
-    const result = await getStorageProviderAndValidatePayerByWalletAndCid(
+    const result = await getRetrievalCandidatesByWalletAndCid(
       env,
       payerAddress,
       ipfsRootCid,
     )
-    assert.strictEqual(result.serviceProviderId, serviceProviderId1)
+    assert.strictEqual(result[0].serviceProviderId, serviceProviderId1)
   })
 
   it('ignores owners that are not approved by Filecoin Warm Storage Service', async () => {
@@ -241,12 +235,12 @@ describe('getStorageProviderAndValidatePayerByWalletAndCid', () => {
     })
 
     // Should return service provider 1 because service provider 2 is not approved
-    const result = await getStorageProviderAndValidatePayerByWalletAndCid(
+    const result = await getRetrievalCandidatesByWalletAndCid(
       env,
       payerAddress,
       ipfsRootCid,
     )
-    assert.deepStrictEqual(result, {
+    assert.deepStrictEqual(result[0], {
       dataSetId: dataSetId1,
       pieceId: '0',
       serviceProviderId: serviceProviderId1.toLowerCase(),
@@ -256,7 +250,7 @@ describe('getStorageProviderAndValidatePayerByWalletAndCid', () => {
   })
 })
 
-describe('getStorageProviderAndValidatePayerByDataSetAndPiece', () => {
+describe('getRetrievalCandidatesByDataSetAndPiece', () => {
   const APPROVED_SERVICE_PROVIDER_ID = '25'
   beforeAll(async () => {
     await withApprovedProvider(env, {
@@ -280,16 +274,22 @@ describe('getStorageProviderAndValidatePayerByDataSetAndPiece', () => {
       ipfsRootCid: 'bafkbyids1',
     })
 
-    const result = await getStorageProviderAndValidatePayerByDataSetAndPiece(
+    const result = await getRetrievalCandidatesByDataSetAndPiece(
       env,
       dataSetId,
       pieceId,
     )
 
-    assert.strictEqual(result.serviceProviderId, APPROVED_SERVICE_PROVIDER_ID)
-    assert.strictEqual(result.serviceUrl, 'https://approved-provider-byids.xyz')
-    assert.strictEqual(result.dataSetId, dataSetId)
-    assert.strictEqual(result.pieceId, pieceId)
+    assert.strictEqual(
+      result[0].serviceProviderId,
+      APPROVED_SERVICE_PROVIDER_ID,
+    )
+    assert.strictEqual(
+      result[0].serviceUrl,
+      'https://approved-provider-byids.xyz',
+    )
+    assert.strictEqual(result[0].dataSetId, dataSetId)
+    assert.strictEqual(result[0].pieceId, pieceId)
   })
 
   it('throws error if pieceId does not exist in the data set', async () => {
@@ -308,11 +308,7 @@ describe('getStorageProviderAndValidatePayerByDataSetAndPiece', () => {
 
     await assert.rejects(
       async () =>
-        await getStorageProviderAndValidatePayerByDataSetAndPiece(
-          env,
-          dataSetId,
-          pieceId,
-        ),
+        await getRetrievalCandidatesByDataSetAndPiece(env, dataSetId, pieceId),
       /does not exist in data set/,
     )
   })
@@ -345,11 +341,7 @@ describe('getStorageProviderAndValidatePayerByDataSetAndPiece', () => {
 
     await assert.rejects(
       async () =>
-        await getStorageProviderAndValidatePayerByDataSetAndPiece(
-          env,
-          dataSetId2,
-          pieceId,
-        ),
+        await getRetrievalCandidatesByDataSetAndPiece(env, dataSetId2, pieceId),
       /does not exist in data set/,
     )
   })
@@ -370,11 +362,7 @@ describe('getStorageProviderAndValidatePayerByDataSetAndPiece', () => {
 
     await assert.rejects(
       async () =>
-        await getStorageProviderAndValidatePayerByDataSetAndPiece(
-          env,
-          dataSetId,
-          pieceId,
-        ),
+        await getRetrievalCandidatesByDataSetAndPiece(env, dataSetId, pieceId),
       /withCDN=false/,
     )
   })
@@ -395,11 +383,7 @@ describe('getStorageProviderAndValidatePayerByDataSetAndPiece', () => {
 
     await assert.rejects(
       async () =>
-        await getStorageProviderAndValidatePayerByDataSetAndPiece(
-          env,
-          dataSetId,
-          pieceId,
-        ),
+        await getRetrievalCandidatesByDataSetAndPiece(env, dataSetId, pieceId),
       /withIpfsIndexing=false/,
     )
   })
@@ -427,11 +411,7 @@ describe('getStorageProviderAndValidatePayerByDataSetAndPiece', () => {
 
     await assert.rejects(
       async () =>
-        await getStorageProviderAndValidatePayerByDataSetAndPiece(
-          env,
-          dataSetId,
-          pieceId,
-        ),
+        await getRetrievalCandidatesByDataSetAndPiece(env, dataSetId, pieceId),
       /is sanctioned/,
     )
   })
@@ -450,15 +430,66 @@ describe('getStorageProviderAndValidatePayerByDataSetAndPiece', () => {
       ipfsRootCid: 'bafkbyids7',
     })
 
-    const result = await getStorageProviderAndValidatePayerByDataSetAndPiece(
+    const result = await getRetrievalCandidatesByDataSetAndPiece(
       env,
       dataSetId,
       pieceId,
     )
 
-    assert.strictEqual(result.dataSetId, '0')
-    assert.strictEqual(result.pieceId, '0')
-    assert.strictEqual(result.serviceProviderId, APPROVED_SERVICE_PROVIDER_ID)
+    assert.strictEqual(result[0].dataSetId, '0')
+    assert.strictEqual(result[0].pieceId, '0')
+    assert.strictEqual(
+      result[0].serviceProviderId,
+      APPROVED_SERVICE_PROVIDER_ID,
+    )
+  })
+
+  it('returns every service provider serving the same content for the payer', async () => {
+    const payerAddress = '0xabc123def456abc123def456abc123def456abc8'
+    const ipfsRootCid = 'bafkbyids8shared'
+    const serviceProviderId1 = 'sp-byids-8a'
+    const serviceProviderId2 = 'sp-byids-8b'
+
+    await withApprovedProvider(env, {
+      id: serviceProviderId1,
+      serviceUrl: 'https://sp8a.xyz',
+    })
+    await withApprovedProvider(env, {
+      id: serviceProviderId2,
+      serviceUrl: 'https://sp8b.xyz',
+    })
+    await withDataSetPiece(env, {
+      payerAddress,
+      serviceProviderId: serviceProviderId1,
+      dataSetId: 'ds-8a',
+      pieceId: 'piece-8a',
+      withCDN: true,
+      withIpfsIndexing: true,
+      ipfsRootCid,
+    })
+    await withDataSetPiece(env, {
+      payerAddress,
+      serviceProviderId: serviceProviderId2,
+      dataSetId: 'ds-8b',
+      pieceId: 'piece-8b',
+      withCDN: true,
+      withIpfsIndexing: true,
+      ipfsRootCid,
+    })
+
+    // Looking up by one (data set, piece) returns the candidates for every
+    // service provider serving the same content for the payer.
+    const result = await getRetrievalCandidatesByDataSetAndPiece(
+      env,
+      'ds-8a',
+      'piece-8a',
+    )
+
+    assert.strictEqual(result.length, 2)
+    assert.deepStrictEqual(
+      result.map((c) => c.serviceProviderId).sort(),
+      [serviceProviderId1, serviceProviderId2].sort(),
+    )
   })
 })
 

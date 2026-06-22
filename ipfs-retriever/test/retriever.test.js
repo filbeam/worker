@@ -675,6 +675,80 @@ describe('retriever.fetch', () => {
     ])
   })
 
+  it('retries another service provider when the first one fails', async () => {
+    const sharedIpfsRootCid = 'bafkfallbackshared'
+    const badServiceUrl = 'https://bad-sp.example/'
+    const goodServiceUrl = 'https://good-sp.example/'
+    const goodDataSetId = '8801'
+
+    await withDataSetPiece(env, {
+      serviceProviderId: 'sp-fallback-bad',
+      payerAddress: defaultPayerAddress,
+      pieceCid: 'bagafallbackbad',
+      ipfsRootCid: sharedIpfsRootCid,
+      dataSetId: '8800',
+      pieceId: '8800',
+    })
+    await withApprovedProvider(env, {
+      id: 'sp-fallback-bad',
+      serviceUrl: badServiceUrl,
+    })
+    await withDataSetPiece(env, {
+      serviceProviderId: 'sp-fallback-good',
+      payerAddress: defaultPayerAddress,
+      pieceCid: 'bagafallbackgood',
+      ipfsRootCid: sharedIpfsRootCid,
+      dataSetId: goodDataSetId,
+      pieceId: '8801',
+    })
+    await withApprovedProvider(env, {
+      id: 'sp-fallback-good',
+      serviceUrl: goodServiceUrl,
+    })
+
+    const mockRetrieveIpfsContent = vi.fn(async (serviceUrl) => {
+      if (serviceUrl === goodServiceUrl) {
+        return {
+          response: new Response('fake', {
+            status: 200,
+            headers: { 'CF-Cache-Status': 'MISS' },
+          }),
+          cacheMiss: true,
+        }
+      }
+      return {
+        response: new Response('boom', { status: 500 }),
+        cacheMiss: true,
+      }
+    })
+
+    const ctx = createExecutionContext()
+    const req = withRequest('8800', '8800', 'GET', {}, { format: 'car' })
+    const res = await worker.fetch(req, env, ctx, {
+      retrieveIpfsContent: mockRetrieveIpfsContent,
+    })
+    await waitOnExecutionContext(ctx)
+
+    expect(res.status).toBe(200)
+    expect(await res.text()).toBe('fake')
+
+    // The content is served, and the egress is charged to the data set whose
+    // service provider succeeded.
+    const readOutput = await env.DB.prepare(
+      `SELECT data_set_id, response_status
+       FROM retrieval_logs
+       WHERE data_set_id = ?`,
+    )
+      .bind(goodDataSetId)
+      .all()
+    expect(readOutput.results).toStrictEqual([
+      expect.objectContaining({
+        data_set_id: goodDataSetId,
+        response_status: 200,
+      }),
+    ])
+  })
+
   it('requests payment if withCDN=false', async () => {
     const dataSetId = '1004'
     const pieceId = '2004'

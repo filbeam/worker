@@ -1,15 +1,36 @@
 import { bigIntToBase32 } from './bigint-util.js'
 import { httpAssert } from '@filbeam/retrieval'
 
+const SELECT_CANDIDATES_BY_CID = `
+   SELECT
+     pieces.id as piece_id,
+     pieces.data_set_id,
+     pieces.ipfs_root_cid,
+     data_sets.service_provider_id,
+     data_sets.payer_address,
+     data_sets.with_cdn,
+     data_sets.with_ipfs_indexing,
+     service_providers.service_url,
+     wallet_details.is_sanctioned
+   FROM pieces
+   LEFT OUTER JOIN data_sets
+     ON pieces.data_set_id = data_sets.id
+   LEFT OUTER JOIN service_providers
+     ON data_sets.service_provider_id = service_providers.id
+   LEFT OUTER JOIN wallet_details
+     ON data_sets.payer_address = wallet_details.address
+   WHERE pieces.ipfs_root_cid = ?
+ `
+
 /**
- * Validates query results and returns provider info. This is a shared helper
- * used by both getStorageProviderAndValidatePayerByWalletAndCid and
- * getStorageProviderAndValidatePayerByDataSetAndPiece.
+ * Validates query results and returns every approved retrieval candidate. This
+ * is a shared helper used by both getRetrievalCandidatesByWalletAndCid and
+ * getRetrievalCandidatesByDataSetAndPiece.
  *
  * @param {object} params
  * @param {any[]} params.results - The query results to validate
- * @param {string} params.payerAddress - The address of the client paying for
- *   the request
+ * @param {string} params.payerAddress - The lower-cased address of the client
+ *   paying for the request
  * @param {string} params.lookupKey - Descriptive key for error messages (e.g.,
  *   "IPFS Root CID 'bafk...'")
  * @returns {{
@@ -18,9 +39,9 @@ import { httpAssert } from '@filbeam/retrieval'
  *   dataSetId: string
  *   pieceId: string
  *   ipfsRootCid: string
- * }}
+ * }[]}
  */
-function validateQueryResultsAndGetProvider(params) {
+function validateQueryResultsAndGetCandidates(params) {
   const { results, payerAddress, lookupKey } = params
 
   httpAssert(
@@ -91,85 +112,53 @@ function validateQueryResultsAndGetProvider(params) {
     `${lookupKey} exists but has no associated IPFS Root CID.`,
   )
 
-  const {
-    piece_id: pieceId,
-    data_set_id: dataSetId,
-    ipfs_root_cid: ipfsRootCid,
-    service_provider_id: serviceProviderId,
-    service_url: serviceUrl,
-  } = withApprovedProvider[0]
-
-  // We need this assertion to supress TypeScript error. The compiler is not able to infer that
-  // `withApprovedProvider.filter()` above returns only rows with `service_url` defined.
-  httpAssert(serviceUrl, 500, 'should never happen')
+  const candidates = withIpfsRootCid.map((row) => ({
+    serviceProviderId: row.service_provider_id,
+    // We need this cast to suppress a TypeScript error. The compiler cannot
+    // infer that the filters above keep only rows with service_url defined.
+    serviceUrl: /** @type {string} */ (row.service_url),
+    dataSetId: row.data_set_id,
+    pieceId: row.piece_id,
+    ipfsRootCid: row.ipfs_root_cid,
+  }))
 
   console.log(
-    `Validated data set ID '${dataSetId}', piece ID '${pieceId}', and service provider id '${serviceProviderId}' for ${lookupKey} and payer '${payerAddress}'. Service URL: ${serviceUrl}`,
+    `Validated ${candidates.length} retrieval candidate(s) for ${lookupKey} and payer '${payerAddress}'`,
   )
 
-  return { serviceProviderId, serviceUrl, dataSetId, pieceId, ipfsRootCid }
+  return candidates
 }
 
 /**
- * Retrieves the provider and data set id for a given root CID.
+ * Retrieves every approved retrieval candidate (one per service provider) for a
+ * given root CID and payer.
  *
  * @param {Pick<Env, 'DB'>} env - Cloudflare Worker environment with D1 DB
  *   binding
- * @param {string} payerAddress - The address of the client paying for the
- *   request
+ * @param {string} payerAddress - The lower-cased address of the client paying
+ *   for the request
  * @param {string} ipfsRootCid - The IPFS Root CID to look up
- * @returns {Promise<{
- *   serviceProviderId: string
- *   serviceUrl: string
- *   dataSetId: string
- *   pieceId: string
- * }>}
+ * @returns {Promise<
+ *   {
+ *     serviceProviderId: string
+ *     serviceUrl: string
+ *     dataSetId: string
+ *     pieceId: string
+ *     ipfsRootCid: string
+ *   }[]
+ * >}
  */
-export async function getStorageProviderAndValidatePayerByWalletAndCid(
+export async function getRetrievalCandidatesByWalletAndCid(
   env,
   payerAddress,
   ipfsRootCid,
 ) {
-  const query = `
-   SELECT
-     pieces.id as piece_id,
-     pieces.data_set_id,
-     pieces.ipfs_root_cid,
-     data_sets.service_provider_id,
-     data_sets.payer_address,
-     data_sets.with_cdn,
-     data_sets.with_ipfs_indexing,
-     service_providers.service_url,
-     wallet_details.is_sanctioned
-   FROM pieces
-   LEFT OUTER JOIN data_sets
-     ON pieces.data_set_id = data_sets.id
-   LEFT OUTER JOIN service_providers
-     ON data_sets.service_provider_id = service_providers.id
-   LEFT OUTER JOIN wallet_details
-     ON data_sets.payer_address = wallet_details.address
-   WHERE pieces.ipfs_root_cid = ?
- `
-
-  const results = /**
-   * @type {{
-   *   piece_id: string
-   *   data_set_id: string
-   *   ipfs_root_cid: string
-   *   service_provider_id: string
-   *   payer_address: string | undefined
-   *   with_cdn: number | undefined
-   *   with_ipfs_indexing: number | undefined
-   *   service_url: string | undefined
-   *   is_sanctioned: number | undefined
-   * }[]}
-   */ (
-    /** @type {any[]} */ (
-      (await env.DB.prepare(query).bind(ipfsRootCid).all()).results
-    )
+  const results = /** @type {any[]} */ (
+    (await env.DB.prepare(SELECT_CANDIDATES_BY_CID).bind(ipfsRootCid).all())
+      .results
   )
 
-  return validateQueryResultsAndGetProvider({
+  return validateQueryResultsAndGetCandidates({
     results,
     payerAddress,
     lookupKey: `IPFS Root CID '${ipfsRootCid}'`,
@@ -177,82 +166,76 @@ export async function getStorageProviderAndValidatePayerByWalletAndCid(
 }
 
 /**
- * Retrieves the provider info for a given data set ID and piece ID.
+ * Retrieves every approved retrieval candidate for the content addressed by a
+ * given data set ID and piece ID. The piece is resolved to its content CID and
+ * the data set's payer, then every service provider serving that content for
+ * that payer is returned so the worker can retry across them.
  *
  * @param {Pick<Env, 'DB'>} env - Cloudflare Worker environment with D1 DB
  *   binding
  * @param {string} dataSetId - The data set ID
  * @param {string} pieceId - The piece ID
- * @returns {Promise<{
- *   serviceProviderId: string
- *   serviceUrl: string
- *   dataSetId: string
- *   pieceId: string
- *   ipfsRootCid: string
- * }>}
+ * @returns {Promise<
+ *   {
+ *     serviceProviderId: string
+ *     serviceUrl: string
+ *     dataSetId: string
+ *     pieceId: string
+ *     ipfsRootCid: string
+ *   }[]
+ * >}
  */
-export async function getStorageProviderAndValidatePayerByDataSetAndPiece(
+export async function getRetrievalCandidatesByDataSetAndPiece(
   env,
   dataSetId,
   pieceId,
 ) {
-  const query = `
-   SELECT
-     pieces.id as piece_id,
-     pieces.data_set_id,
-     pieces.ipfs_root_cid,
-     data_sets.service_provider_id,
-     data_sets.payer_address,
-     data_sets.with_cdn,
-     data_sets.with_ipfs_indexing,
-     service_providers.service_url,
-     wallet_details.is_sanctioned
-   FROM pieces
-   LEFT OUTER JOIN data_sets
-     ON pieces.data_set_id = data_sets.id
-   LEFT OUTER JOIN service_providers
-     ON data_sets.service_provider_id = service_providers.id
-   LEFT OUTER JOIN wallet_details
-     ON data_sets.payer_address = wallet_details.address
-   WHERE pieces.id = ? AND pieces.data_set_id = ?
- `
-
-  const results = /**
+  const piece = /**
    * @type {{
-   *   piece_id: string
-   *   data_set_id: string
-   *   ipfs_root_cid: string
-   *   service_provider_id: string
-   *   payer_address: string | undefined
-   *   with_cdn: number | undefined
-   *   with_ipfs_indexing: number | undefined
-   *   service_url: string | undefined
-   *   is_sanctioned: number | undefined
-   * }[]}
+   *   ipfs_root_cid: string | null
+   *   payer_address: string | null
+   * } | null}
    */ (
-    /** @type {any[]} */ (
-      (await env.DB.prepare(query).bind(pieceId, dataSetId).all()).results
+    await env.DB.prepare(
+      `
+      SELECT pieces.ipfs_root_cid, data_sets.payer_address
+      FROM pieces
+      LEFT OUTER JOIN data_sets ON pieces.data_set_id = data_sets.id
+      WHERE pieces.id = ? AND pieces.data_set_id = ?
+      `,
     )
+      .bind(pieceId, dataSetId)
+      .first()
   )
 
   httpAssert(
-    results && results.length > 0,
+    piece,
     404,
     `Piece ID '${pieceId}' does not exist in data set ID '${dataSetId}' or may not have been indexed yet.`,
   )
 
-  // Extract the payer address from the first result
-  const { payer_address: payerAddress } = results[0]
+  const ipfsRootCid = piece.ipfs_root_cid
+  const payerAddress = piece.payer_address
 
   httpAssert(
     payerAddress,
     404,
     `Data set ID '${dataSetId}' exists but has no associated payer address.`,
   )
+  httpAssert(
+    ipfsRootCid,
+    404,
+    `data set ID '${dataSetId}' and piece ID '${pieceId}' exists but has no associated IPFS Root CID.`,
+  )
 
-  return validateQueryResultsAndGetProvider({
+  const results = /** @type {any[]} */ (
+    (await env.DB.prepare(SELECT_CANDIDATES_BY_CID).bind(ipfsRootCid).all())
+      .results
+  )
+
+  return validateQueryResultsAndGetCandidates({
     results,
-    payerAddress,
+    payerAddress: payerAddress.toLowerCase(),
     lookupKey: `data set ID '${dataSetId}' and piece ID '${pieceId}'`,
   })
 }
@@ -280,12 +263,11 @@ export function buildSlug(dataSetId, pieceId) {
  * @param {string} ipfsRootCid
  */
 export async function getSlugForWalletAndCid(env, payerAddress, ipfsRootCid) {
-  const { dataSetId, pieceId } =
-    await getStorageProviderAndValidatePayerByWalletAndCid(
-      env,
-      payerAddress,
-      ipfsRootCid,
-    )
+  const [{ dataSetId, pieceId }] = await getRetrievalCandidatesByWalletAndCid(
+    env,
+    payerAddress,
+    ipfsRootCid,
+  )
 
   return buildSlug(BigInt(dataSetId), BigInt(pieceId))
 }

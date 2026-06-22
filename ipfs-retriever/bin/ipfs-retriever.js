@@ -1,6 +1,7 @@
 import {
   isValidEthereumAddress,
   httpAssert,
+  setContentSecurityPolicy,
   setRetrievalResponseHeaders,
   isCidDenied,
   BAD_BITS_DENIED_MESSAGE,
@@ -17,7 +18,7 @@ import {
   processIpfsResponse,
 } from '../lib/retrieval.js'
 import {
-  getStorageProviderAndValidatePayerByDataSetAndPiece,
+  getRetrievalCandidatesByDataSetAndPiece,
   getSlugForWalletAndCid,
 } from '../lib/store.js'
 
@@ -90,30 +91,91 @@ export default {
       // Timestamp to measure file retrieval performance (from cache and from SP)
       const fetchStartedAt = performance.now()
 
-      const { serviceProviderId, serviceUrl, ipfsRootCid } =
-        await getStorageProviderAndValidatePayerByDataSetAndPiece(
-          env,
-          dataSetId,
-          pieceId,
-        )
+      const candidates = await getRetrievalCandidatesByDataSetAndPiece(
+        env,
+        dataSetId,
+        pieceId,
+      )
+      // Every candidate serves the same content, so they share the root CID.
+      const ipfsRootCid = candidates[0].ipfsRootCid
 
       // Now check Bad Bits with the ipfsRootCid we got from the database
       const isBadBit = await isCidDenied(env, ipfsRootCid)
       httpAssert(!isBadBit, 404, BAD_BITS_DENIED_MESSAGE)
 
-      httpAssert(
-        serviceProviderId,
-        404,
-        `Unsupported Service Provider: ${serviceProviderId}`,
-      )
+      let candidate
+      let retrievalResult
+      const retrievalAttempts = []
 
-      const { response: originResponse, cacheMiss } = await retrieveIpfsContent(
-        serviceUrl,
-        ipfsRootCid,
-        ipfsSubpath,
-        env.ORIGIN_CACHE_TTL,
-        { signal: request.signal },
-      )
+      while (candidates.length > 0) {
+        const candidateIndex = Math.floor(Math.random() * candidates.length)
+        candidate = candidates[candidateIndex]
+        retrievalAttempts.push(candidate)
+        candidates.splice(candidateIndex, 1)
+        console.log(`Attempting retrieval via ${candidate.serviceUrl}`)
+        try {
+          retrievalResult = await retrieveIpfsContent(
+            candidate.serviceUrl,
+            ipfsRootCid,
+            ipfsSubpath,
+            env.ORIGIN_CACHE_TTL,
+            { signal: request.signal },
+          )
+          if (retrievalResult.response.ok) {
+            console.log(
+              `Retrieval attempt succeeded (cache ${retrievalResult.cacheMiss ? 'miss' : 'hit'})`,
+            )
+            break
+          }
+          console.log(
+            `Retrieval attempt failed: HTTP ${retrievalResult.response.status}`,
+            { candidate, willRetry: candidates.length > 0 },
+          )
+        } catch (err) {
+          const msg =
+            typeof err === 'object' && err !== null && 'message' in err
+              ? err.message
+              : String(err)
+          console.log(`Retrieval attempt failed: ${msg}`, {
+            candidate,
+            willRetry: candidates.length > 0,
+          })
+        }
+      }
+
+      httpAssert(candidate, 500, 'should never happen')
+
+      if (!retrievalResult || retrievalResult.response.status >= 500) {
+        ctx.waitUntil(
+          logRetrievalResult(env, {
+            cacheMiss: retrievalResult?.cacheMiss ?? null,
+            cacheMissResponseValid: null,
+            responseStatus: 502,
+            egressBytes: 0,
+            cacheMissEgressBytes: 0,
+            requestCountryCode,
+            timestamp: requestTimestamp,
+            dataSetId: candidate.dataSetId,
+            botName,
+          }),
+        )
+        const response = new Response(
+          `No available service provider found. Attempted: ${retrievalAttempts.map((a) => `ID=${a.serviceProviderId} (Service URL=${a.serviceUrl})`).join(', ')}`,
+          {
+            status: 502,
+            headers: new Headers({
+              'X-Data-Set-ID': retrievalAttempts
+                .map((a) => a.dataSetId)
+                .join(','),
+            }),
+          },
+        )
+        setContentSecurityPolicy(response)
+        return response
+      }
+
+      const originResponse = retrievalResult.response
+      const cacheMiss = retrievalResult.cacheMiss
 
       const {
         body: responseBody,
@@ -139,13 +201,13 @@ export default {
             cacheMissEgressBytes: 0,
             requestCountryCode,
             timestamp: requestTimestamp,
-            dataSetId,
+            dataSetId: candidate.dataSetId,
             botName,
           }),
         )
         const response = new Response(originResponse.body, originResponse)
         setRetrievalResponseHeaders(response, {
-          dataSetId,
+          dataSetId: candidate.dataSetId,
           clientCacheTtl: env.CLIENT_CACHE_TTL,
         })
         return response
@@ -182,12 +244,12 @@ export default {
               fetchTtlb: lastByteFetchedAt - fetchStartedAt,
               workerTtfb: firstByteAt - workerStartedAt,
             },
-            dataSetId,
+            dataSetId: candidate.dataSetId,
             botName,
           })
 
           await updateDataSetStats(env, {
-            dataSetId,
+            dataSetId: candidate.dataSetId,
             egressBytes,
             cacheMissEgressBytes,
             cacheMiss,
@@ -204,7 +266,7 @@ export default {
         headers: responseHeaders,
       })
       setRetrievalResponseHeaders(response, {
-        dataSetId,
+        dataSetId: candidate.dataSetId,
         clientCacheTtl: env.CLIENT_CACHE_TTL,
       })
 
