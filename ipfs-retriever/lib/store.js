@@ -1,5 +1,5 @@
 import { bigIntToBase32 } from './bigint-util.js'
-import { httpAssert } from '@filbeam/retrieval'
+import { httpAssert, filterAuthorizedRetrievalRows } from '@filbeam/retrieval'
 
 const SELECT_CANDIDATES_BY_CID = `
    SELECT
@@ -44,64 +44,18 @@ const SELECT_CANDIDATES_BY_CID = `
 function validateQueryResultsAndGetCandidates(params) {
   const { results, payerAddress, lookupKey } = params
 
-  httpAssert(
-    results && results.length > 0,
-    404,
-    `${lookupKey} does not exist or may not have been indexed yet.`,
-  )
-
-  const withServiceProvider = results.filter(
-    (row) => row && row.service_provider_id != null,
-  )
-  httpAssert(
-    withServiceProvider.length > 0,
-    404,
-    `${lookupKey} exists but has no associated service provider.`,
-  )
-
-  const withPaymentRail = withServiceProvider.filter(
-    (row) =>
-      row.payer_address && row.payer_address.toLowerCase() === payerAddress,
-  )
-  httpAssert(
-    withPaymentRail.length > 0,
-    402,
-    `There is no Filecoin Warm Storage Service deal for payer '${payerAddress}' and ${lookupKey}.`,
-  )
-
-  const withCDN = withPaymentRail.filter(
-    (row) => row.with_cdn && row.with_cdn === 1,
-  )
-  httpAssert(
-    withCDN.length > 0,
-    402,
-    `The Filecoin Warm Storage Service deal for payer '${payerAddress}' and ${lookupKey} has withCDN=false.`,
-  )
-
-  const withIpfsIndexing = withCDN.filter((row) => row.with_ipfs_indexing === 1)
-  httpAssert(
-    withIpfsIndexing.length > 0,
-    402,
-    `The Filecoin Warm Storage Service deal for payer '${payerAddress}' and ${lookupKey} has withIpfsIndexing=false.`,
-  )
-
-  const withPayerNotSanctioned = withIpfsIndexing.filter(
-    (row) => !row.is_sanctioned,
-  )
-  httpAssert(
-    withPayerNotSanctioned.length > 0,
-    403,
-    `Wallet '${payerAddress}' is sanctioned and cannot retrieve ${lookupKey}.`,
-  )
-
-  const withApprovedProvider = withPayerNotSanctioned.filter(
-    (row) => row.service_url,
-  )
-  httpAssert(
-    withApprovedProvider.length > 0,
-    404,
-    `No approved service provider found for payer '${payerAddress}' and ${lookupKey}.`,
-  )
+  const withApprovedProvider = filterAuthorizedRetrievalRows(results, {
+    payerAddress,
+    ipfsIndexingDisabledMessage: `The Filecoin Warm Storage Service deal for payer '${payerAddress}' and ${lookupKey} has withIpfsIndexing=false.`,
+    messages: {
+      notIndexed: `${lookupKey} does not exist or may not have been indexed yet.`,
+      noServiceProvider: `${lookupKey} exists but has no associated service provider.`,
+      noPaymentRail: `There is no Filecoin Warm Storage Service deal for payer '${payerAddress}' and ${lookupKey}.`,
+      cdnDisabled: `The Filecoin Warm Storage Service deal for payer '${payerAddress}' and ${lookupKey} has withCDN=false.`,
+      sanctioned: `Wallet '${payerAddress}' is sanctioned and cannot retrieve ${lookupKey}.`,
+      noApprovedProvider: `No approved service provider found for payer '${payerAddress}' and ${lookupKey}.`,
+    },
+  })
 
   const withIpfsRootCid = withApprovedProvider.filter(
     (row) => row.ipfs_root_cid,

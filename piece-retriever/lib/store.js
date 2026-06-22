@@ -1,4 +1,4 @@
-import { httpAssert } from '@filbeam/retrieval'
+import { httpAssert, filterAuthorizedRetrievalRows } from '@filbeam/retrieval'
 
 /**
  * Retrieves the provider and data set id for a given root CID.
@@ -67,58 +67,18 @@ export async function getRetrievalCandidatesAndValidatePayer(
       (await env.DB.prepare(query).bind(pieceCid).all()).results
     )
   )
-  httpAssert(
-    results && results.length > 0,
-    404,
-    `Piece_cid '${pieceCid}' does not exist or may not have been indexed yet.`,
-  )
-
-  const withServiceProvider = results.filter(
-    (row) =>
-      row &&
-      row.service_provider_id != null &&
-      !row.service_provider_is_deleted,
-  )
-  httpAssert(
-    withServiceProvider.length > 0,
-    404,
-    `Piece_cid '${pieceCid}' exists but has no associated service provider.`,
-  )
-
-  const withPaymentRail = withServiceProvider.filter(
-    (row) =>
-      row.payer_address && row.payer_address.toLowerCase() === payerAddress,
-  )
-  httpAssert(
-    withPaymentRail.length > 0,
-    402,
-    `There is no Filecoin Warm Storage Service deal for payer '${payerAddress}' and piece_cid '${pieceCid}'.`,
-  )
-
-  const withCDN = withPaymentRail.filter(
-    (row) => row.with_cdn && row.with_cdn === 1,
-  )
-  httpAssert(
-    withCDN.length > 0,
-    402,
-    `The Filecoin Warm Storage Service deal for payer '${payerAddress}' and piece_cid '${pieceCid}' has withCDN=false.`,
-  )
-
-  const withPayerNotSanctioned = withCDN.filter((row) => !row.is_sanctioned)
-  httpAssert(
-    withPayerNotSanctioned.length > 0,
-    403,
-    `Wallet '${payerAddress}' is sanctioned and cannot retrieve piece_cid '${pieceCid}'.`,
-  )
-
-  const withApprovedProvider = withPayerNotSanctioned.filter(
-    (row) => row.service_url,
-  )
-  httpAssert(
-    withApprovedProvider.length > 0,
-    404,
-    `No approved service provider found for payer '${payerAddress}' and piece_cid '${pieceCid}'.`,
-  )
+  const withApprovedProvider = filterAuthorizedRetrievalRows(results, {
+    payerAddress,
+    requireServiceProviderNotDeleted: true,
+    messages: {
+      notIndexed: `Piece_cid '${pieceCid}' does not exist or may not have been indexed yet.`,
+      noServiceProvider: `Piece_cid '${pieceCid}' exists but has no associated service provider.`,
+      noPaymentRail: `There is no Filecoin Warm Storage Service deal for payer '${payerAddress}' and piece_cid '${pieceCid}'.`,
+      cdnDisabled: `The Filecoin Warm Storage Service deal for payer '${payerAddress}' and piece_cid '${pieceCid}' has withCDN=false.`,
+      sanctioned: `Wallet '${payerAddress}' is sanctioned and cannot retrieve piece_cid '${pieceCid}'.`,
+      noApprovedProvider: `No approved service provider found for payer '${payerAddress}' and piece_cid '${pieceCid}'.`,
+    },
+  })
 
   // Check CDN quota first
   const withSufficientCDNQuota = enforceEgressQuota

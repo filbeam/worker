@@ -1,3 +1,4 @@
+export * from './lib/access.js'
 export * from './lib/address.js'
 export * from './lib/bad-bits-util.js'
 export * from './lib/bot-auth.js'
