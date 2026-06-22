@@ -1,0 +1,21 @@
+import { describe, it, expect } from 'vitest'
+import { setRetrievalResponseHeaders } from '../lib/response-headers.js'
+
+describe('setRetrievalResponseHeaders', () => {
+  it('sets the CSP, data set id and client cache headers', () => {
+    const response = new Response('body')
+
+    setRetrievalResponseHeaders(response, {
+      dataSetId: '42',
+      clientCacheTtl: 31536000,
+    })
+
+    expect(response.headers.get('Content-Security-Policy')).toMatch(
+      /^default-src 'self'/,
+    )
+    expect(response.headers.get('X-Data-Set-ID')).toBe('42')
+    expect(response.headers.get('Cache-Control')).toBe(
+      'public, max-age=31536000',
+    )
+  })
+})

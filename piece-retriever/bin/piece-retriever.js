@@ -2,6 +2,7 @@ import {
   isValidEthereumAddress,
   httpAssert,
   setContentSecurityPolicy,
+  setRetrievalResponseHeaders,
   isCidDenied,
   BAD_BITS_DENIED_MESSAGE,
   updateDataSetStats,
@@ -196,12 +197,10 @@ export default {
           retrievalResult.response.body,
           retrievalResult.response,
         )
-        setContentSecurityPolicy(response)
-        response.headers.set('X-Data-Set-ID', retrievalCandidate.dataSetId)
-        response.headers.set(
-          'Cache-Control',
-          `public, max-age=${env.CLIENT_CACHE_TTL}`,
-        )
+        setRetrievalResponseHeaders(response, {
+          dataSetId: retrievalCandidate.dataSetId,
+          clientCacheTtl: env.CLIENT_CACHE_TTL,
+        })
         return response
       }
 
@@ -331,12 +330,10 @@ export default {
         statusText: retrievalResult.response.statusText,
         headers: retrievalResult.response.headers,
       })
-      setContentSecurityPolicy(response)
-      response.headers.set('X-Data-Set-ID', retrievalCandidate.dataSetId)
-      response.headers.set(
-        'Cache-Control',
-        `public, max-age=${env.CLIENT_CACHE_TTL}`,
-      )
+      setRetrievalResponseHeaders(response, {
+        dataSetId: retrievalCandidate.dataSetId,
+        clientCacheTtl: env.CLIENT_CACHE_TTL,
+      })
       return response
     } catch (error) {
       const { status } = getErrorHttpStatusMessage(error)

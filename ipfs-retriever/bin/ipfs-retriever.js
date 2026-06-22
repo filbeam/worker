@@ -1,7 +1,7 @@
 import {
   isValidEthereumAddress,
   httpAssert,
-  setContentSecurityPolicy,
+  setRetrievalResponseHeaders,
   isCidDenied,
   BAD_BITS_DENIED_MESSAGE,
   updateDataSetStats,
@@ -141,12 +141,10 @@ export default {
           }),
         )
         const response = new Response(originResponse.body, originResponse)
-        setContentSecurityPolicy(response)
-        response.headers.set('X-Data-Set-ID', dataSetId)
-        response.headers.set(
-          'Cache-Control',
-          `public, max-age=${env.CLIENT_CACHE_TTL}`,
-        )
+        setRetrievalResponseHeaders(response, {
+          dataSetId,
+          clientCacheTtl: env.CLIENT_CACHE_TTL,
+        })
         return response
       }
 
@@ -201,12 +199,10 @@ export default {
         statusText: originResponse.statusText,
         headers: originResponse.headers,
       })
-      setContentSecurityPolicy(response)
-      response.headers.set('X-Data-Set-ID', dataSetId)
-      response.headers.set(
-        'Cache-Control',
-        `public, max-age=${env.CLIENT_CACHE_TTL}`,
-      )
+      setRetrievalResponseHeaders(response, {
+        dataSetId,
+        clientCacheTtl: env.CLIENT_CACHE_TTL,
+      })
 
       // FIXME: move this logic into processIpfsResponse function
       // When converting from CAR to RAW, set content-disposition to inline

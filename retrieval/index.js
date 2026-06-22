@@ -4,6 +4,7 @@ export * from './lib/bot-auth.js'
 export * from './lib/content-security-policy.js'
 export * from './lib/http-assert.js'
 export * from './lib/http-error.js'
+export * from './lib/response-headers.js'
 export * from './lib/stats.js'
 
 export default {
