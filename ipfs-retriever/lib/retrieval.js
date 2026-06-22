@@ -107,14 +107,24 @@ export function getRetrievalUrl(serviceUrl, rootCid, subpath) {
  * @param {string} options.ipfsSubpath
  * @param {string | null} options.ipfsFormat
  * @param {AbortSignal} [options.signal]
- * @returns {Promise<ReadableStream<Uint8Array> | null>}
+ * @returns {Promise<{
+ *   body: ReadableStream<Uint8Array> | null
+ *   originEgressBytes: number | null
+ * }>}
+ *   - `body` is the stream to serve to the client (raw bytes when converting from
+ *       CAR, the original body when serving CAR or passing through).
+ *       `originEgressBytes` is the number of CAR bytes read from the service
+ *       provider, or `null` when the body is passed through unchanged (in that
+ *       case the bytes served equal the bytes fetched).
  */
 export async function processIpfsResponse(
   response,
   { ipfsRootCid, ipfsSubpath, ipfsFormat, signal },
 ) {
   const body = response.body
-  if (!response.ok || !body || ipfsFormat === 'car') return body
+  if (!response.ok || !body || ipfsFormat === 'car') {
+    return { body, originEgressBytes: null }
+  }
 
   httpAssert(
     ipfsFormat === null,
@@ -122,7 +132,18 @@ export async function processIpfsResponse(
     `Unsupported ?format value: "${ipfsFormat}"`,
   )
 
-  const reader = await CarReader.fromIterable(body)
+  // Count the CAR bytes fetched from the service provider as we read them.
+  // `CarReader.fromIterable` consumes the entire stream before returning, so
+  // `originEgressBytes` is final by the time we build the raw output stream.
+  let originEgressBytes = 0
+  const countingBody = (async function* () {
+    for await (const chunk of body) {
+      originEgressBytes += chunk.length
+      yield chunk
+    }
+  })()
+
+  const reader = await CarReader.fromIterable(countingBody)
   const blocksReader = reader.blocks()
 
   const entries = exporter(
@@ -191,7 +212,7 @@ export async function processIpfsResponse(
       },
     })
 
-    return rawDataStream
+    return { body: rawDataStream, originEgressBytes }
   }
 
   httpAssert(false, 404, 'Not Found')

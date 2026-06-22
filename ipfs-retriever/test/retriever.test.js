@@ -13,6 +13,7 @@ import {
   withApprovedProvider,
   withBadBits,
   withWalletDetails,
+  buildRawBlockCar,
 } from './test-data-builders.js'
 import { CONTENT_STORED_ON_CALIBRATION } from './test-data.js'
 import { buildSlug } from '../lib/store.js'
@@ -609,6 +610,66 @@ describe('retriever.fetch', () => {
       expect.objectContaining({
         egress_bytes: 4,
       }),
+    ])
+  })
+
+  it('logs the CAR size as cache-miss egress when converting CAR to raw', async () => {
+    const fileBytes = new Uint8Array(1000).fill(42)
+    const { carBytes, rootCid } = await buildRawBlockCar(fileBytes)
+    expect(carBytes.length).toBeGreaterThan(fileBytes.length)
+
+    const carDataSetId = '7777'
+    const carPieceId = '7777'
+    await withDataSetPiece(env, {
+      serviceProviderId: 'sp-car',
+      payerAddress: defaultPayerAddress,
+      pieceCid: 'bagacartest',
+      ipfsRootCid: rootCid,
+      dataSetId: carDataSetId,
+      pieceId: carPieceId,
+    })
+    await withApprovedProvider(env, {
+      id: 'sp-car',
+      serviceUrl: 'https://pdp.example/',
+    })
+
+    const mockRetrieveIpfsContent = vi.fn().mockResolvedValue({
+      response: new Response(carBytes, { status: 200 }),
+      cacheMiss: true,
+    })
+
+    const ctx = createExecutionContext()
+    const req = withRequest(
+      carDataSetId,
+      carPieceId,
+      'GET',
+      {},
+      { format: null },
+    )
+    const res = await worker.fetch(req, env, ctx, {
+      retrieveIpfsContent: mockRetrieveIpfsContent,
+    })
+    await waitOnExecutionContext(ctx)
+
+    expect(res.status).toBe(200)
+    expect(new Uint8Array(await res.arrayBuffer())).toEqual(fileBytes)
+
+    const readOutput = await env.DB.prepare(
+      `SELECT egress_bytes, cache_miss_egress_bytes, cache_miss
+       FROM retrieval_logs
+       WHERE data_set_id = ?`,
+    )
+      .bind(carDataSetId)
+      .all()
+
+    // The client is charged the raw bytes served, the cache-miss quota the
+    // larger CAR fetched from the service provider.
+    expect(readOutput.results).toStrictEqual([
+      {
+        egress_bytes: fileBytes.length,
+        cache_miss_egress_bytes: carBytes.length,
+        cache_miss: 1,
+      },
     ])
   })
 

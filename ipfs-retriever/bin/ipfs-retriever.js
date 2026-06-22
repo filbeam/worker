@@ -122,12 +122,13 @@ export default {
         { signal: request.signal },
       )
 
-      const responseBody = await processIpfsResponse(originResponse, {
-        ipfsRootCid,
-        ipfsSubpath,
-        ipfsFormat,
-        signal: request.signal,
-      })
+      const { body: responseBody, originEgressBytes } =
+        await processIpfsResponse(originResponse, {
+          ipfsRootCid,
+          ipfsSubpath,
+          ipfsFormat,
+          signal: request.signal,
+        })
 
       if (!responseBody) {
         // The upstream response does not have any readable body
@@ -139,6 +140,7 @@ export default {
             cacheMissResponseValid: null,
             responseStatus: originResponse.status,
             egressBytes: 0,
+            cacheMissEgressBytes: 0,
             requestCountryCode,
             timestamp: requestTimestamp,
             dataSetId,
@@ -166,11 +168,19 @@ export default {
           const egressBytes = await measureStreamedEgress(reader)
           const lastByteFetchedAt = performance.now()
 
+          // The client is served the raw bytes (`egressBytes`). On a cache miss
+          // the worker fetched a CAR from the service provider, which is larger
+          // than the raw bytes when converting from CAR to raw. The cache-miss
+          // egress is charged for that CAR size. When the body is passed through
+          // unchanged (e.g. `?format=car`), the two values are equal.
+          const cacheMissEgressBytes = originEgressBytes ?? egressBytes
+
           await logRetrievalResult(env, {
             cacheMiss,
             cacheMissResponseValid: null,
             responseStatus: originResponse.status,
             egressBytes,
+            cacheMissEgressBytes,
             requestCountryCode,
             timestamp: requestTimestamp,
             performanceStats: {
@@ -185,6 +195,7 @@ export default {
           await updateDataSetStats(env, {
             dataSetId,
             egressBytes,
+            cacheMissEgressBytes,
             cacheMiss,
             enforceEgressQuota: env.ENFORCE_EGRESS_QUOTA,
           })
