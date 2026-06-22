@@ -97,6 +97,8 @@ export const randomId = () => String(Math.ceil(Math.random() * 1e10))
  * @param {string} params.dataSetId - Data set ID
  * @param {number} params.responseStatus - HTTP response status (default: 200)
  * @param {number | null} params.egressBytes - Egress bytes (default: null)
+ * @param {number | null} params.cacheMissEgressBytes - CAR bytes fetched from
+ *   the SP on a cache miss (default: null)
  * @param {number} params.cacheMiss - Cache miss flag (0 or 1, default: 0)
  * @param {boolena} params.cacheMissResponseValid
  */
@@ -107,19 +109,21 @@ export async function withRetrievalLog(
     dataSetId,
     responseStatus = 200,
     egressBytes = null,
+    cacheMissEgressBytes = null,
     cacheMiss = 0,
     cacheMissResponseValid = 0,
   },
 ) {
   return await env.DB.prepare(
-    `INSERT INTO retrieval_logs (timestamp, data_set_id, response_status, egress_bytes, cache_miss, cache_miss_response_valid)
-     VALUES (datetime(?), ?, ?, ?, ?, ?)`,
+    `INSERT INTO retrieval_logs (timestamp, data_set_id, response_status, egress_bytes, cache_miss_egress_bytes, cache_miss, cache_miss_response_valid)
+     VALUES (datetime(?), ?, ?, ?, ?, ?, ?)`,
   )
     .bind(
       timestamp,
       dataSetId,
       responseStatus,
       egressBytes,
+      cacheMissEgressBytes,
       cacheMiss,
       cacheMissResponseValid,
     )

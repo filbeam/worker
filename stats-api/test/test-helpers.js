@@ -46,6 +46,8 @@ export async function withDataSet(
  * @param {string} params.dataSetId - Data set ID
  * @param {number} params.responseStatus - HTTP response status (default: 200)
  * @param {number | null} params.egressBytes - Egress bytes (default: null)
+ * @param {number | null} params.cacheMissEgressBytes - CAR bytes fetched from
+ *   the SP on a cache miss (default: null)
  * @param {number} params.cacheMiss - Cache miss flag (0 or 1, default: 0)
  */
 export async function withRetrievalLog(
@@ -55,13 +57,21 @@ export async function withRetrievalLog(
     dataSetId,
     responseStatus = 200,
     egressBytes = null,
+    cacheMissEgressBytes = null,
     cacheMiss = 0,
   },
 ) {
   return await env.DB.prepare(
-    `INSERT INTO retrieval_logs (timestamp, data_set_id, response_status, egress_bytes, cache_miss)
-     VALUES (datetime(?), ?, ?, ?, ?)`,
+    `INSERT INTO retrieval_logs (timestamp, data_set_id, response_status, egress_bytes, cache_miss_egress_bytes, cache_miss)
+     VALUES (datetime(?), ?, ?, ?, ?, ?)`,
   )
-    .bind(timestamp, dataSetId, responseStatus, egressBytes, cacheMiss)
+    .bind(
+      timestamp,
+      dataSetId,
+      responseStatus,
+      egressBytes,
+      cacheMissEgressBytes,
+      cacheMiss,
+    )
     .run()
 }

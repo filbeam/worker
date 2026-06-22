@@ -95,6 +95,48 @@ describe('usage report', () => {
         ])
       })
 
+      it('charges cache-miss bytes from cache_miss_egress_bytes (CAR) and cdn bytes from egress_bytes (raw)', async () => {
+        await withDataSet(env, {
+          id: '1',
+          usageReportedUntil: EPOCH_99_TIMESTAMP_ISO,
+        })
+
+        // IPFS cache miss: client served raw bytes (egress_bytes), but a larger
+        // CAR was fetched from the SP (cache_miss_egress_bytes).
+        await withRetrievalLog(env, {
+          timestamp: EPOCH_100_TIMESTAMP_ISO,
+          dataSetId: '1',
+          egressBytes: 1000,
+          cacheMissEgressBytes: 2500,
+          cacheMiss: 1,
+          cacheMissResponseValid: 1,
+        })
+
+        // Row without the column set (e.g. logged before the column existed)
+        // falls back to egress_bytes for cache-miss accounting.
+        await withRetrievalLog(env, {
+          timestamp: EPOCH_100_TIMESTAMP_ISO,
+          dataSetId: '1',
+          egressBytes: 400,
+          cacheMissEgressBytes: null,
+          cacheMiss: 1,
+          cacheMissResponseValid: 1,
+        })
+
+        const usageData = await aggregateUsageData(
+          env.DB,
+          EPOCH_100_TIMESTAMP_MS,
+        )
+
+        expect(usageData).toStrictEqual([
+          {
+            data_set_id: '1',
+            cdn_bytes: 1400,
+            cache_miss_bytes: 2900,
+          },
+        ])
+      })
+
       it('should include non-200 responses but filter out null egress_bytes', async () => {
         await withDataSet(env, {
           id: '1',

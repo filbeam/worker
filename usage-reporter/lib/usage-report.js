@@ -20,10 +20,14 @@ export async function aggregateUsageData(db, upToTimestampMs) {
   const query = `
     SELECT
       rl.data_set_id,
-      -- Note: cdn_bytes tracks all egress (cache hits + cache misses)
-      -- cache_miss_bytes tracks only cache misses (subset of cdn_bytes)
+      -- Note: cdn_bytes tracks the bytes served to clients across all egress
+      -- (cache hits + cache misses). cache_miss_bytes tracks the bytes fetched
+      -- from the service provider on cache misses. For IPFS retrievals the
+      -- origin CAR (cache_miss_egress_bytes) is larger than the raw bytes served
+      -- to the client (egress_bytes). cache_miss_egress_bytes falls back to
+      -- egress_bytes for rows logged before that column existed.
       SUM(rl.egress_bytes) as cdn_bytes,
-      SUM(CASE WHEN rl.cache_miss = 1 AND rl.cache_miss_response_valid = 1 THEN rl.egress_bytes ELSE 0 END) as cache_miss_bytes
+      SUM(CASE WHEN rl.cache_miss = 1 AND rl.cache_miss_response_valid = 1 THEN COALESCE(rl.cache_miss_egress_bytes, rl.egress_bytes) ELSE 0 END) as cache_miss_bytes
     FROM retrieval_logs rl
     INNER JOIN data_sets ds ON rl.data_set_id = ds.id
     WHERE rl.timestamp > datetime(ds.usage_reported_until)
