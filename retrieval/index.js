@@ -1,5 +1,6 @@
 export * from './lib/address.js'
 export * from './lib/bad-bits-util.js'
+export * from './lib/bot-auth.js'
 export * from './lib/content-security-policy.js'
 export * from './lib/http-assert.js'
 export * from './lib/http-error.js'
