@@ -103,12 +103,15 @@ export function getRetrievalUrl(serviceUrl, rootCid, subpath) {
  * @returns {Promise<{
  *   body: ReadableStream<Uint8Array> | null
  *   originEgressBytes: number | null
+ *   headers: Headers
  * }>}
  *   - `body` is the stream to serve to the client (raw bytes when converting from
  *       CAR, the original body when serving CAR or passing through).
  *       `originEgressBytes` is the number of CAR bytes read from the service
  *       provider, or `null` when the body is passed through unchanged (in that
- *       case the bytes served equal the bytes fetched).
+ *       case the bytes served equal the bytes fetched). `headers` are the
+ *       response headers to serve, with the CAR-to-raw adjustments applied when
+ *       converting.
  */
 export async function processIpfsResponse(
   response,
@@ -116,7 +119,7 @@ export async function processIpfsResponse(
 ) {
   const body = response.body
   if (!response.ok || !body || ipfsFormat === 'car') {
-    return { body, originEgressBytes: null }
+    return { body, originEgressBytes: null, headers: response.headers }
   }
 
   httpAssert(
@@ -124,6 +127,14 @@ export async function processIpfsResponse(
     400,
     `Unsupported ?format value: "${ipfsFormat}"`,
   )
+
+  // When converting from CAR to raw, set content-disposition to inline so
+  // browsers display the content instead of downloading it, and drop the
+  // upstream content type so the browser sniffs the raw bytes.
+  const headers = new Headers(response.headers)
+  headers.set('content-disposition', 'inline')
+  headers.delete('content-type')
+  headers.delete('x-content-type-options')
 
   // Count the CAR bytes fetched from the service provider as we read them.
   // `CarReader.fromIterable` consumes the entire stream before returning, so
@@ -205,7 +216,7 @@ export async function processIpfsResponse(
       },
     })
 
-    return { body: rawDataStream, originEgressBytes }
+    return { body: rawDataStream, originEgressBytes, headers }
   }
 
   httpAssert(false, 404, 'Not Found')

@@ -115,13 +115,16 @@ export default {
         { signal: request.signal },
       )
 
-      const { body: responseBody, originEgressBytes } =
-        await processIpfsResponse(originResponse, {
-          ipfsRootCid,
-          ipfsSubpath,
-          ipfsFormat,
-          signal: request.signal,
-        })
+      const {
+        body: responseBody,
+        originEgressBytes,
+        headers: responseHeaders,
+      } = await processIpfsResponse(originResponse, {
+        ipfsRootCid,
+        ipfsSubpath,
+        ipfsFormat,
+        signal: request.signal,
+      })
 
       if (!responseBody) {
         // The upstream response does not have any readable body
@@ -193,27 +196,17 @@ export default {
         })(),
       )
 
-      // Return immediately, proxying the transformed response
+      // Return immediately, proxying the transformed response. The headers
+      // already carry the CAR-to-raw adjustments from processIpfsResponse.
       const response = new Response(returnedStream, {
         status: originResponse.status,
         statusText: originResponse.statusText,
-        headers: originResponse.headers,
+        headers: responseHeaders,
       })
       setRetrievalResponseHeaders(response, {
         dataSetId,
         clientCacheTtl: env.CLIENT_CACHE_TTL,
       })
-
-      // FIXME: move this logic into processIpfsResponse function
-      // When converting from CAR to RAW, set content-disposition to inline
-      // so browsers display the content instead of downloading it.
-      if (ipfsFormat !== 'car') {
-        response.headers.set('content-disposition', 'inline')
-        // Also remove the content-type header, remove x-content-type-options,
-        // and let the browser to sniff the content type.
-        response.headers.delete('content-type')
-        response.headers.delete('x-content-type-options')
-      }
 
       return response
     } catch (error) {

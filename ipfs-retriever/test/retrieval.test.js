@@ -171,13 +171,19 @@ describe('getRetrievalUrl', () => {
 })
 
 describe('processIpfsResponse', () => {
-  it('converts CAR to raw and reports the CAR size as originEgressBytes', async () => {
+  it('converts CAR to raw, reports the CAR size, and adjusts the headers for raw delivery', async () => {
     const fileBytes = new Uint8Array(1000).fill(7)
     const { carBytes, rootCid } = await buildRawBlockCar(fileBytes)
     expect(carBytes.length).toBeGreaterThan(fileBytes.length)
 
-    const { body, originEgressBytes } = await processIpfsResponse(
-      new Response(carBytes, { status: 200 }),
+    const { body, originEgressBytes, headers } = await processIpfsResponse(
+      new Response(carBytes, {
+        status: 200,
+        headers: {
+          'content-type': 'application/vnd.ipld.car',
+          'x-content-type-options': 'nosniff',
+        },
+      }),
       { ipfsRootCid: rootCid, ipfsSubpath: '/', ipfsFormat: null },
     )
 
@@ -185,22 +191,35 @@ describe('processIpfsResponse', () => {
     expect(served).toEqual(fileBytes)
     // originEgressBytes is the full CAR fetched from the SP, not the raw bytes.
     expect(originEgressBytes).toBe(carBytes.length)
+    // The browser should display the raw content and sniff its type.
+    expect(headers.get('content-disposition')).toBe('inline')
+    expect(headers.get('content-type')).toBe(null)
+    expect(headers.get('x-content-type-options')).toBe(null)
   })
 
-  it('passes the body through unchanged for ?format=car with null originEgressBytes', async () => {
+  it('passes the body and headers through unchanged for ?format=car with null originEgressBytes', async () => {
     const carBytes = new Uint8Array([1, 2, 3, 4])
-    const response = new Response(carBytes, { status: 200 })
-
-    const { body, originEgressBytes } = await processIpfsResponse(response, {
-      ipfsRootCid: 'bafyroot',
-      ipfsSubpath: '/',
-      ipfsFormat: 'car',
+    const response = new Response(carBytes, {
+      status: 200,
+      headers: { 'content-type': 'application/vnd.ipld.car' },
     })
+
+    const { body, originEgressBytes, headers } = await processIpfsResponse(
+      response,
+      {
+        ipfsRootCid: 'bafyroot',
+        ipfsSubpath: '/',
+        ipfsFormat: 'car',
+      },
+    )
 
     expect(originEgressBytes).toBe(null)
     expect(new Uint8Array(await new Response(body).arrayBuffer())).toEqual(
       carBytes,
     )
+    // CAR is served as-is, so the upstream content type is preserved.
+    expect(headers.get('content-type')).toBe('application/vnd.ipld.car')
+    expect(headers.get('content-disposition')).toBe(null)
   })
 
   it('passes the body through unchanged for non-ok responses with null originEgressBytes', async () => {

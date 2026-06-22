@@ -653,6 +653,8 @@ describe('retriever.fetch', () => {
 
     expect(res.status).toBe(200)
     expect(new Uint8Array(await res.arrayBuffer())).toEqual(fileBytes)
+    // Converting CAR to raw serves the content inline for browsers to sniff.
+    expect(res.headers.get('content-disposition')).toBe('inline')
 
     const readOutput = await env.DB.prepare(
       `SELECT egress_bytes, cache_miss_egress_bytes, cache_miss
