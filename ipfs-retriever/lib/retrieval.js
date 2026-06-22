@@ -105,13 +105,13 @@ export function getRetrievalUrl(serviceUrl, rootCid, subpath) {
  *   originEgressBytes: number | null
  *   headers: Headers
  * }>}
- *   - `body` is the stream to serve to the client (raw bytes when converting from
- *       CAR, the original body when serving CAR or passing through).
- *       `originEgressBytes` is the number of CAR bytes read from the service
+ *   - `body` is the stream to serve to the client: raw bytes when converting from
+ *       CAR, the original body when serving CAR or passing through.
+ *   - `originEgressBytes` is the number of CAR bytes read from the service
  *       provider, or `null` when the body is passed through unchanged (in that
- *       case the bytes served equal the bytes fetched). `headers` are the
- *       response headers to serve, with the CAR-to-raw adjustments applied when
- *       converting.
+ *       case the bytes served equal the bytes fetched).
+ *   - `headers` are the response headers to serve, with the CAR-to-raw adjustments
+ *       applied when converting.
  */
 export async function processIpfsResponse(
   response,
