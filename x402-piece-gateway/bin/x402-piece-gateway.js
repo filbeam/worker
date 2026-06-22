@@ -1,4 +1,4 @@
-import { httpAssert, handleError } from '@filbeam/retrieval'
+import { httpAssert, handleFetchRequest } from '@filbeam/retrieval'
 import { buildForwardUrl, parseRequest } from '../lib/request.js'
 import { useFacilitator as defaultUseFacilitator } from 'x402/verify'
 import { settleResponseHeader } from 'x402/types'
@@ -20,20 +20,10 @@ export default {
    * @param {typeof defaultUseFacilitator} [options.useFacilitator]
    * @returns {Promise<Response>}
    */
-  async fetch(
-    request,
-    env,
-    ctx,
-    { useFacilitator = defaultUseFacilitator } = {},
-  ) {
-    request.signal.addEventListener('abort', () => {
-      console.log('The request was aborted!', { url: request.url })
-    })
-    try {
-      return await this._fetch(request, env, ctx, { useFacilitator })
-    } catch (error) {
-      return handleError(error)
-    }
+  async fetch(request, env, ctx, options) {
+    return handleFetchRequest(request, () =>
+      this._fetch(request, env, ctx, options),
+    )
   },
 
   /**
@@ -41,10 +31,15 @@ export default {
    * @param {Env} env
    * @param {ExecutionContext} ctx
    * @param {object} options
-   * @param {Function} options.useFacilitator
+   * @param {typeof defaultUseFacilitator} [options.useFacilitator]
    * @returns {Promise<Response>}
    */
-  async _fetch(request, env, ctx, { useFacilitator }) {
+  async _fetch(
+    request,
+    env,
+    ctx,
+    { useFacilitator = defaultUseFacilitator } = {},
+  ) {
     httpAssert(
       ['GET', 'HEAD'].includes(request.method),
       405,

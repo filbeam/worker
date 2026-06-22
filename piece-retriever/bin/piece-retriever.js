@@ -8,7 +8,7 @@ import {
   updateDataSetStats,
   logRetrievalResult,
   getErrorHttpStatusMessage,
-  handleError,
+  handleFetchRequest,
 } from '@filbeam/retrieval'
 
 import { parseRequest } from '../lib/request.js'
@@ -27,15 +27,10 @@ export default {
    * @param {typeof defaultRetrieveFile} [options.retrieveFile]
    * @returns
    */
-  async fetch(request, env, ctx, { retrieveFile = defaultRetrieveFile } = {}) {
-    request.signal.addEventListener('abort', () => {
-      console.log('The request was aborted!', { url: request.url })
-    })
-    try {
-      return await this._fetch(request, env, ctx, { retrieveFile })
-    } catch (error) {
-      return handleError(error)
-    }
+  async fetch(request, env, ctx, options) {
+    return handleFetchRequest(request, () =>
+      this._fetch(request, env, ctx, options),
+    )
   },
 
   /**
