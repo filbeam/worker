@@ -13,6 +13,13 @@ database_id = "8cc92155-16f6-426a-b782-2965e0daf100"
 binding = "BAD_BITS_KV"
 id = "2f2e5486ea0c48e993f6dff87a4aa102"
 
+[vars]
+ORIGIN_CACHE_TTL = 86400
+CLIENT_CACHE_TTL = 31536000
+DNS_ROOT = ".localhost"
+BOT_TOKENS = ""
+ENFORCE_EGRESS_QUOTA = false
+
 [env.dev.vars]
 ENVIRONMENT = "dev"
 ORIGIN_CACHE_TTL = 86400
