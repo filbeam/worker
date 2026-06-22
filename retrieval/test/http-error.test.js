@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { getErrorHttpStatusMessage } from '../lib/http-error.js'
+import { getErrorHttpStatusMessage, handleError } from '../lib/http-error.js'
 
 describe('getErrorHttpStatusMessage', () => {
   it('uses the numeric status and message for client errors', () => {
@@ -34,5 +34,21 @@ describe('getErrorHttpStatusMessage', () => {
       status: 500,
       message: 'Internal Server Error',
     })
+  })
+})
+
+describe('handleError', () => {
+  it('returns the status and message for client errors', async () => {
+    const res = handleError(
+      Object.assign(new Error('Bad Request'), { status: 400 }),
+    )
+    expect(res.status).toBe(400)
+    expect(await res.text()).toBe('Bad Request')
+  })
+
+  it('returns a generic 500 response for server errors', async () => {
+    const res = handleError(new Error('boom'))
+    expect(res.status).toBe(500)
+    expect(await res.text()).toBe('Internal Server Error')
   })
 })

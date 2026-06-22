@@ -6,6 +6,7 @@ import {
   updateDataSetStats,
   logRetrievalResult,
   getErrorHttpStatusMessage,
+  handleError,
 } from '@filbeam/retrieval'
 
 import { parseRequest } from '../lib/request.js'
@@ -39,7 +40,7 @@ export default {
         retrieveIpfsContent,
       })
     } catch (error) {
-      return this._handleError(error)
+      return handleError(error)
     }
   },
 
@@ -246,19 +247,6 @@ export default {
 
       throw error
     }
-  },
-
-  /**
-   * @param {unknown} error
-   * @returns
-   */
-  _handleError(error) {
-    const { status, message } = getErrorHttpStatusMessage(error)
-
-    if (status >= 500) {
-      console.error(error)
-    }
-    return new Response(message, { status })
   },
 }
 

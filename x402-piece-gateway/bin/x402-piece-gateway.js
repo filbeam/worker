@@ -1,4 +1,4 @@
-import { httpAssert, getErrorHttpStatusMessage } from '@filbeam/retrieval'
+import { httpAssert, handleError } from '@filbeam/retrieval'
 import { buildForwardUrl, parseRequest } from '../lib/request.js'
 import { useFacilitator as defaultUseFacilitator } from 'x402/verify'
 import { settleResponseHeader } from 'x402/types'
@@ -32,7 +32,7 @@ export default {
     try {
       return await this._fetch(request, env, ctx, { useFacilitator })
     } catch (error) {
-      return this._handleError(error)
+      return handleError(error)
     }
   },
 
@@ -163,18 +163,5 @@ export default {
         error instanceof Error ? error.message : 'Failed to settle payment',
       )
     }
-  },
-
-  /**
-   * @param {unknown} error
-   * @returns {Response}
-   */
-  _handleError(error) {
-    const { status, message } = getErrorHttpStatusMessage(error)
-
-    if (status >= 500) {
-      console.error(error)
-    }
-    return new Response(message, { status })
   },
 }

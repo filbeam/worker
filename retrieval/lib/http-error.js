@@ -25,3 +25,19 @@ export function getErrorHttpStatusMessage(error) {
 
   return { status, message }
 }
+
+/**
+ * Builds a Response for an error thrown while handling a request, logging
+ * server errors (status >= 500) to the console.
+ *
+ * @param {unknown} error - The error to turn into a response.
+ * @returns {Response}
+ */
+export function handleError(error) {
+  const { status, message } = getErrorHttpStatusMessage(error)
+
+  if (status >= 500) {
+    console.error(error)
+  }
+  return new Response(message, { status })
+}
