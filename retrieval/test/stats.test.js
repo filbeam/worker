@@ -1,7 +1,16 @@
 import { describe, it, expect } from 'vitest'
-import { updateDataSetStats, logRetrievalResult } from '../lib/stats'
+import {
+  updateDataSetStats,
+  logRetrievalResult,
+  logRetrievalError,
+  recordRetrieval,
+} from '../lib/stats'
 import { withDataSet } from './test-helpers'
-import { env } from 'cloudflare:test'
+import {
+  env,
+  createExecutionContext,
+  waitOnExecutionContext,
+} from 'cloudflare:test'
 
 describe('updateDataSetStats', () => {
   it('updates egress stats', async () => {
@@ -354,5 +363,91 @@ describe('logRetrievalResult', () => {
       .first()
 
     expect(result).toEqual({ egress_bytes: 999, cache_miss_egress_bytes: 999 })
+  })
+})
+
+describe('logRetrievalError', () => {
+  it('logs the error status with no egress and no data set', async () => {
+    const ctx = createExecutionContext()
+
+    logRetrievalError(
+      env,
+      ctx,
+      Object.assign(new Error('Not Found'), { status: 404 }),
+      {
+        requestCountryCode: 'US',
+        timestamp: new Date().toISOString(),
+        botName: undefined,
+      },
+    )
+    await waitOnExecutionContext(ctx)
+
+    const result = await env.DB.prepare(
+      `SELECT response_status, egress_bytes, cache_miss, data_set_id
+       FROM retrieval_logs
+       WHERE response_status = 404 AND request_country_code = 'US'`,
+    ).all()
+
+    expect(result.results).toEqual([
+      {
+        response_status: 404,
+        egress_bytes: null,
+        cache_miss: null,
+        data_set_id: null,
+      },
+    ])
+  })
+})
+
+describe('recordRetrieval', () => {
+  it('writes the retrieval log and updates the data set egress stats', async () => {
+    const DATA_SET_ID = 'record-retrieval'
+    await withDataSet(env, {
+      dataSetId: DATA_SET_ID,
+      cdnEgressQuota: 1000,
+      cacheMissEgressQuota: 1000,
+    })
+
+    await recordRetrieval(env, {
+      dataSetId: DATA_SET_ID,
+      cacheMiss: true,
+      cacheMissResponseValid: true,
+      egressBytes: 100,
+      cacheMissEgressBytes: 250,
+      responseStatus: 200,
+      requestCountryCode: 'US',
+      timestamp: new Date().toISOString(),
+      enforceEgressQuota: true,
+    })
+
+    const log = await env.DB.prepare(
+      `SELECT egress_bytes, cache_miss_egress_bytes, cache_miss
+       FROM retrieval_logs WHERE data_set_id = ?`,
+    )
+      .bind(DATA_SET_ID)
+      .first()
+    expect(log).toEqual({
+      egress_bytes: 100,
+      cache_miss_egress_bytes: 250,
+      cache_miss: 1,
+    })
+
+    const dataSet = await env.DB.prepare(
+      `SELECT total_egress_bytes_used FROM data_sets WHERE id = ?`,
+    )
+      .bind(DATA_SET_ID)
+      .first()
+    expect(dataSet.total_egress_bytes_used).toBe(100)
+
+    const quota = await env.DB.prepare(
+      `SELECT cdn_egress_quota, cache_miss_egress_quota
+       FROM data_set_egress_quotas WHERE data_set_id = ?`,
+    )
+      .bind(DATA_SET_ID)
+      .first()
+    expect(quota).toEqual({
+      cdn_egress_quota: 1000 - 100,
+      cache_miss_egress_quota: 1000 - 250,
+    })
   })
 })
