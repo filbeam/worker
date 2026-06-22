@@ -2,7 +2,7 @@ import { CarReader } from '@ipld/car'
 // @ts-ignore - Types exist but package.json exports configuration prevents resolution
 import * as carBlockValidator from '@web3-storage/car-block-validator'
 import { recursive as exporter } from 'ipfs-unixfs-exporter'
-import { httpAssert } from '@filbeam/retrieval'
+import { httpAssert, originCacheOptions } from '@filbeam/retrieval'
 
 /** @import {UnixFSBasicEntry} from 'ipfs-unixfs-exporter' */
 /** @typedef {CarReader['_blocks'][0]} Block */
@@ -43,14 +43,7 @@ export async function retrieveIpfsContent(
   const url = getRetrievalUrl(baseUrl, ipfsRootCid, ipfsSubpath) + '?format=car'
   console.log(`Fetching IPFS content from: ${url}`)
   const response = await fetch(url, {
-    cf: {
-      cacheTtlByStatus: {
-        '200-299': cacheTtl,
-        404: 0,
-        '500-599': 0,
-      },
-      cacheEverything: true,
-    },
+    cf: originCacheOptions(cacheTtl),
     signal,
   })
   const cacheStatus = response.headers.get('CF-Cache-Status')
