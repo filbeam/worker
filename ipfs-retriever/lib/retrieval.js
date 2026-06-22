@@ -160,8 +160,15 @@ export async function processIpfsResponse(
         }
         const block = res.value
 
-        // TODO: compare multihashes only
-        if (block.cid.toString() !== blockCid.toString()) {
+        // Compare only the multihashes, so a block stored under an equivalent
+        // CID with a different codec or CID version still matches. validateBlock
+        // below verifies the block bytes hash to this multihash.
+        const actualMultihash = block.cid.multihash.bytes
+        const expectedMultihash = blockCid.multihash.bytes
+        if (
+          actualMultihash.length !== expectedMultihash.length ||
+          !actualMultihash.every((byte, i) => byte === expectedMultihash[i])
+        ) {
           throw new Error(
             `Unexpected block CID ${block.cid}, expected ${blockCid}`,
           )
