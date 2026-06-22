@@ -2,7 +2,8 @@ import {
   isValidEthereumAddress,
   httpAssert,
   setContentSecurityPolicy,
-  getBadBitsEntry,
+  isCidDenied,
+  BAD_BITS_DENIED_MESSAGE,
   updateDataSetStats,
   logRetrievalResult,
   getErrorHttpStatusMessage,
@@ -85,16 +86,10 @@ export default {
           pieceCid,
           env.ENFORCE_EGRESS_QUOTA,
         ),
-        env.BAD_BITS_KV.get(`bad-bits:${await getBadBitsEntry(pieceCid)}`, {
-          type: 'json',
-        }),
+        isCidDenied(env, pieceCid),
       ])
 
-      httpAssert(
-        !isBadBit,
-        404,
-        'The requested CID was flagged by the Bad Bits Denylist at https://badbits.dwebops.pub',
-      )
+      httpAssert(!isBadBit, 404, BAD_BITS_DENIED_MESSAGE)
 
       httpAssert(
         retrievalCandidates.length > 0,

@@ -10,3 +10,21 @@ export async function getBadBitsEntry(cid) {
     .join('')
   return hashHex
 }
+
+export const BAD_BITS_DENIED_MESSAGE =
+  'The requested CID was flagged by the Bad Bits Denylist at https://badbits.dwebops.pub'
+
+/**
+ * Looks up whether a CID is on the Bad Bits denylist stored in KV.
+ *
+ * @param {{ BAD_BITS_KV: KVNamespace }} env
+ * @param {string} cid
+ * @returns {Promise<boolean>}
+ */
+export async function isCidDenied(env, cid) {
+  const entry = await env.BAD_BITS_KV.get(
+    `bad-bits:${await getBadBitsEntry(cid)}`,
+    { type: 'json' },
+  )
+  return Boolean(entry)
+}

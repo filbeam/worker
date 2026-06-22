@@ -2,7 +2,8 @@ import {
   isValidEthereumAddress,
   httpAssert,
   setContentSecurityPolicy,
-  getBadBitsEntry,
+  isCidDenied,
+  BAD_BITS_DENIED_MESSAGE,
   updateDataSetStats,
   logRetrievalResult,
   getErrorHttpStatusMessage,
@@ -97,18 +98,8 @@ export default {
         )
 
       // Now check Bad Bits with the ipfsRootCid we got from the database
-      const isBadBit = await env.BAD_BITS_KV.get(
-        `bad-bits:${await getBadBitsEntry(ipfsRootCid)}`,
-        {
-          type: 'json',
-        },
-      )
-
-      httpAssert(
-        !isBadBit,
-        404,
-        'The requested CID was flagged by the Bad Bits Denylist at https://badbits.dwebops.pub',
-      )
+      const isBadBit = await isCidDenied(env, ipfsRootCid)
+      httpAssert(!isBadBit, 404, BAD_BITS_DENIED_MESSAGE)
 
       httpAssert(
         serviceProviderId,
