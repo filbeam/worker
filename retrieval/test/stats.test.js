@@ -218,6 +218,51 @@ describe('updateDataSetStats', () => {
     expect(quotaResult.cdn_egress_quota).toBe(initialCdnQuota - EGRESS_BYTES)
     expect(quotaResult.cache_miss_egress_quota).toBe(initialCacheMissQuota)
   })
+
+  it('charges the cache miss quota by cacheMissEgressBytes when it differs from egressBytes', async () => {
+    const DATA_SET_ID = 'test-data-set-car'
+    // Raw bytes served to the client.
+    const EGRESS_BYTES = 100
+    // Larger CAR fetched from the service provider on a cache miss.
+    const CACHE_MISS_EGRESS_BYTES = 250
+    const initialCdnQuota = 500
+    const initialCacheMissQuota = 300
+
+    await withDataSet(env, {
+      dataSetId: DATA_SET_ID,
+      cdnEgressQuota: initialCdnQuota,
+      cacheMissEgressQuota: initialCacheMissQuota,
+    })
+
+    await updateDataSetStats(env, {
+      dataSetId: DATA_SET_ID,
+      egressBytes: EGRESS_BYTES,
+      cacheMissEgressBytes: CACHE_MISS_EGRESS_BYTES,
+      cacheMiss: true,
+      cacheMissResponseValid: true,
+      enforceEgressQuota: true,
+    })
+
+    const dataSetResult = await env.DB.prepare(
+      `SELECT total_egress_bytes_used FROM data_sets WHERE id = ?`,
+    )
+      .bind(DATA_SET_ID)
+      .first()
+
+    const quotaResult = await env.DB.prepare(
+      `SELECT cdn_egress_quota, cache_miss_egress_quota FROM data_set_egress_quotas WHERE data_set_id = ?`,
+    )
+      .bind(DATA_SET_ID)
+      .first()
+
+    // Total egress and the CDN quota are charged the raw bytes served.
+    expect(dataSetResult.total_egress_bytes_used).toBe(EGRESS_BYTES)
+    expect(quotaResult.cdn_egress_quota).toBe(initialCdnQuota - EGRESS_BYTES)
+    // The cache-miss quota is charged the larger CAR fetched from the SP.
+    expect(quotaResult.cache_miss_egress_quota).toBe(
+      initialCacheMissQuota - CACHE_MISS_EGRESS_BYTES,
+    )
+  })
 })
 
 describe('logRetrievalResult', () => {
@@ -254,5 +299,60 @@ describe('logRetrievalResult', () => {
         request_country_code: 'US',
       },
     ])
+  })
+
+  it('persists cache_miss_egress_bytes distinct from egress_bytes', async () => {
+    const DATA_SET_ID = 'cme-distinct'
+
+    await logRetrievalResult(env, {
+      dataSetId: DATA_SET_ID,
+      cacheMiss: true,
+      cacheMissResponseValid: true,
+      egressBytes: 1234,
+      cacheMissEgressBytes: 5678,
+      responseStatus: 200,
+      timestamp: new Date().toISOString(),
+      requestCountryCode: 'US',
+    })
+
+    const result = await env.DB.prepare(
+      `SELECT data_set_id, egress_bytes, cache_miss_egress_bytes
+       FROM retrieval_logs
+       WHERE data_set_id = ?`,
+    )
+      .bind(DATA_SET_ID)
+      .all()
+
+    expect(result.results).toEqual([
+      {
+        data_set_id: DATA_SET_ID,
+        egress_bytes: 1234,
+        cache_miss_egress_bytes: 5678,
+      },
+    ])
+  })
+
+  it('defaults cache_miss_egress_bytes to egress_bytes when not provided', async () => {
+    const DATA_SET_ID = 'cme-default'
+
+    await logRetrievalResult(env, {
+      dataSetId: DATA_SET_ID,
+      cacheMiss: false,
+      cacheMissResponseValid: null,
+      egressBytes: 999,
+      responseStatus: 200,
+      timestamp: new Date().toISOString(),
+      requestCountryCode: 'US',
+    })
+
+    const result = await env.DB.prepare(
+      `SELECT egress_bytes, cache_miss_egress_bytes
+       FROM retrieval_logs
+       WHERE data_set_id = ?`,
+    )
+      .bind(DATA_SET_ID)
+      .first()
+
+    expect(result).toEqual({ egress_bytes: 999, cache_miss_egress_bytes: 999 })
   })
 })
