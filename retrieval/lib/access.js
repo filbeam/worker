@@ -122,11 +122,13 @@ export function filterAuthorizedRetrievalCandidates(
  * authorization cascade in {@link filterAuthorizedRetrievalCandidates} reads.
  * Callers supply the lookup-specific `where` clause and any extra columns.
  *
+ * Deleted pieces are always excluded.
+ *
  * @param {object} options
  * @param {string[]} [options.extraColumns] - Extra columns to select, in
  *   addition to the ones the cascade reads.
- * @param {string} options.where - The `WHERE` clause, without the `WHERE`
- *   keyword.
+ * @param {string} options.where - The lookup condition, without the `WHERE`
+ *   keyword. It is combined with a filter that excludes deleted pieces.
  * @returns {string}
  */
 export function buildRetrievalCandidateQuery({ extraColumns = [], where }) {
@@ -154,6 +156,6 @@ export function buildRetrievalCandidateQuery({ extraColumns = [], where }) {
       ON data_sets.service_provider_id = service_providers.id
     LEFT OUTER JOIN wallet_details
       ON data_sets.payer_address = wallet_details.address
-    WHERE ${where}
+    WHERE (${where}) AND pieces.is_deleted IS FALSE
   `
 }

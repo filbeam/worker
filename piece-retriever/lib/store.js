@@ -30,7 +30,7 @@ export async function getRetrievalCandidatesAndValidatePayer(
   enforceEgressQuota = false,
 ) {
   const query = buildRetrievalCandidateQuery({
-    where: 'pieces.cid = ? AND pieces.is_deleted IS FALSE',
+    where: 'pieces.cid = ?',
   })
 
   const results = /**

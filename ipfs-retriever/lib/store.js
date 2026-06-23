@@ -11,7 +11,7 @@ const SELECT_CANDIDATES_BY_CID = buildRetrievalCandidateQuery({
     'pieces.ipfs_root_cid',
     'data_sets.with_ipfs_indexing',
   ],
-  where: 'pieces.ipfs_root_cid = ? AND pieces.is_deleted IS FALSE',
+  where: 'pieces.ipfs_root_cid = ?',
 })
 
 /**

@@ -188,7 +188,17 @@ describe('buildRetrievalCandidateQuery', () => {
     expect(query).toContain(
       'LEFT OUTER JOIN data_sets\n      ON pieces.data_set_id = data_sets.id',
     )
-    expect(query).toContain('WHERE pieces.cid = ?')
+    expect(query).toContain('WHERE (pieces.cid = ?)')
+  })
+
+  it('always excludes deleted pieces', () => {
+    const query = buildRetrievalCandidateQuery({
+      where: 'pieces.cid = ?',
+    })
+
+    expect(query).toContain(
+      'WHERE (pieces.cid = ?) AND pieces.is_deleted IS FALSE',
+    )
   })
 
   it('appends the extra columns', () => {
@@ -199,6 +209,6 @@ describe('buildRetrievalCandidateQuery', () => {
 
     expect(query).toContain('pieces.id AS piece_id')
     expect(query).toContain('pieces.ipfs_root_cid')
-    expect(query).toContain('WHERE pieces.ipfs_root_cid = ?')
+    expect(query).toContain('WHERE (pieces.ipfs_root_cid = ?)')
   })
 })
