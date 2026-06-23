@@ -713,6 +713,117 @@ describe('retriever.fetch', () => {
     ])
   })
 
+  it('charges the cache-miss egress quota by the CAR size when enforcing', async () => {
+    const fileBytes = new Uint8Array(1000).fill(42)
+    const { carBytes, rootCid } = await buildRawBlockCar(fileBytes)
+
+    const dataSetId = '8888'
+    const pieceId = '8888'
+    await withDataSetPiece(env, {
+      serviceProviderId: 'sp-quota-car',
+      payerAddress: defaultPayerAddress,
+      pieceCid: 'bagacarquota',
+      ipfsRootCid: rootCid,
+      dataSetId,
+      pieceId,
+    })
+    await withApprovedProvider(env, {
+      id: 'sp-quota-car',
+      serviceUrl: 'https://pdp.example/',
+    })
+    await env.DB.prepare(
+      'INSERT INTO data_set_egress_quotas (data_set_id, cdn_egress_quota, cache_miss_egress_quota) VALUES (?, ?, ?)',
+    )
+      .bind(dataSetId, 100000, 100000)
+      .run()
+
+    const mockRetrieveIpfsContent = vi.fn().mockResolvedValue({
+      response: new Response(carBytes, { status: 200 }),
+      cacheMiss: true,
+    })
+
+    const ctx = createExecutionContext()
+    const req = withRequest(dataSetId, pieceId, 'GET', {}, { format: null })
+    const res = await worker.fetch(
+      req,
+      { ...env, ENFORCE_EGRESS_QUOTA: true },
+      ctx,
+      { retrieveIpfsContent: mockRetrieveIpfsContent },
+    )
+    await waitOnExecutionContext(ctx)
+
+    expect(res.status).toBe(200)
+    expect(new Uint8Array(await res.arrayBuffer())).toEqual(fileBytes)
+
+    // The CDN quota is charged the raw bytes served, the cache-miss quota the
+    // larger CAR fetched from the service provider.
+    const quota = await env.DB.prepare(
+      'SELECT cdn_egress_quota, cache_miss_egress_quota FROM data_set_egress_quotas WHERE data_set_id = ?',
+    )
+      .bind(dataSetId)
+      .first()
+
+    expect(quota).toStrictEqual({
+      cdn_egress_quota: 100000 - fileBytes.length,
+      cache_miss_egress_quota: 100000 - carBytes.length,
+    })
+  })
+
+  it('charges the cache-miss egress quota for a ?format=car cache miss', async () => {
+    // `?format=car` passes the CAR through unchanged, so the bytes served equal
+    // the bytes fetched from the service provider.
+    const carBytes = new Uint8Array(500).fill(7)
+
+    const dataSetId = '9090'
+    const pieceId = '9090'
+    await withDataSetPiece(env, {
+      serviceProviderId: 'sp-car-passthrough',
+      payerAddress: defaultPayerAddress,
+      pieceCid: 'bagacarpassthrough',
+      ipfsRootCid: 'bafkcarpassthrough',
+      dataSetId,
+      pieceId,
+    })
+    await withApprovedProvider(env, {
+      id: 'sp-car-passthrough',
+      serviceUrl: 'https://pdp.example/',
+    })
+    await env.DB.prepare(
+      'INSERT INTO data_set_egress_quotas (data_set_id, cdn_egress_quota, cache_miss_egress_quota) VALUES (?, ?, ?)',
+    )
+      .bind(dataSetId, 100000, 100000)
+      .run()
+
+    const mockRetrieveIpfsContent = vi.fn().mockResolvedValue({
+      response: new Response(carBytes, { status: 200 }),
+      cacheMiss: true,
+    })
+
+    const ctx = createExecutionContext()
+    const req = withRequest(dataSetId, pieceId, 'GET', {}, { format: 'car' })
+    const res = await worker.fetch(
+      req,
+      { ...env, ENFORCE_EGRESS_QUOTA: true },
+      ctx,
+      { retrieveIpfsContent: mockRetrieveIpfsContent },
+    )
+    await waitOnExecutionContext(ctx)
+
+    expect(res.status).toBe(200)
+    expect(new Uint8Array(await res.arrayBuffer())).toEqual(carBytes)
+
+    const quota = await env.DB.prepare(
+      'SELECT cdn_egress_quota, cache_miss_egress_quota FROM data_set_egress_quotas WHERE data_set_id = ?',
+    )
+      .bind(dataSetId)
+      .first()
+
+    expect(quota).toStrictEqual({
+      cdn_egress_quota: 100000 - carBytes.length,
+      cache_miss_egress_quota: 100000 - carBytes.length,
+    })
+  })
+
   it('retries another service provider when the first one fails', async () => {
     const sharedIpfsRootCid = 'bafkfallbackshared'
     const badServiceUrl = 'https://bad-sp.example/'
