@@ -1,4 +1,7 @@
-import { httpAssert } from '@filbeam/retrieval'
+import {
+  httpAssert,
+  filterAuthorizedRetrievalCandidates,
+} from '@filbeam/retrieval'
 
 /**
  * Retrieves the provider and data set id for a given root CID.
@@ -67,70 +70,22 @@ export async function getRetrievalCandidatesAndValidatePayer(
       (await env.DB.prepare(query).bind(pieceCid).all()).results
     )
   )
-  httpAssert(
-    results && results.length > 0,
-    404,
-    `Piece_cid '${pieceCid}' does not exist or may not have been indexed yet.`,
-  )
-
-  const withServiceProvider = results.filter(
-    (row) =>
-      row &&
-      row.service_provider_id != null &&
-      !row.service_provider_is_deleted,
-  )
-  httpAssert(
-    withServiceProvider.length > 0,
-    404,
-    `Piece_cid '${pieceCid}' exists but has no associated service provider.`,
-  )
-
-  const withPaymentRail = withServiceProvider.filter(
-    (row) =>
-      row.payer_address && row.payer_address.toLowerCase() === payerAddress,
-  )
-  httpAssert(
-    withPaymentRail.length > 0,
-    402,
-    `There is no Filecoin Warm Storage Service deal for payer '${payerAddress}' and piece_cid '${pieceCid}'.`,
-  )
-
-  const withCDN = withPaymentRail.filter(
-    (row) => row.with_cdn && row.with_cdn === 1,
-  )
-  httpAssert(
-    withCDN.length > 0,
-    402,
-    `The Filecoin Warm Storage Service deal for payer '${payerAddress}' and piece_cid '${pieceCid}' has withCDN=false.`,
-  )
-
-  const withPayerNotSanctioned = withCDN.filter((row) => !row.is_sanctioned)
-  httpAssert(
-    withPayerNotSanctioned.length > 0,
-    403,
-    `Wallet '${payerAddress}' is sanctioned and cannot retrieve piece_cid '${pieceCid}'.`,
-  )
-
-  const withApprovedProvider = withPayerNotSanctioned.filter(
-    (row) => row.service_url,
-  )
-  httpAssert(
-    withApprovedProvider.length > 0,
-    404,
-    `No approved service provider found for payer '${payerAddress}' and piece_cid '${pieceCid}'.`,
+  const authorizedRetrievalCandidates = filterAuthorizedRetrievalCandidates(
+    results,
+    { payerAddress },
   )
 
   // Check CDN quota first
   const withSufficientCDNQuota = enforceEgressQuota
-    ? withApprovedProvider.filter((row) => {
+    ? authorizedRetrievalCandidates.filter((row) => {
         return BigInt(row.cdn_egress_quota ?? '0') > 0n
       })
-    : withApprovedProvider
+    : authorizedRetrievalCandidates
 
   httpAssert(
     withSufficientCDNQuota.length > 0,
     402,
-    `CDN egress quota exhausted for payer '${payerAddress}' and data set '${withApprovedProvider[0]?.data_set_id}'. Please top up your CDN egress quota.`,
+    `CDN egress quota exhausted for payer '${payerAddress}' and data set '${authorizedRetrievalCandidates[0]?.data_set_id}'. Please top up your CDN egress quota.`,
   )
 
   // Check cache-miss quota

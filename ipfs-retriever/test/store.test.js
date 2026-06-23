@@ -491,6 +491,37 @@ describe('getRetrievalCandidatesByDataSetAndPiece', () => {
       [serviceProviderId1, serviceProviderId2].sort(),
     )
   })
+
+  it('excludes soft-deleted service providers', async () => {
+    const payerAddress = '0xabc123def456abc123def456abc123def456abc9'
+    const ipfsRootCid = 'bafkbyids9deleted'
+    const serviceProviderId = 'sp-byids-9-deleted'
+
+    await withApprovedProvider(env, {
+      id: serviceProviderId,
+      serviceUrl: 'https://sp9.xyz',
+    })
+    await env.DB.prepare(
+      'UPDATE service_providers SET is_deleted = TRUE WHERE id = ?',
+    )
+      .bind(serviceProviderId)
+      .run()
+    await withDataSetPiece(env, {
+      payerAddress,
+      serviceProviderId,
+      dataSetId: 'ds-9',
+      pieceId: 'piece-9',
+      withCDN: true,
+      withIpfsIndexing: true,
+      ipfsRootCid,
+    })
+
+    await assert.rejects(
+      async () =>
+        await getRetrievalCandidatesByDataSetAndPiece(env, 'ds-9', 'piece-9'),
+      /has no associated service provider/,
+    )
+  })
 })
 
 describe('getSlugForWalletAndCid', () => {
