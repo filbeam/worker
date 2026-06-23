@@ -2,8 +2,7 @@ import {
   isValidEthereumAddress,
   httpAssert,
   setRetrievalResponseHeaders,
-  isCidDenied,
-  BAD_BITS_DENIED_MESSAGE,
+  assertCidNotDenied,
   logRetrievalResult,
   recordRetrieval,
   logRetrievalError,
@@ -80,8 +79,7 @@ export default {
       const ipfsRootCid = candidates[0].ipfsRootCid
 
       // Now check Bad Bits with the ipfsRootCid we got from the database
-      const isBadBit = await isCidDenied(env, ipfsRootCid)
-      httpAssert(!isBadBit, 404, BAD_BITS_DENIED_MESSAGE)
+      await assertCidNotDenied(env, ipfsRootCid)
 
       const {
         failureResponse,
