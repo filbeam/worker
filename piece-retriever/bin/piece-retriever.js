@@ -8,6 +8,7 @@ import {
   logRetrievalError,
   handleFetchRequest,
   selectRetrievalCandidate,
+  handleEmptyBodyResponse,
 } from '@filbeam/retrieval'
 
 import { parseRequest } from '../lib/request.js'
@@ -102,30 +103,14 @@ export default {
       )
 
       if (!retrievalResult.response.body) {
-        // The upstream response does not have any readable body
-        // There is no need to measure response body size, we can
-        // return the original response object.
-        ctx.waitUntil(
-          logRetrievalResult(env, {
-            cacheMiss: retrievalResult.cacheMiss,
-            cacheMissResponseValid: false,
-            responseStatus: retrievalResult.response.status,
-            egressBytes: 0,
-            requestCountryCode,
-            timestamp: requestTimestamp,
-            dataSetId: retrievalCandidate.dataSetId,
-            botName,
-          }),
-        )
-        const response = new Response(
-          retrievalResult.response.body,
-          retrievalResult.response,
-        )
-        setRetrievalResponseHeaders(response, {
+        return handleEmptyBodyResponse(env, ctx, {
+          response: retrievalResult.response,
+          cacheMiss: retrievalResult.cacheMiss,
           dataSetId: retrievalCandidate.dataSetId,
-          clientCacheTtl: env.CLIENT_CACHE_TTL,
+          requestCountryCode,
+          timestamp: requestTimestamp,
+          botName,
         })
-        return response
       }
 
       // Stream, count bytes and validate (a cache miss)
