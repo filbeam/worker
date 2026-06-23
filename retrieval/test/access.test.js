@@ -10,8 +10,6 @@ const MESSAGES = {
   noApprovedProvider: 'no approved provider',
 }
 
-const IPFS_INDEXING_DISABLED = 'ipfs indexing disabled'
-
 /** A row that passes every check. payer_address is upper-cased on purpose. */
 function authorizedRow(overrides = {}) {
   return {
@@ -19,7 +17,6 @@ function authorizedRow(overrides = {}) {
     service_provider_is_deleted: 0,
     payer_address: '0xABCDEF',
     with_cdn: 1,
-    with_ipfs_indexing: 1,
     is_sanctioned: 0,
     service_url: 'https://sp.example/',
     ...overrides,
@@ -45,11 +42,7 @@ describe('filterAuthorizedRetrievalRows', () => {
   it('returns the rows passing every check, matching the payer case-insensitively', () => {
     const rows = [authorizedRow()]
     expect(
-      filterAuthorizedRetrievalRows(rows, {
-        payerAddress,
-        ipfsIndexingDisabledMessage: IPFS_INDEXING_DISABLED,
-        messages: MESSAGES,
-      }),
+      filterAuthorizedRetrievalRows(rows, { payerAddress, messages: MESSAGES }),
     ).toEqual(rows)
   })
 
@@ -108,29 +101,6 @@ describe('filterAuthorizedRetrievalRows', () => {
       402,
       MESSAGES.cdnDisabled,
     )
-  })
-
-  it('throws 402 when IPFS indexing is required but disabled', () => {
-    expectHttpError(
-      () =>
-        filterAuthorizedRetrievalRows(
-          [authorizedRow({ with_ipfs_indexing: 0 })],
-          {
-            payerAddress,
-            ipfsIndexingDisabledMessage: IPFS_INDEXING_DISABLED,
-            messages: MESSAGES,
-          },
-        ),
-      402,
-      IPFS_INDEXING_DISABLED,
-    )
-  })
-
-  it('does not require IPFS indexing by default', () => {
-    const rows = [authorizedRow({ with_ipfs_indexing: 0 })]
-    expect(
-      filterAuthorizedRetrievalRows(rows, { payerAddress, messages: MESSAGES }),
-    ).toEqual(rows)
   })
 
   it('throws 403 when the payer is sanctioned', () => {

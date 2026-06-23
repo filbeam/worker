@@ -47,7 +47,6 @@ function validateQueryResultsAndGetCandidates(params) {
 
   const withApprovedProvider = filterAuthorizedRetrievalRows(results, {
     payerAddress,
-    ipfsIndexingDisabledMessage: `The Filecoin Warm Storage Service deal for payer '${payerAddress}' and ${lookupKey} has withIpfsIndexing=false.`,
     messages: {
       notIndexed: `${lookupKey} does not exist or may not have been indexed yet.`,
       noServiceProvider: `${lookupKey} exists but has no associated service provider.`,
@@ -58,9 +57,18 @@ function validateQueryResultsAndGetCandidates(params) {
     },
   })
 
-  const withIpfsRootCid = withApprovedProvider.filter(
-    (row) => row.ipfs_root_cid,
+  // IPFS indexing is specific to IPFS retrievals, so it is checked here rather
+  // than in the shared cascade.
+  const withIpfsIndexing = withApprovedProvider.filter(
+    (row) => row.with_ipfs_indexing === 1,
   )
+  httpAssert(
+    withIpfsIndexing.length > 0,
+    402,
+    `The Filecoin Warm Storage Service deal for payer '${payerAddress}' and ${lookupKey} has withIpfsIndexing=false.`,
+  )
+
+  const withIpfsRootCid = withIpfsIndexing.filter((row) => row.ipfs_root_cid)
   httpAssert(
     withIpfsRootCid.length > 0,
     404,

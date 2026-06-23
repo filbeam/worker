@@ -7,8 +7,8 @@ import { httpAssert } from './http-assert.js'
  * message when no row survives. Returns the rows that pass every check.
  *
  * The checks run in order: indexed, has a (non-deleted) service provider, has a
- * payment rail for the payer, has CDN enabled, (optionally) has IPFS indexing
- * enabled, payer is not sanctioned, and the service provider is approved.
+ * payment rail for the payer, has CDN enabled, payer is not sanctioned, and the
+ * service provider is approved.
  *
  * @param {any[]} rows
  * @param {object} options
@@ -20,14 +20,11 @@ import { httpAssert } from './http-assert.js'
  * @param {string} options.messages.cdnDisabled
  * @param {string} options.messages.sanctioned
  * @param {string} options.messages.noApprovedProvider
- * @param {string} [options.ipfsIndexingDisabledMessage] - When provided, also
- *   require IPFS indexing to be enabled on the deal, throwing this message
- *   otherwise.
  * @returns {any[]} The rows passing every check.
  */
 export function filterAuthorizedRetrievalRows(
   rows,
-  { payerAddress, messages, ipfsIndexingDisabledMessage },
+  { payerAddress, messages },
 ) {
   httpAssert(rows && rows.length > 0, 404, messages.notIndexed)
 
@@ -50,15 +47,7 @@ export function filterAuthorizedRetrievalRows(
   )
   httpAssert(withCDN.length > 0, 402, messages.cdnDisabled)
 
-  let rowsAfterCdn = withCDN
-  if (ipfsIndexingDisabledMessage) {
-    rowsAfterCdn = withCDN.filter((row) => row.with_ipfs_indexing === 1)
-    httpAssert(rowsAfterCdn.length > 0, 402, ipfsIndexingDisabledMessage)
-  }
-
-  const withPayerNotSanctioned = rowsAfterCdn.filter(
-    (row) => !row.is_sanctioned,
-  )
+  const withPayerNotSanctioned = withCDN.filter((row) => !row.is_sanctioned)
   httpAssert(withPayerNotSanctioned.length > 0, 403, messages.sanctioned)
 
   const withApprovedProvider = withPayerNotSanctioned.filter(
