@@ -11,6 +11,7 @@ const SELECT_CANDIDATES_BY_CID = `
      data_sets.with_cdn,
      data_sets.with_ipfs_indexing,
      service_providers.service_url,
+     service_providers.is_deleted as service_provider_is_deleted,
      wallet_details.is_sanctioned
    FROM pieces
    LEFT OUTER JOIN data_sets

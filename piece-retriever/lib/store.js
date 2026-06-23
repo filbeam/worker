@@ -69,7 +69,6 @@ export async function getRetrievalCandidatesAndValidatePayer(
   )
   const withApprovedProvider = filterAuthorizedRetrievalRows(results, {
     payerAddress,
-    requireServiceProviderNotDeleted: true,
     messages: {
       notIndexed: `Piece_cid '${pieceCid}' does not exist or may not have been indexed yet.`,
       noServiceProvider: `Piece_cid '${pieceCid}' exists but has no associated service provider.`,

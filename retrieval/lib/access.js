@@ -20,8 +20,6 @@ import { httpAssert } from './http-assert.js'
  * @param {string} options.messages.cdnDisabled
  * @param {string} options.messages.sanctioned
  * @param {string} options.messages.noApprovedProvider
- * @param {boolean} [options.requireServiceProviderNotDeleted] - Also exclude
- *   rows whose service provider is soft-deleted.
  * @param {string} [options.ipfsIndexingDisabledMessage] - When provided, also
  *   require IPFS indexing to be enabled on the deal, throwing this message
  *   otherwise.
@@ -29,12 +27,7 @@ import { httpAssert } from './http-assert.js'
  */
 export function filterAuthorizedRetrievalRows(
   rows,
-  {
-    payerAddress,
-    messages,
-    requireServiceProviderNotDeleted = false,
-    ipfsIndexingDisabledMessage,
-  },
+  { payerAddress, messages, ipfsIndexingDisabledMessage },
 ) {
   httpAssert(rows && rows.length > 0, 404, messages.notIndexed)
 
@@ -42,7 +35,7 @@ export function filterAuthorizedRetrievalRows(
     (row) =>
       row &&
       row.service_provider_id != null &&
-      (!requireServiceProviderNotDeleted || !row.service_provider_is_deleted),
+      !row.service_provider_is_deleted,
   )
   httpAssert(withServiceProvider.length > 0, 404, messages.noServiceProvider)
 

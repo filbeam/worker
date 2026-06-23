@@ -74,20 +74,13 @@ describe('filterAuthorizedRetrievalRows', () => {
     )
   })
 
-  it('excludes soft-deleted service providers only when requireServiceProviderNotDeleted is set', () => {
-    const rows = [authorizedRow({ service_provider_is_deleted: 1 })]
-    // Without the flag the deleted provider is allowed through.
-    expect(
-      filterAuthorizedRetrievalRows(rows, { payerAddress, messages: MESSAGES }),
-    ).toEqual(rows)
-    // With the flag it is excluded.
+  it('always excludes soft-deleted service providers', () => {
     expectHttpError(
       () =>
-        filterAuthorizedRetrievalRows(rows, {
-          payerAddress,
-          requireServiceProviderNotDeleted: true,
-          messages: MESSAGES,
-        }),
+        filterAuthorizedRetrievalRows(
+          [authorizedRow({ service_provider_is_deleted: 1 })],
+          { payerAddress, messages: MESSAGES },
+        ),
       404,
       MESSAGES.noServiceProvider,
     )
