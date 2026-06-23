@@ -43,11 +43,6 @@ export default {
    * @returns
    */
   async _fetch(request, env, ctx, { retrieveFile = defaultRetrieveFile } = {}) {
-    httpAssert(
-      ['GET', 'HEAD'].includes(request.method),
-      405,
-      'Method Not Allowed',
-    )
     if (URL.parse(request.url)?.pathname === '/') {
       return Response.redirect('https://filbeam.com/', 302)
     }

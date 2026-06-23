@@ -52,12 +52,6 @@ export default {
     ctx,
     { retrieveIpfsContent = defaultRetrieveIpfsContent } = {},
   ) {
-    httpAssert(
-      ['GET', 'HEAD'].includes(request.method),
-      405,
-      'Method Not Allowed',
-    )
-
     if (
       URL.parse(request.url)?.hostname === env.DNS_ROOT.slice(1) ||
       URL.parse(request.url)?.hostname === `link${env.DNS_ROOT}`
