@@ -1,8 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import {
-  filterAuthorizedRetrievalCandidates,
-  filterCandidatesWithSufficientEgressQuota,
-} from '../lib/access.js'
+import { filterAuthorizedRetrievalCandidates } from '../lib/access.js'
 
 const payerAddress = '0xabcdef'
 
@@ -15,6 +12,8 @@ function authorizedRow(overrides = {}) {
     with_cdn: 1,
     is_sanctioned: 0,
     service_url: 'https://sp.example/',
+    cdn_egress_quota: '100',
+    cache_miss_egress_quota: '100',
     ...overrides,
   }
 }
@@ -118,42 +117,31 @@ describe('filterAuthorizedRetrievalCandidates', () => {
       `No approved service provider found for payer '${payerAddress}' and the requested content.`,
     )
   })
-})
 
-/** A row with both egress quotas available. */
-function quotaRow(overrides = {}) {
-  return {
-    cdn_egress_quota: '100',
-    cache_miss_egress_quota: '100',
-    ...overrides,
-  }
-}
-
-describe('filterCandidatesWithSufficientEgressQuota', () => {
-  it('returns the rows unchanged when enforceEgressQuota is false', () => {
+  it('does not check egress quota when enforceEgressQuota is false', () => {
     const rows = [
-      quotaRow({ cdn_egress_quota: '0', cache_miss_egress_quota: '0' }),
+      authorizedRow({ cdn_egress_quota: '0', cache_miss_egress_quota: '0' }),
     ]
-    expect(
-      filterCandidatesWithSufficientEgressQuota(rows, { payerAddress }),
-    ).toEqual(rows)
+    expect(filterAuthorizedRetrievalCandidates(rows, { payerAddress })).toEqual(
+      rows,
+    )
   })
 
-  it('returns the rows when both quotas have budget', () => {
-    const rows = [quotaRow()]
+  it('returns the rows when enforceEgressQuota is set and both quotas have budget', () => {
+    const rows = [authorizedRow()]
     expect(
-      filterCandidatesWithSufficientEgressQuota(rows, {
+      filterAuthorizedRetrievalCandidates(rows, {
         payerAddress,
         enforceEgressQuota: true,
       }),
     ).toEqual(rows)
   })
 
-  it('throws 402 when the CDN egress quota is exhausted', () => {
+  it('throws 402 when enforcing and the CDN egress quota is exhausted', () => {
     expectHttpError(
       () =>
-        filterCandidatesWithSufficientEgressQuota(
-          [quotaRow({ cdn_egress_quota: '0' })],
+        filterAuthorizedRetrievalCandidates(
+          [authorizedRow({ cdn_egress_quota: '0' })],
           { payerAddress, enforceEgressQuota: true },
         ),
       402,
@@ -161,11 +149,11 @@ describe('filterCandidatesWithSufficientEgressQuota', () => {
     )
   })
 
-  it('throws 402 when the cache-miss egress quota is exhausted', () => {
+  it('throws 402 when enforcing and the cache-miss egress quota is exhausted', () => {
     expectHttpError(
       () =>
-        filterCandidatesWithSufficientEgressQuota(
-          [quotaRow({ cache_miss_egress_quota: '0' })],
+        filterAuthorizedRetrievalCandidates(
+          [authorizedRow({ cache_miss_egress_quota: '0' })],
           { payerAddress, enforceEgressQuota: true },
         ),
       402,

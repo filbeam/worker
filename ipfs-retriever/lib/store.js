@@ -2,7 +2,6 @@ import { bigIntToBase32 } from './bigint-util.js'
 import {
   httpAssert,
   filterAuthorizedRetrievalCandidates,
-  filterCandidatesWithSufficientEgressQuota,
 } from '@filbeam/retrieval'
 
 const SELECT_CANDIDATES_BY_CID = `
@@ -60,11 +59,10 @@ function validateQueryResultsAndGetCandidates(params) {
     enforceEgressQuota = false,
   } = params
 
-  const authorizedRetrievalCandidates =
-    filterCandidatesWithSufficientEgressQuota(
-      filterAuthorizedRetrievalCandidates(results, { payerAddress }),
-      { payerAddress, enforceEgressQuota },
-    )
+  const authorizedRetrievalCandidates = filterAuthorizedRetrievalCandidates(
+    results,
+    { payerAddress, enforceEgressQuota },
+  )
 
   const withIpfsIndexing = authorizedRetrievalCandidates.filter(
     (row) => row.with_ipfs_indexing === 1,

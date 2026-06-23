@@ -1,7 +1,4 @@
-import {
-  filterAuthorizedRetrievalCandidates,
-  filterCandidatesWithSufficientEgressQuota,
-} from '@filbeam/retrieval'
+import { filterAuthorizedRetrievalCandidates } from '@filbeam/retrieval'
 
 /**
  * Retrieves the provider and data set id for a given root CID.
@@ -70,11 +67,10 @@ export async function getRetrievalCandidatesAndValidatePayer(
       (await env.DB.prepare(query).bind(pieceCid).all()).results
     )
   )
-  const authorizedRetrievalCandidates =
-    filterCandidatesWithSufficientEgressQuota(
-      filterAuthorizedRetrievalCandidates(results, { payerAddress }),
-      { payerAddress, enforceEgressQuota },
-    )
+  const authorizedRetrievalCandidates = filterAuthorizedRetrievalCandidates(
+    results,
+    { payerAddress, enforceEgressQuota },
+  )
 
   const retrievalCandidates = authorizedRetrievalCandidates.map((row) => ({
     dataSetId: row.data_set_id,

@@ -3,6 +3,8 @@ import { httpAssert } from './http-assert.js'
 /**
  * The columns the authorization cascade reads from a candidate row. Callers may
  * pass rows with additional columns, which are preserved in the return value.
+ * Quotas are stored as integers but D1 may surface them as strings, so both are
+ * accepted.
  *
  * @typedef {object} RetrievalCandidateRow
  * @property {string | null} [service_provider_id]
@@ -11,6 +13,8 @@ import { httpAssert } from './http-assert.js'
  * @property {number | null} [with_cdn]
  * @property {number | boolean | null} [is_sanctioned]
  * @property {string | null} [service_url]
+ * @property {string | number | null} [cdn_egress_quota]
+ * @property {string | number | null} [cache_miss_egress_quota]
  */
 
 /**
@@ -20,16 +24,22 @@ import { httpAssert } from './http-assert.js'
  * the rows that pass every check.
  *
  * The checks run in order: indexed, has a (non-deleted) service provider, has a
- * payment rail for the payer, has CDN enabled, payer is not sanctioned, and the
- * service provider is approved.
+ * payment rail for the payer, has CDN enabled, payer is not sanctioned, the
+ * service provider is approved, and (when `enforceEgressQuota` is set) the data
+ * set has CDN and cache-miss egress quota remaining.
  *
  * @template {RetrievalCandidateRow} Row
  * @param {Row[]} rows
  * @param {object} options
  * @param {string} options.payerAddress - Lower-cased payer address to match.
+ * @param {boolean} [options.enforceEgressQuota] - Also require remaining CDN
+ *   and cache-miss egress quota.
  * @returns {Row[]} The rows passing every check.
  */
-export function filterAuthorizedRetrievalCandidates(rows, { payerAddress }) {
+export function filterAuthorizedRetrievalCandidates(
+  rows,
+  { payerAddress, enforceEgressQuota = false },
+) {
   httpAssert(
     rows && rows.length > 0,
     404,
@@ -83,39 +93,9 @@ export function filterAuthorizedRetrievalCandidates(rows, { payerAddress }) {
     `No approved service provider found for payer '${payerAddress}' and the requested content.`,
   )
 
-  return authorizedRetrievalCandidates
-}
+  if (!enforceEgressQuota) return authorizedRetrievalCandidates
 
-/**
- * The egress quota columns read from a candidate row. Quotas are stored as
- * integers but D1 may surface them as strings, so both are accepted.
- *
- * @typedef {object} EgressQuotaRow
- * @property {string | number | null} [cdn_egress_quota]
- * @property {string | number | null} [cache_miss_egress_quota]
- */
-
-/**
- * Filters retrieval candidates to those whose data set still has egress quota.
- * When `enforceEgressQuota` is false the rows are returned unchanged. Otherwise
- * rows with no remaining CDN or cache-miss quota are dropped, throwing a 402
- * when none remain.
- *
- * @template {EgressQuotaRow} Row
- * @param {Row[]} rows
- * @param {object} options
- * @param {string} options.payerAddress - Lower-cased payer address, used in
- *   error messages.
- * @param {boolean} [options.enforceEgressQuota]
- * @returns {Row[]} The rows with sufficient quota.
- */
-export function filterCandidatesWithSufficientEgressQuota(
-  rows,
-  { payerAddress, enforceEgressQuota = false },
-) {
-  if (!enforceEgressQuota) return rows
-
-  const withSufficientCDNQuota = rows.filter(
+  const withSufficientCDNQuota = authorizedRetrievalCandidates.filter(
     (row) => BigInt(row.cdn_egress_quota ?? '0') > 0n,
   )
   httpAssert(
