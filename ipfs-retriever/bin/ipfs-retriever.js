@@ -1,7 +1,7 @@
 import {
   isValidEthereumAddress,
   httpAssert,
-  setRetrievalResponseHeaders,
+  buildRetrievalResponse,
   isCidDenied,
   BAD_BITS_DENIED_MESSAGE,
   recordRetrieval,
@@ -166,17 +166,13 @@ export default {
 
       // Return immediately, proxying the transformed response. The headers
       // already carry the CAR-to-raw adjustments from processIpfsResponse.
-      const response = new Response(returnedStream, {
+      return buildRetrievalResponse(env, {
+        body: returnedStream,
         status: originResponse.status,
         statusText: originResponse.statusText,
         headers: responseHeaders,
-      })
-      setRetrievalResponseHeaders(response, {
         dataSetId: candidate.dataSetId,
-        clientCacheTtl: env.CLIENT_CACHE_TTL,
       })
-
-      return response
     } catch (error) {
       logRetrievalError(env, ctx, error, {
         requestCountryCode,

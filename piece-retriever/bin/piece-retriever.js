@@ -1,6 +1,6 @@
 import {
   httpAssert,
-  setRetrievalResponseHeaders,
+  buildRetrievalResponse,
   isCidDenied,
   BAD_BITS_DENIED_MESSAGE,
   logRetrievalResult,
@@ -227,16 +227,13 @@ export default {
       )
 
       // Return immediately, proxying the transformed response
-      const response = new Response(returnedStream.readable, {
+      return buildRetrievalResponse(env, {
+        body: returnedStream.readable,
         status: retrievalResult.response.status,
         statusText: retrievalResult.response.statusText,
         headers: retrievalResult.response.headers,
-      })
-      setRetrievalResponseHeaders(response, {
         dataSetId: retrievalCandidate.dataSetId,
-        clientCacheTtl: env.CLIENT_CACHE_TTL,
       })
-      return response
     } catch (error) {
       logRetrievalError(env, ctx, error, {
         requestCountryCode,
