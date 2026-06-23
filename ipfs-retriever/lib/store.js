@@ -1,5 +1,8 @@
 import { bigIntToBase32 } from './bigint-util.js'
-import { httpAssert, filterAuthorizedRetrievalRows } from '@filbeam/retrieval'
+import {
+  httpAssert,
+  filterAuthorizedRetrievalCandidates,
+} from '@filbeam/retrieval'
 
 const SELECT_CANDIDATES_BY_CID = `
    SELECT
@@ -45,7 +48,7 @@ const SELECT_CANDIDATES_BY_CID = `
 function validateQueryResultsAndGetCandidates(params) {
   const { results, payerAddress, lookupKey } = params
 
-  const withApprovedProvider = filterAuthorizedRetrievalRows(results, {
+  const withApprovedProvider = filterAuthorizedRetrievalCandidates(results, {
     payerAddress,
     messages: {
       notIndexed: `${lookupKey} does not exist or may not have been indexed yet.`,

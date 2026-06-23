@@ -22,7 +22,7 @@ import { httpAssert } from './http-assert.js'
  * @param {string} options.messages.noApprovedProvider
  * @returns {any[]} The rows passing every check.
  */
-export function filterAuthorizedRetrievalRows(
+export function filterAuthorizedRetrievalCandidates(
   rows,
   { payerAddress, messages },
 ) {

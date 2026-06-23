@@ -1,4 +1,7 @@
-import { httpAssert, filterAuthorizedRetrievalRows } from '@filbeam/retrieval'
+import {
+  httpAssert,
+  filterAuthorizedRetrievalCandidates,
+} from '@filbeam/retrieval'
 
 /**
  * Retrieves the provider and data set id for a given root CID.
@@ -67,7 +70,7 @@ export async function getRetrievalCandidatesAndValidatePayer(
       (await env.DB.prepare(query).bind(pieceCid).all()).results
     )
   )
-  const withApprovedProvider = filterAuthorizedRetrievalRows(results, {
+  const withApprovedProvider = filterAuthorizedRetrievalCandidates(results, {
     payerAddress,
     messages: {
       notIndexed: `Piece_cid '${pieceCid}' does not exist or may not have been indexed yet.`,

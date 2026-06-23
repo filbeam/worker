@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { filterAuthorizedRetrievalRows } from '../lib/access.js'
+import { filterAuthorizedRetrievalCandidates } from '../lib/access.js'
 
 const MESSAGES = {
   notIndexed: 'not indexed',
@@ -36,20 +36,26 @@ function expectHttpError(fn, status, message) {
   expect(error.message).toBe(message)
 }
 
-describe('filterAuthorizedRetrievalRows', () => {
+describe('filterAuthorizedRetrievalCandidates', () => {
   const payerAddress = '0xabcdef'
 
   it('returns the rows passing every check, matching the payer case-insensitively', () => {
     const rows = [authorizedRow()]
     expect(
-      filterAuthorizedRetrievalRows(rows, { payerAddress, messages: MESSAGES }),
+      filterAuthorizedRetrievalCandidates(rows, {
+        payerAddress,
+        messages: MESSAGES,
+      }),
     ).toEqual(rows)
   })
 
   it('throws 404 when there are no rows', () => {
     expectHttpError(
       () =>
-        filterAuthorizedRetrievalRows([], { payerAddress, messages: MESSAGES }),
+        filterAuthorizedRetrievalCandidates([], {
+          payerAddress,
+          messages: MESSAGES,
+        }),
       404,
       MESSAGES.notIndexed,
     )
@@ -58,7 +64,7 @@ describe('filterAuthorizedRetrievalRows', () => {
   it('throws 404 when no row has a service provider', () => {
     expectHttpError(
       () =>
-        filterAuthorizedRetrievalRows(
+        filterAuthorizedRetrievalCandidates(
           [authorizedRow({ service_provider_id: null })],
           { payerAddress, messages: MESSAGES },
         ),
@@ -70,7 +76,7 @@ describe('filterAuthorizedRetrievalRows', () => {
   it('always excludes soft-deleted service providers', () => {
     expectHttpError(
       () =>
-        filterAuthorizedRetrievalRows(
+        filterAuthorizedRetrievalCandidates(
           [authorizedRow({ service_provider_is_deleted: 1 })],
           { payerAddress, messages: MESSAGES },
         ),
@@ -82,7 +88,7 @@ describe('filterAuthorizedRetrievalRows', () => {
   it('throws 402 when the payer has no payment rail', () => {
     expectHttpError(
       () =>
-        filterAuthorizedRetrievalRows(
+        filterAuthorizedRetrievalCandidates(
           [authorizedRow({ payer_address: '0xother' })],
           { payerAddress, messages: MESSAGES },
         ),
@@ -94,7 +100,7 @@ describe('filterAuthorizedRetrievalRows', () => {
   it('throws 402 when CDN is disabled', () => {
     expectHttpError(
       () =>
-        filterAuthorizedRetrievalRows([authorizedRow({ with_cdn: 0 })], {
+        filterAuthorizedRetrievalCandidates([authorizedRow({ with_cdn: 0 })], {
           payerAddress,
           messages: MESSAGES,
         }),
@@ -106,10 +112,13 @@ describe('filterAuthorizedRetrievalRows', () => {
   it('throws 403 when the payer is sanctioned', () => {
     expectHttpError(
       () =>
-        filterAuthorizedRetrievalRows([authorizedRow({ is_sanctioned: 1 })], {
-          payerAddress,
-          messages: MESSAGES,
-        }),
+        filterAuthorizedRetrievalCandidates(
+          [authorizedRow({ is_sanctioned: 1 })],
+          {
+            payerAddress,
+            messages: MESSAGES,
+          },
+        ),
       403,
       MESSAGES.sanctioned,
     )
@@ -118,10 +127,13 @@ describe('filterAuthorizedRetrievalRows', () => {
   it('throws 404 when no service provider is approved (no service_url)', () => {
     expectHttpError(
       () =>
-        filterAuthorizedRetrievalRows([authorizedRow({ service_url: null })], {
-          payerAddress,
-          messages: MESSAGES,
-        }),
+        filterAuthorizedRetrievalCandidates(
+          [authorizedRow({ service_url: null })],
+          {
+            payerAddress,
+            messages: MESSAGES,
+          },
+        ),
       404,
       MESSAGES.noApprovedProvider,
     )
