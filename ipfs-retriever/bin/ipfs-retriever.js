@@ -82,7 +82,11 @@ export default {
       const isBadBit = await isCidDenied(env, ipfsRootCid)
       httpAssert(!isBadBit, 404, BAD_BITS_DENIED_MESSAGE)
 
-      const selection = await selectRetrievalCandidate(
+      const {
+        failureResponse,
+        candidate,
+        result: retrievalResult,
+      } = await selectRetrievalCandidate(
         candidates,
         (candidate) =>
           retrieveIpfsContent(
@@ -94,8 +98,8 @@ export default {
           ),
         { env, ctx, requestCountryCode, timestamp: requestTimestamp, botName },
       )
-      if (selection.failureResponse) return selection.failureResponse
-      const { candidate, result: retrievalResult } = selection
+      if (failureResponse) return failureResponse
+      httpAssert(candidate && retrievalResult, 500, 'should never happen')
 
       const originResponse = retrievalResult.response
       const cacheMiss = retrievalResult.cacheMiss

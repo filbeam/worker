@@ -74,7 +74,11 @@ export default {
         'Service provider lookup failed',
       )
 
-      const selection = await selectRetrievalCandidate(
+      const {
+        failureResponse,
+        candidate: retrievalCandidate,
+        result: retrievalResult,
+      } = await selectRetrievalCandidate(
         retrievalCandidates,
         (candidate) =>
           retrieveFile(
@@ -90,9 +94,12 @@ export default {
           ),
         { env, ctx, requestCountryCode, timestamp: requestTimestamp, botName },
       )
-      if (selection.failureResponse) return selection.failureResponse
-      const { candidate: retrievalCandidate, result: retrievalResult } =
-        selection
+      if (failureResponse) return failureResponse
+      httpAssert(
+        retrievalCandidate && retrievalResult,
+        500,
+        'should never happen',
+      )
 
       if (!retrievalResult.response.body) {
         // The upstream response does not have any readable body
