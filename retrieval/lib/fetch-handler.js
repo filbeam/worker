@@ -112,23 +112,30 @@ function serveRetrievalOutcome(env, ctx, result) {
     })
   }
 
-  // Tee the body: one branch is returned to the client, the other is drained
-  // here to measure egress independently of how fast the client reads.
-  const [returnedStream, egressStream] = response.body.tee()
-  const egressReader = egressStream.getReader()
+  // Measure egress by piping the body through a counting transform on its way
+  // to the client. This preserves backpressure: the origin is pulled only as
+  // fast as the client reads, so a slow client cannot make the worker buffer
+  // the whole response in memory.
+  const responseBody = response.body
+  let egressBytes = 0
+  /** @type {number | null} */
+  let firstByteAt = null
+  const measureStream = new TransformStream({
+    transform(chunk, controller) {
+      if (firstByteAt === null) firstByteAt = performance.now()
+      egressBytes += chunk.length
+      controller.enqueue(chunk)
+    },
+  })
+  const returnedStream = new TransformStream()
 
   ctx.waitUntil(
     (async () => {
-      let egressBytes = 0
-      /** @type {number | null} */
-      let firstByteAt = null
       try {
-        while (true) {
-          const { done, value } = await egressReader.read()
-          if (done) break
-          if (firstByteAt === null) firstByteAt = performance.now()
-          egressBytes += value.length
-        }
+        await Promise.all([
+          responseBody.pipeTo(measureStream.writable),
+          measureStream.readable.pipeTo(returnedStream.writable),
+        ])
         const lastByteFetchedAt = performance.now()
         const startedAt = firstByteAt ?? lastByteFetchedAt
 
@@ -169,7 +176,7 @@ function serveRetrievalOutcome(env, ctx, result) {
     })(),
   )
 
-  const proxied = new Response(returnedStream, {
+  const proxied = new Response(returnedStream.readable, {
     status: response.status,
     statusText: response.statusText,
     headers: response.headers,
