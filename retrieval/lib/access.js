@@ -1,19 +1,33 @@
 import { httpAssert } from './http-assert.js'
 
 /**
+ * The columns the authorization cascade reads from a candidate row. Callers may
+ * pass rows with additional columns, which are preserved in the return value.
+ *
+ * @typedef {object} RetrievalCandidateRow
+ * @property {string | null} [service_provider_id]
+ * @property {boolean | null} [service_provider_is_deleted]
+ * @property {string | null} [payer_address]
+ * @property {number | null} [with_cdn]
+ * @property {number | boolean | null} [is_sanctioned]
+ * @property {string | null} [service_url]
+ */
+
+/**
  * Runs the shared retrieval authorization cascade over candidate rows joined
  * from pieces, data_sets, service_providers and wallet_details. Each check
- * filters the rows and throws an httpAssert error with the caller-provided
- * message when no row survives. Returns the rows that pass every check.
+ * filters the rows and throws an httpAssert error when no row survives. Returns
+ * the rows that pass every check.
  *
  * The checks run in order: indexed, has a (non-deleted) service provider, has a
  * payment rail for the payer, has CDN enabled, payer is not sanctioned, and the
  * service provider is approved.
  *
- * @param {any[]} rows
+ * @template {RetrievalCandidateRow} Row
+ * @param {Row[]} rows
  * @param {object} options
  * @param {string} options.payerAddress - Lower-cased payer address to match.
- * @returns {any[]} The rows passing every check.
+ * @returns {Row[]} The rows passing every check.
  */
 export function filterAuthorizedRetrievalCandidates(rows, { payerAddress }) {
   httpAssert(
