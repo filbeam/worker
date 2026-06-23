@@ -57,6 +57,33 @@ describe('getRetrievalCandidatesByWalletAndCid', () => {
     )
   })
 
+  it('excludes deleted pieces', async () => {
+    const dataSetId = 'test-set-deleted'
+    const ipfsRootCid = 'bafk4deleted'
+    const payerAddress = '0x1234567890abcdef1234567890abcdef12345678'
+
+    await env.DB.prepare(
+      'INSERT INTO data_sets (id, service_provider_id, payer_address, with_cdn, with_ipfs_indexing) VALUES (?, ?, ?, ?, ?)',
+    )
+      .bind(dataSetId, APPROVED_SERVICE_PROVIDER_ID, payerAddress, true, true)
+      .run()
+    await env.DB.prepare(
+      'INSERT INTO pieces (id, data_set_id, cid, ipfs_root_cid, is_deleted) VALUES (?, ?, ?, ?, ?)',
+    )
+      .bind('piece-deleted', dataSetId, 'baga4deleted', ipfsRootCid, true)
+      .run()
+
+    await assert.rejects(
+      async () =>
+        await getRetrievalCandidatesByWalletAndCid(
+          env,
+          payerAddress,
+          ipfsRootCid,
+        ),
+      /does not exist/,
+    )
+  })
+
   it('throws error if data_set_id exists but has no associated service provider', async () => {
     const cid = 'cid-no-owner'
     const dataSetId = 'data-set-no-owner'

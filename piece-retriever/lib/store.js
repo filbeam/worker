@@ -1,4 +1,7 @@
-import { filterAuthorizedRetrievalCandidates } from '@filbeam/retrieval'
+import {
+  filterAuthorizedRetrievalCandidates,
+  buildRetrievalCandidateQuery,
+} from '@filbeam/retrieval'
 
 /**
  * Retrieves the provider and data set id for a given root CID.
@@ -26,29 +29,9 @@ export async function getRetrievalCandidatesAndValidatePayer(
   pieceCid,
   enforceEgressQuota = false,
 ) {
-  const query = `
-   SELECT 
-    pieces.data_set_id, 
-    data_sets.service_provider_id, 
-    data_sets.payer_address, 
-    data_sets.with_cdn,
-    data_set_egress_quotas.cdn_egress_quota, 
-    data_set_egress_quotas.cache_miss_egress_quota,
-    service_providers.service_url, 
-    service_providers.is_deleted as service_provider_is_deleted,
-    wallet_details.is_sanctioned
-   FROM pieces
-   LEFT OUTER JOIN data_sets
-     ON pieces.data_set_id = data_sets.id
-   LEFT OUTER JOIN data_set_egress_quotas
-     ON pieces.data_set_id = data_set_egress_quotas.data_set_id
-   LEFT OUTER JOIN service_providers
-     ON data_sets.service_provider_id = service_providers.id
-   LEFT OUTER JOIN wallet_details
-     ON data_sets.payer_address = wallet_details.address
-   WHERE
-     pieces.cid = ? AND pieces.is_deleted IS FALSE
- `
+  const query = buildRetrievalCandidateQuery({
+    where: 'pieces.cid = ? AND pieces.is_deleted IS FALSE',
+  })
 
   const results = /**
    * @type {{
