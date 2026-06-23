@@ -13,20 +13,19 @@ import { httpAssert } from './http-assert.js'
  * @param {any[]} rows
  * @param {object} options
  * @param {string} options.payerAddress - Lower-cased payer address to match.
- * @param {object} options.messages - Error messages per failed check.
- * @param {string} options.messages.notIndexed
- * @param {string} options.messages.noServiceProvider
- * @param {string} options.messages.noPaymentRail
- * @param {string} options.messages.cdnDisabled
- * @param {string} options.messages.sanctioned
- * @param {string} options.messages.noApprovedProvider
+ * @param {string} options.subject - The content being retrieved, used in error
+ *   messages (e.g. "IPFS Root CID 'bafk...'" or "piece_cid 'baga...'").
  * @returns {any[]} The rows passing every check.
  */
 export function filterAuthorizedRetrievalCandidates(
   rows,
-  { payerAddress, messages },
+  { payerAddress, subject },
 ) {
-  httpAssert(rows && rows.length > 0, 404, messages.notIndexed)
+  httpAssert(
+    rows && rows.length > 0,
+    404,
+    `${subject} does not exist or may not have been indexed yet.`,
+  )
 
   const withServiceProvider = rows.filter(
     (row) =>
@@ -34,21 +33,37 @@ export function filterAuthorizedRetrievalCandidates(
       row.service_provider_id != null &&
       !row.service_provider_is_deleted,
   )
-  httpAssert(withServiceProvider.length > 0, 404, messages.noServiceProvider)
+  httpAssert(
+    withServiceProvider.length > 0,
+    404,
+    `${subject} exists but has no associated service provider.`,
+  )
 
   const withPaymentRail = withServiceProvider.filter(
     (row) =>
       row.payer_address && row.payer_address.toLowerCase() === payerAddress,
   )
-  httpAssert(withPaymentRail.length > 0, 402, messages.noPaymentRail)
+  httpAssert(
+    withPaymentRail.length > 0,
+    402,
+    `There is no Filecoin Warm Storage Service deal for payer '${payerAddress}' and ${subject}.`,
+  )
 
   const withCDN = withPaymentRail.filter(
     (row) => row.with_cdn && row.with_cdn === 1,
   )
-  httpAssert(withCDN.length > 0, 402, messages.cdnDisabled)
+  httpAssert(
+    withCDN.length > 0,
+    402,
+    `The Filecoin Warm Storage Service deal for payer '${payerAddress}' and ${subject} has withCDN=false.`,
+  )
 
   const withPayerNotSanctioned = withCDN.filter((row) => !row.is_sanctioned)
-  httpAssert(withPayerNotSanctioned.length > 0, 403, messages.sanctioned)
+  httpAssert(
+    withPayerNotSanctioned.length > 0,
+    403,
+    `Wallet '${payerAddress}' is sanctioned and cannot retrieve ${subject}.`,
+  )
 
   const authorizedRetrievalCandidates = withPayerNotSanctioned.filter(
     (row) => row.service_url,
@@ -56,7 +71,7 @@ export function filterAuthorizedRetrievalCandidates(
   httpAssert(
     authorizedRetrievalCandidates.length > 0,
     404,
-    messages.noApprovedProvider,
+    `No approved service provider found for payer '${payerAddress}' and ${subject}.`,
   )
 
   return authorizedRetrievalCandidates

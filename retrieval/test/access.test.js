@@ -1,14 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { filterAuthorizedRetrievalCandidates } from '../lib/access.js'
 
-const MESSAGES = {
-  notIndexed: 'not indexed',
-  noServiceProvider: 'no service provider',
-  noPaymentRail: 'no payment rail',
-  cdnDisabled: 'cdn disabled',
-  sanctioned: 'sanctioned',
-  noApprovedProvider: 'no approved provider',
-}
+const payerAddress = '0xabcdef'
+const subject = "IPFS Root CID 'bafktest'"
 
 /** A row that passes every check. payer_address is upper-cased on purpose. */
 function authorizedRow(overrides = {}) {
@@ -37,27 +31,18 @@ function expectHttpError(fn, status, message) {
 }
 
 describe('filterAuthorizedRetrievalCandidates', () => {
-  const payerAddress = '0xabcdef'
-
   it('returns the rows passing every check, matching the payer case-insensitively', () => {
     const rows = [authorizedRow()]
     expect(
-      filterAuthorizedRetrievalCandidates(rows, {
-        payerAddress,
-        messages: MESSAGES,
-      }),
+      filterAuthorizedRetrievalCandidates(rows, { payerAddress, subject }),
     ).toEqual(rows)
   })
 
   it('throws 404 when there are no rows', () => {
     expectHttpError(
-      () =>
-        filterAuthorizedRetrievalCandidates([], {
-          payerAddress,
-          messages: MESSAGES,
-        }),
+      () => filterAuthorizedRetrievalCandidates([], { payerAddress, subject }),
       404,
-      MESSAGES.notIndexed,
+      `${subject} does not exist or may not have been indexed yet.`,
     )
   })
 
@@ -66,10 +51,10 @@ describe('filterAuthorizedRetrievalCandidates', () => {
       () =>
         filterAuthorizedRetrievalCandidates(
           [authorizedRow({ service_provider_id: null })],
-          { payerAddress, messages: MESSAGES },
+          { payerAddress, subject },
         ),
       404,
-      MESSAGES.noServiceProvider,
+      `${subject} exists but has no associated service provider.`,
     )
   })
 
@@ -78,10 +63,10 @@ describe('filterAuthorizedRetrievalCandidates', () => {
       () =>
         filterAuthorizedRetrievalCandidates(
           [authorizedRow({ service_provider_is_deleted: 1 })],
-          { payerAddress, messages: MESSAGES },
+          { payerAddress, subject },
         ),
       404,
-      MESSAGES.noServiceProvider,
+      `${subject} exists but has no associated service provider.`,
     )
   })
 
@@ -90,10 +75,10 @@ describe('filterAuthorizedRetrievalCandidates', () => {
       () =>
         filterAuthorizedRetrievalCandidates(
           [authorizedRow({ payer_address: '0xother' })],
-          { payerAddress, messages: MESSAGES },
+          { payerAddress, subject },
         ),
       402,
-      MESSAGES.noPaymentRail,
+      `There is no Filecoin Warm Storage Service deal for payer '${payerAddress}' and ${subject}.`,
     )
   })
 
@@ -102,10 +87,10 @@ describe('filterAuthorizedRetrievalCandidates', () => {
       () =>
         filterAuthorizedRetrievalCandidates([authorizedRow({ with_cdn: 0 })], {
           payerAddress,
-          messages: MESSAGES,
+          subject,
         }),
       402,
-      MESSAGES.cdnDisabled,
+      `The Filecoin Warm Storage Service deal for payer '${payerAddress}' and ${subject} has withCDN=false.`,
     )
   })
 
@@ -114,13 +99,10 @@ describe('filterAuthorizedRetrievalCandidates', () => {
       () =>
         filterAuthorizedRetrievalCandidates(
           [authorizedRow({ is_sanctioned: 1 })],
-          {
-            payerAddress,
-            messages: MESSAGES,
-          },
+          { payerAddress, subject },
         ),
       403,
-      MESSAGES.sanctioned,
+      `Wallet '${payerAddress}' is sanctioned and cannot retrieve ${subject}.`,
     )
   })
 
@@ -129,13 +111,10 @@ describe('filterAuthorizedRetrievalCandidates', () => {
       () =>
         filterAuthorizedRetrievalCandidates(
           [authorizedRow({ service_url: null })],
-          {
-            payerAddress,
-            messages: MESSAGES,
-          },
+          { payerAddress, subject },
         ),
       404,
-      MESSAGES.noApprovedProvider,
+      `No approved service provider found for payer '${payerAddress}' and ${subject}.`,
     )
   })
 })

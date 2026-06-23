@@ -50,17 +50,7 @@ function validateQueryResultsAndGetCandidates(params) {
 
   const authorizedRetrievalCandidates = filterAuthorizedRetrievalCandidates(
     results,
-    {
-      payerAddress,
-      messages: {
-        notIndexed: `${lookupKey} does not exist or may not have been indexed yet.`,
-        noServiceProvider: `${lookupKey} exists but has no associated service provider.`,
-        noPaymentRail: `There is no Filecoin Warm Storage Service deal for payer '${payerAddress}' and ${lookupKey}.`,
-        cdnDisabled: `The Filecoin Warm Storage Service deal for payer '${payerAddress}' and ${lookupKey} has withCDN=false.`,
-        sanctioned: `Wallet '${payerAddress}' is sanctioned and cannot retrieve ${lookupKey}.`,
-        noApprovedProvider: `No approved service provider found for payer '${payerAddress}' and ${lookupKey}.`,
-      },
-    },
+    { payerAddress, subject: lookupKey },
   )
 
   // IPFS indexing is specific to IPFS retrievals, so it is checked here rather
