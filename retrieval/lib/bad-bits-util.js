@@ -13,9 +13,6 @@ export async function getBadBitsEntry(cid) {
   return hashHex
 }
 
-export const BAD_BITS_DENIED_MESSAGE =
-  'The requested CID was flagged by the Bad Bits Denylist at https://badbits.dwebops.pub'
-
 /**
  * Looks up whether a CID is on the Bad Bits denylist stored in KV.
  *
@@ -39,5 +36,9 @@ export async function isCidDenied(env, cid) {
  * @returns {Promise<void>}
  */
 export async function assertCidNotDenied(env, cid) {
-  httpAssert(!(await isCidDenied(env, cid)), 404, BAD_BITS_DENIED_MESSAGE)
+  httpAssert(
+    !(await isCidDenied(env, cid)),
+    404,
+    'The requested CID was flagged by the Bad Bits Denylist at https://badbits.dwebops.pub',
+  )
 }
