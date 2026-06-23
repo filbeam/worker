@@ -1,8 +1,4 @@
-import {
-  httpAssert,
-  checkBotAuthorization,
-  isValidEthereumAddress,
-} from '@filbeam/retrieval'
+import { httpAssert, isValidEthereumAddress } from '@filbeam/retrieval'
 
 /**
  * Parse params found in path of the request URL
@@ -10,15 +6,13 @@ import {
  * @param {Request} request
  * @param {object} options
  * @param {string} options.DNS_ROOT
- * @param {string} options.BOT_TOKENS
  * @returns {{
  *   payerWalletAddress: string
  *   pieceCid: string
- *   botName?: string
  *   validateCacheMissResponse: boolean
  * }}
  */
-export function parseRequest(request, { DNS_ROOT, BOT_TOKENS }) {
+export function parseRequest(request, { DNS_ROOT }) {
   const url = new URL(request.url)
   console.log('retrieval request', { DNS_ROOT, url })
 
@@ -45,8 +39,7 @@ export function parseRequest(request, { DNS_ROOT, BOT_TOKENS }) {
     `Invalid address: ${payerWalletAddress}. Address must be a valid ethereum address.`,
   )
 
-  const botName = checkBotAuthorization(request, { BOT_TOKENS })
   const validateCacheMissResponse = url.searchParams.has('validate')
 
-  return { payerWalletAddress, pieceCid, botName, validateCacheMissResponse }
+  return { payerWalletAddress, pieceCid, validateCacheMissResponse }
 }

@@ -1,4 +1,4 @@
-import { httpAssert, checkBotAuthorization } from '@filbeam/retrieval'
+import { httpAssert } from '@filbeam/retrieval'
 import { base32ToBigInt } from './bigint-util.js'
 
 /**
@@ -7,16 +7,14 @@ import { base32ToBigInt } from './bigint-util.js'
  * @param {Request} request
  * @param {object} options
  * @param {string} options.DNS_ROOT
- * @param {string} options.BOT_TOKENS
  * @returns {{
  *   dataSetId: string
  *   pieceId: string
  *   ipfsSubpath: string
  *   ipfsFormat: string | null
- *   botName?: string
  * }}
  */
-export function parseRequest(request, { DNS_ROOT, BOT_TOKENS }) {
+export function parseRequest(request, { DNS_ROOT }) {
   const url = new URL(request.url)
   console.log('retrieval request', { DNS_ROOT, url })
 
@@ -75,7 +73,5 @@ export function parseRequest(request, { DNS_ROOT, BOT_TOKENS }) {
   const ipfsSubpath = url.pathname || '/'
   const ipfsFormat = url.searchParams.get('format')
 
-  const botName = checkBotAuthorization(request, { BOT_TOKENS })
-
-  return { dataSetId, pieceId, ipfsSubpath, ipfsFormat, botName }
+  return { dataSetId, pieceId, ipfsSubpath, ipfsFormat }
 }

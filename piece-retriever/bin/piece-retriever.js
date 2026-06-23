@@ -1,7 +1,6 @@
 import {
   httpAssert,
   assertCidNotDenied,
-  logRetrievalError,
   handleFetchRequest,
   selectRetrievalCandidate,
 } from '@filbeam/retrieval'
@@ -35,25 +34,23 @@ export default {
    * @param {object} options
    * @param {typeof defaultRetrieveFile} [options.retrieveFile]
    * @param {import('@filbeam/retrieval').RequestContext} context
-   * @returns {Promise<
-   *   Response | import('@filbeam/retrieval').RetrievalOutcome
-   * >}
+   * @returns {Promise<Response | import('@filbeam/retrieval').Retrieve>}
    */
   async _fetch(
     request,
     env,
     ctx,
     { retrieveFile = defaultRetrieveFile } = {},
-    { requestTimestamp, requestCountryCode },
+    context,
   ) {
     if (URL.parse(request.url)?.pathname === '/') {
       return Response.redirect('https://filbeam.com/', 302)
     }
 
-    const { payerWalletAddress, pieceCid, botName, validateCacheMissResponse } =
+    const { payerWalletAddress, pieceCid, validateCacheMissResponse } =
       parseRequest(request, env)
 
-    try {
+    return async () => {
       // Timestamp to measure file retrieval performance (from cache and from SP)
       const fetchStartedAt = performance.now()
 
@@ -91,7 +88,13 @@ export default {
               addCacheMissResponseValidation: validateCacheMissResponse,
             },
           ),
-        { env, ctx, requestCountryCode, timestamp: requestTimestamp, botName },
+        {
+          env,
+          ctx,
+          requestCountryCode: context.requestCountryCode,
+          timestamp: context.requestTimestamp,
+          botName: context.botName,
+        },
       )
       if (failureResponse) return failureResponse
       httpAssert(
@@ -104,7 +107,6 @@ export default {
         response: retrievalResult.response,
         cacheMiss: retrievalResult.cacheMiss,
         dataSetId: retrievalCandidate.dataSetId,
-        botName,
         fetchStartedAt,
         // Validate the cache-miss response (a `?validate` request) once it has
         // streamed, and drop the cache entry when it fails validation.
@@ -121,14 +123,6 @@ export default {
           return { cacheMissResponseValid }
         },
       }
-    } catch (error) {
-      logRetrievalError(env, ctx, error, {
-        requestCountryCode,
-        timestamp: requestTimestamp,
-        botName,
-      })
-
-      throw error
     }
   },
 }

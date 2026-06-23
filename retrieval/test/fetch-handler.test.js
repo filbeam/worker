@@ -10,6 +10,7 @@ const testEnv = {
   ...env,
   CLIENT_CACHE_TTL: 31536000,
   ENFORCE_EGRESS_QUOTA: false,
+  BOT_TOKENS: '{}',
 }
 
 function retrievalResult(overrides = {}) {
@@ -17,11 +18,15 @@ function retrievalResult(overrides = {}) {
     response: new Response('hello world', { status: 200 }),
     cacheMiss: true,
     dataSetId: 'fh-test',
-    botName: undefined,
     fetchStartedAt: performance.now(),
     finalizeCacheMiss: async () => ({ cacheMissResponseValid: true }),
     ...overrides,
   }
+}
+
+/** A `run` that resolves to a retrieve function yielding the given outcome. */
+function runYielding(overrides = {}) {
+  return async () => async () => retrievalResult(overrides)
 }
 
 describe('handleFetchRequest', () => {
@@ -126,14 +131,13 @@ describe('handleFetchRequest', () => {
       }),
       testEnv,
       ctx,
-      async () =>
-        retrievalResult({
-          dataSetId,
-          finalizeCacheMiss: async (egressBytes) => {
-            finalizedEgress = egressBytes
-            return { cacheMissResponseValid: true }
-          },
-        }),
+      runYielding({
+        dataSetId,
+        finalizeCacheMiss: async (egressBytes) => {
+          finalizedEgress = egressBytes
+          return { cacheMissResponseValid: true }
+        },
+      }),
     )
 
     expect(res.status).toBe(200)
@@ -164,11 +168,10 @@ describe('handleFetchRequest', () => {
       new Request('https://example.com/'),
       testEnv,
       ctx,
-      async () =>
-        retrievalResult({
-          dataSetId,
-          response: new Response(null, { status: 404 }),
-        }),
+      runYielding({
+        dataSetId,
+        response: new Response(null, { status: 404 }),
+      }),
     )
     await waitOnExecutionContext(ctx)
 
@@ -196,11 +199,10 @@ describe('handleFetchRequest', () => {
       new Request('https://example.com/'),
       testEnv,
       ctx,
-      async () =>
-        retrievalResult({
-          dataSetId,
-          response: new Response(erroringBody, { status: 200 }),
-        }),
+      runYielding({
+        dataSetId,
+        response: new Response(erroringBody, { status: 200 }),
+      }),
     )
     expect(res.status).toBe(200)
     await waitOnExecutionContext(ctx)
@@ -211,5 +213,47 @@ describe('handleFetchRequest', () => {
       .bind(dataSetId)
       .first()
     expect(log).toEqual({ response_status: 900 })
+  })
+
+  it('resolves the bot name from the Authorization header and logs it', async () => {
+    const ctx = createExecutionContext()
+    const dataSetId = 'fh-bot'
+    const res = await handleFetchRequest(
+      new Request('https://example.com/', {
+        headers: { authorization: 'Bearer tok' },
+      }),
+      { ...testEnv, BOT_TOKENS: JSON.stringify({ tok: 'bot-1' }) },
+      ctx,
+      runYielding({ dataSetId }),
+    )
+    expect(res.status).toBe(200)
+    expect(await res.text()).toBe('hello world')
+    await waitOnExecutionContext(ctx)
+
+    const log = await env.DB.prepare(
+      'SELECT bot_name FROM retrieval_logs WHERE data_set_id = ?',
+    )
+      .bind(dataSetId)
+      .first()
+    expect(log).toEqual({ bot_name: 'bot-1' })
+  })
+
+  it('rejects an unknown bot token with 401 without running the retrieval', async () => {
+    const ctx = createExecutionContext()
+    let ran = false
+    const res = await handleFetchRequest(
+      new Request('https://example.com/', {
+        headers: { authorization: 'Bearer wrong' },
+      }),
+      { ...testEnv, BOT_TOKENS: JSON.stringify({ tok: 'bot-1' }) },
+      ctx,
+      () => {
+        ran = true
+        return Promise.resolve(async () => retrievalResult())
+      },
+    )
+
+    expect(res.status).toBe(401)
+    expect(ran).toBe(false)
   })
 })
