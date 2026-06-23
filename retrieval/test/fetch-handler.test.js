@@ -10,6 +10,7 @@ const testEnv = {
   ...env,
   CLIENT_CACHE_TTL: 31536000,
   ENFORCE_EGRESS_QUOTA: false,
+  BOT_TOKENS: '{}',
 }
 
 function retrievalResult(overrides = {}) {
@@ -212,5 +213,47 @@ describe('handleFetchRequest', () => {
       .bind(dataSetId)
       .first()
     expect(log).toEqual({ response_status: 900 })
+  })
+
+  it('resolves the bot name from the Authorization header and logs it', async () => {
+    const ctx = createExecutionContext()
+    const dataSetId = 'fh-bot'
+    const res = await handleFetchRequest(
+      new Request('https://example.com/', {
+        headers: { authorization: 'Bearer tok' },
+      }),
+      { ...testEnv, BOT_TOKENS: JSON.stringify({ tok: 'bot-1' }) },
+      ctx,
+      runYielding({ dataSetId }),
+    )
+    expect(res.status).toBe(200)
+    expect(await res.text()).toBe('hello world')
+    await waitOnExecutionContext(ctx)
+
+    const log = await env.DB.prepare(
+      'SELECT bot_name FROM retrieval_logs WHERE data_set_id = ?',
+    )
+      .bind(dataSetId)
+      .first()
+    expect(log).toEqual({ bot_name: 'bot-1' })
+  })
+
+  it('rejects an unknown bot token with 401 without running the retrieval', async () => {
+    const ctx = createExecutionContext()
+    let ran = false
+    const res = await handleFetchRequest(
+      new Request('https://example.com/', {
+        headers: { authorization: 'Bearer wrong' },
+      }),
+      { ...testEnv, BOT_TOKENS: JSON.stringify({ tok: 'bot-1' }) },
+      ctx,
+      () => {
+        ran = true
+        return Promise.resolve(async () => retrievalResult())
+      },
+    )
+
+    expect(res.status).toBe(401)
+    expect(ran).toBe(false)
   })
 })

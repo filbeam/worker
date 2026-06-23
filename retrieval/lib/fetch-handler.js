@@ -1,6 +1,7 @@
 import { handleError } from './http-error.js'
 import { httpAssert } from './http-assert.js'
 import { redirectLegacyDomain } from './redirect.js'
+import { checkBotAuthorization } from './bot-auth.js'
 import { handleEmptyBodyResponse } from './empty-body-response.js'
 import { setRetrievalResponseHeaders } from './response-headers.js'
 import {
@@ -47,8 +48,8 @@ import {
  * @property {string | null} requestCountryCode - The request's `CF-IPCountry`.
  * @property {number} workerStartedAt - `performance.now()` when the worker
  *   started handling the request.
- * @property {string} [botName] - The bot name, set by the worker once the
- *   request has been parsed.
+ * @property {string} [botName] - The bot name resolved from the request's
+ *   Authorization header, or `undefined` for anonymous requests.
  */
 
 /**
@@ -69,12 +70,12 @@ import {
  *   DB: D1Database
  *   CLIENT_CACHE_TTL: number
  *   ENFORCE_EGRESS_QUOTA: boolean
+ *   BOT_TOKENS: string
  * }} env
  * @param {ExecutionContext} ctx
  * @param {(context: RequestContext) => Promise<Response | Retrieve>} run
  *
- *   - Invokes the worker handler with the per-request telemetry context. The worker
- *       sets `context.botName` before returning its retrieval function.
+ *   - Invokes the worker handler with the per-request telemetry context.
  *
  * @returns {Promise<Response>}
  */
@@ -98,6 +99,10 @@ export async function handleFetchRequest(request, env, ctx, run) {
     )
     const legacyRedirect = redirectLegacyDomain(request)
     if (legacyRedirect) return legacyRedirect
+
+    context.botName = checkBotAuthorization(request, {
+      BOT_TOKENS: env.BOT_TOKENS,
+    })
 
     const retrieve = await run(context)
     if (retrieve instanceof Response) return retrieve

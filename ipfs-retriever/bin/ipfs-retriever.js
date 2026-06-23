@@ -54,9 +54,10 @@ export default {
       return handleDnsRootRequest(request, env)
     }
 
-    const { dataSetId, pieceId, ipfsSubpath, ipfsFormat, botName } =
-      parseRequest(request, env)
-    context.botName = botName
+    const { dataSetId, pieceId, ipfsSubpath, ipfsFormat } = parseRequest(
+      request,
+      env,
+    )
 
     return async () => {
       // Timestamp to measure file retrieval performance (from cache and from SP)
@@ -93,7 +94,7 @@ export default {
           ctx,
           requestCountryCode: context.requestCountryCode,
           timestamp: context.requestTimestamp,
-          botName,
+          botName: context.botName,
         },
       )
       if (failureResponse) return failureResponse

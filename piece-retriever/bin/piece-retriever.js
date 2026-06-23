@@ -47,9 +47,8 @@ export default {
       return Response.redirect('https://filbeam.com/', 302)
     }
 
-    const { payerWalletAddress, pieceCid, botName, validateCacheMissResponse } =
+    const { payerWalletAddress, pieceCid, validateCacheMissResponse } =
       parseRequest(request, env)
-    context.botName = botName
 
     return async () => {
       // Timestamp to measure file retrieval performance (from cache and from SP)
@@ -94,7 +93,7 @@ export default {
           ctx,
           requestCountryCode: context.requestCountryCode,
           timestamp: context.requestTimestamp,
-          botName,
+          botName: context.botName,
         },
       )
       if (failureResponse) return failureResponse
