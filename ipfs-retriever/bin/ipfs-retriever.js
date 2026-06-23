@@ -9,6 +9,7 @@ import {
   recordRetrieval,
   logRetrievalError,
   handleFetchRequest,
+  selectRetrievalCandidate,
 } from '@filbeam/retrieval'
 
 import { parseRequest } from '../lib/request.js'
@@ -82,45 +83,19 @@ export default {
       const isBadBit = await isCidDenied(env, ipfsRootCid)
       httpAssert(!isBadBit, 404, BAD_BITS_DENIED_MESSAGE)
 
-      let candidate
-      let retrievalResult
-      const retrievalAttempts = []
-
-      while (candidates.length > 0) {
-        const candidateIndex = Math.floor(Math.random() * candidates.length)
-        candidate = candidates[candidateIndex]
-        retrievalAttempts.push(candidate)
-        candidates.splice(candidateIndex, 1)
-        console.log(`Attempting retrieval via ${candidate.serviceUrl}`)
-        try {
-          retrievalResult = await retrieveIpfsContent(
-            candidate.serviceUrl,
-            ipfsRootCid,
-            ipfsSubpath,
-            env.ORIGIN_CACHE_TTL,
-            { signal: request.signal },
-          )
-          if (retrievalResult.response.ok) {
-            console.log(
-              `Retrieval attempt succeeded (cache ${retrievalResult.cacheMiss ? 'miss' : 'hit'})`,
-            )
-            break
-          }
-          console.log(
-            `Retrieval attempt failed: HTTP ${retrievalResult.response.status}`,
-            { candidate, willRetry: candidates.length > 0 },
-          )
-        } catch (err) {
-          const msg =
-            typeof err === 'object' && err !== null && 'message' in err
-              ? err.message
-              : String(err)
-          console.log(`Retrieval attempt failed: ${msg}`, {
-            candidate,
-            willRetry: candidates.length > 0,
-          })
-        }
-      }
+      const {
+        candidate,
+        result: retrievalResult,
+        attempts: retrievalAttempts,
+      } = await selectRetrievalCandidate(candidates, (candidate) =>
+        retrieveIpfsContent(
+          candidate.serviceUrl,
+          ipfsRootCid,
+          ipfsSubpath,
+          env.ORIGIN_CACHE_TTL,
+          { signal: request.signal },
+        ),
+      )
 
       httpAssert(candidate, 500, 'should never happen')
 
