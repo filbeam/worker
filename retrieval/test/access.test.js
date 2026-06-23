@@ -2,7 +2,6 @@ import { describe, it, expect } from 'vitest'
 import { filterAuthorizedRetrievalCandidates } from '../lib/access.js'
 
 const payerAddress = '0xabcdef'
-const subject = "IPFS Root CID 'bafktest'"
 
 /** A row that passes every check. payer_address is upper-cased on purpose. */
 function authorizedRow(overrides = {}) {
@@ -33,16 +32,16 @@ function expectHttpError(fn, status, message) {
 describe('filterAuthorizedRetrievalCandidates', () => {
   it('returns the rows passing every check, matching the payer case-insensitively', () => {
     const rows = [authorizedRow()]
-    expect(
-      filterAuthorizedRetrievalCandidates(rows, { payerAddress, subject }),
-    ).toEqual(rows)
+    expect(filterAuthorizedRetrievalCandidates(rows, { payerAddress })).toEqual(
+      rows,
+    )
   })
 
   it('throws 404 when there are no rows', () => {
     expectHttpError(
-      () => filterAuthorizedRetrievalCandidates([], { payerAddress, subject }),
+      () => filterAuthorizedRetrievalCandidates([], { payerAddress }),
       404,
-      `${subject} does not exist or may not have been indexed yet.`,
+      'The requested content does not exist or may not have been indexed yet.',
     )
   })
 
@@ -51,10 +50,10 @@ describe('filterAuthorizedRetrievalCandidates', () => {
       () =>
         filterAuthorizedRetrievalCandidates(
           [authorizedRow({ service_provider_id: null })],
-          { payerAddress, subject },
+          { payerAddress },
         ),
       404,
-      `${subject} exists but has no associated service provider.`,
+      'The requested content exists but has no associated service provider.',
     )
   })
 
@@ -63,10 +62,10 @@ describe('filterAuthorizedRetrievalCandidates', () => {
       () =>
         filterAuthorizedRetrievalCandidates(
           [authorizedRow({ service_provider_is_deleted: 1 })],
-          { payerAddress, subject },
+          { payerAddress },
         ),
       404,
-      `${subject} exists but has no associated service provider.`,
+      'The requested content exists but has no associated service provider.',
     )
   })
 
@@ -75,10 +74,10 @@ describe('filterAuthorizedRetrievalCandidates', () => {
       () =>
         filterAuthorizedRetrievalCandidates(
           [authorizedRow({ payer_address: '0xother' })],
-          { payerAddress, subject },
+          { payerAddress },
         ),
       402,
-      `There is no Filecoin Warm Storage Service deal for payer '${payerAddress}' and ${subject}.`,
+      `There is no Filecoin Warm Storage Service deal for payer '${payerAddress}' and the requested content.`,
     )
   })
 
@@ -87,10 +86,9 @@ describe('filterAuthorizedRetrievalCandidates', () => {
       () =>
         filterAuthorizedRetrievalCandidates([authorizedRow({ with_cdn: 0 })], {
           payerAddress,
-          subject,
         }),
       402,
-      `The Filecoin Warm Storage Service deal for payer '${payerAddress}' and ${subject} has withCDN=false.`,
+      `The Filecoin Warm Storage Service deal for payer '${payerAddress}' and the requested content has withCDN=false.`,
     )
   })
 
@@ -99,10 +97,10 @@ describe('filterAuthorizedRetrievalCandidates', () => {
       () =>
         filterAuthorizedRetrievalCandidates(
           [authorizedRow({ is_sanctioned: 1 })],
-          { payerAddress, subject },
+          { payerAddress },
         ),
       403,
-      `Wallet '${payerAddress}' is sanctioned and cannot retrieve ${subject}.`,
+      `Wallet '${payerAddress}' is sanctioned and cannot retrieve the requested content.`,
     )
   })
 
@@ -111,10 +109,10 @@ describe('filterAuthorizedRetrievalCandidates', () => {
       () =>
         filterAuthorizedRetrievalCandidates(
           [authorizedRow({ service_url: null })],
-          { payerAddress, subject },
+          { payerAddress },
         ),
       404,
-      `No approved service provider found for payer '${payerAddress}' and ${subject}.`,
+      `No approved service provider found for payer '${payerAddress}' and the requested content.`,
     )
   })
 })

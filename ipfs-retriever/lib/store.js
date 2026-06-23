@@ -50,7 +50,7 @@ function validateQueryResultsAndGetCandidates(params) {
 
   const authorizedRetrievalCandidates = filterAuthorizedRetrievalCandidates(
     results,
-    { payerAddress, subject: lookupKey },
+    { payerAddress },
   )
 
   // IPFS indexing is specific to IPFS retrievals, so it is checked here rather

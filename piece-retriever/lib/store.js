@@ -72,7 +72,7 @@ export async function getRetrievalCandidatesAndValidatePayer(
   )
   const authorizedRetrievalCandidates = filterAuthorizedRetrievalCandidates(
     results,
-    { payerAddress, subject: `piece_cid '${pieceCid}'` },
+    { payerAddress },
   )
 
   // Check CDN quota first
