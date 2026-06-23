@@ -4,6 +4,7 @@ import {
   logRetrievalResult,
   logRetrievalError,
   recordRetrieval,
+  computePerformanceStats,
 } from '../lib/stats'
 import { withDataSet } from './test-helpers'
 import {
@@ -448,6 +449,23 @@ describe('recordRetrieval', () => {
     expect(quota).toEqual({
       cdn_egress_quota: 1000 - 100,
       cache_miss_egress_quota: 1000 - 250,
+    })
+  })
+})
+
+describe('computePerformanceStats', () => {
+  it('derives ttfb and ttlb from the timestamps', () => {
+    expect(
+      computePerformanceStats({
+        fetchStartedAt: 100,
+        workerStartedAt: 50,
+        firstByteAt: 130,
+        lastByteFetchedAt: 200,
+      }),
+    ).toEqual({
+      fetchTtfb: 30,
+      fetchTtlb: 100,
+      workerTtfb: 80,
     })
   })
 })

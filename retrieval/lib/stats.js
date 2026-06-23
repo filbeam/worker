@@ -217,3 +217,29 @@ export async function recordRetrieval(env, params) {
     enforceEgressQuota: params.enforceEgressQuota,
   })
 }
+
+/**
+ * Computes the retrieval performance stats from the relevant
+ * `performance.now()` timestamps (all in milliseconds).
+ *
+ * @param {object} timings
+ * @param {number} timings.fetchStartedAt - When the origin fetch started.
+ * @param {number} timings.workerStartedAt - When the worker started handling
+ *   the request.
+ * @param {number} timings.firstByteAt - When the first response byte arrived.
+ * @param {number} timings.lastByteFetchedAt - When the last response byte
+ *   arrived.
+ * @returns {{ fetchTtfb: number; fetchTtlb: number; workerTtfb: number }}
+ */
+export function computePerformanceStats({
+  fetchStartedAt,
+  workerStartedAt,
+  firstByteAt,
+  lastByteFetchedAt,
+}) {
+  return {
+    fetchTtfb: firstByteAt - fetchStartedAt,
+    fetchTtlb: lastByteFetchedAt - fetchStartedAt,
+    workerTtfb: firstByteAt - workerStartedAt,
+  }
+}
