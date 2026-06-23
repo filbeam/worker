@@ -1,7 +1,6 @@
 import {
   isValidEthereumAddress,
   httpAssert,
-  setContentSecurityPolicy,
   setRetrievalResponseHeaders,
   isCidDenied,
   BAD_BITS_DENIED_MESSAGE,
@@ -84,49 +83,23 @@ export default {
       httpAssert(!isBadBit, 404, BAD_BITS_DENIED_MESSAGE)
 
       const {
+        failureResponse,
         candidate,
         result: retrievalResult,
-        attempts: retrievalAttempts,
-      } = await selectRetrievalCandidate(candidates, (candidate) =>
-        retrieveIpfsContent(
-          candidate.serviceUrl,
-          ipfsRootCid,
-          ipfsSubpath,
-          env.ORIGIN_CACHE_TTL,
-          { signal: request.signal },
-        ),
+      } = await selectRetrievalCandidate(
+        candidates,
+        (candidate) =>
+          retrieveIpfsContent(
+            candidate.serviceUrl,
+            ipfsRootCid,
+            ipfsSubpath,
+            env.ORIGIN_CACHE_TTL,
+            { signal: request.signal },
+          ),
+        { env, ctx, requestCountryCode, timestamp: requestTimestamp, botName },
       )
-
-      httpAssert(candidate, 500, 'should never happen')
-
-      if (!retrievalResult || retrievalResult.response.status >= 500) {
-        ctx.waitUntil(
-          logRetrievalResult(env, {
-            cacheMiss: retrievalResult?.cacheMiss ?? null,
-            cacheMissResponseValid: null,
-            responseStatus: 502,
-            egressBytes: 0,
-            cacheMissEgressBytes: 0,
-            requestCountryCode,
-            timestamp: requestTimestamp,
-            dataSetId: candidate.dataSetId,
-            botName,
-          }),
-        )
-        const response = new Response(
-          `No available service provider found. Attempted: ${retrievalAttempts.map((a) => `ID=${a.serviceProviderId} (Service URL=${a.serviceUrl})`).join(', ')}`,
-          {
-            status: 502,
-            headers: new Headers({
-              'X-Data-Set-ID': retrievalAttempts
-                .map((a) => a.dataSetId)
-                .join(','),
-            }),
-          },
-        )
-        setContentSecurityPolicy(response)
-        return response
-      }
+      if (failureResponse) return failureResponse
+      httpAssert(candidate && retrievalResult, 500, 'should never happen')
 
       const originResponse = retrievalResult.response
       const cacheMiss = retrievalResult.cacheMiss

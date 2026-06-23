@@ -1,6 +1,5 @@
 import {
   httpAssert,
-  setContentSecurityPolicy,
   setRetrievalResponseHeaders,
   isCidDenied,
   BAD_BITS_DENIED_MESSAGE,
@@ -76,52 +75,31 @@ export default {
       )
 
       const {
+        failureResponse,
         candidate: retrievalCandidate,
         result: retrievalResult,
-        attempts: retrievalAttempts,
-      } = await selectRetrievalCandidate(retrievalCandidates, (candidate) =>
-        retrieveFile(
-          ctx,
-          candidate.serviceUrl,
-          pieceCid,
-          request,
-          env.ORIGIN_CACHE_TTL,
-          {
-            signal: request.signal,
-            addCacheMissResponseValidation: validateCacheMissResponse,
-          },
-        ),
+      } = await selectRetrievalCandidate(
+        retrievalCandidates,
+        (candidate) =>
+          retrieveFile(
+            ctx,
+            candidate.serviceUrl,
+            pieceCid,
+            request,
+            env.ORIGIN_CACHE_TTL,
+            {
+              signal: request.signal,
+              addCacheMissResponseValidation: validateCacheMissResponse,
+            },
+          ),
+        { env, ctx, requestCountryCode, timestamp: requestTimestamp, botName },
       )
-
-      httpAssert(retrievalCandidate, 500, 'should never happen')
-
-      if (!retrievalResult || retrievalResult.response.status >= 500) {
-        ctx.waitUntil(
-          logRetrievalResult(env, {
-            cacheMiss: retrievalResult?.cacheMiss || null,
-            cacheMissResponseValid: null,
-            responseStatus: 502,
-            egressBytes: 0,
-            requestCountryCode,
-            timestamp: requestTimestamp,
-            dataSetId: retrievalCandidate.dataSetId,
-            botName,
-          }),
-        )
-        const response = new Response(
-          `No available service provider found. Attempted: ${retrievalAttempts.map((a) => `ID=${a.serviceProviderId} (Service URL=${a.serviceUrl})`).join(', ')}`,
-          {
-            status: 502,
-            headers: new Headers({
-              'X-Data-Set-ID': retrievalAttempts
-                .map((a) => a.dataSetId)
-                .join(','),
-            }),
-          },
-        )
-        setContentSecurityPolicy(response)
-        return response
-      }
+      if (failureResponse) return failureResponse
+      httpAssert(
+        retrievalCandidate && retrievalResult,
+        500,
+        'should never happen',
+      )
 
       if (!retrievalResult.response.body) {
         // The upstream response does not have any readable body
