@@ -148,7 +148,13 @@ export default {
 
             await recordRetrieval(env, {
               cacheMiss,
-              cacheMissResponseValid: null,
+              // Charge the cache-miss egress quota for every cache miss: the
+              // worker fetched the CAR from the service provider whether it was
+              // converted to raw or passed through (`?format=car`). Reaching
+              // here means the response streamed successfully (a converted CAR
+              // is validated during conversion, so an invalid one never gets
+              // here).
+              cacheMissResponseValid: cacheMiss ? true : null,
               responseStatus: originResponse.status,
               egressBytes,
               cacheMissEgressBytes,
