@@ -8,6 +8,7 @@ import {
   recordRetrieval,
   logRetrievalError,
   handleFetchRequest,
+  selectRetrievalCandidate,
 } from '@filbeam/retrieval'
 
 import { parseRequest } from '../lib/request.js'
@@ -74,54 +75,23 @@ export default {
         'Service provider lookup failed',
       )
 
-      let retrievalCandidate
-      let retrievalResult
-      const retrievalAttempts = []
-
-      while (retrievalCandidates.length > 0) {
-        const retrievalCandidateIndex = Math.floor(
-          Math.random() * retrievalCandidates.length,
-        )
-        retrievalCandidate = retrievalCandidates[retrievalCandidateIndex]
-        retrievalAttempts.push(retrievalCandidate)
-        retrievalCandidates.splice(retrievalCandidateIndex, 1)
-        console.log(`Attempting retrieval via ${retrievalCandidate.serviceUrl}`)
-        try {
-          retrievalResult = await retrieveFile(
-            ctx,
-            retrievalCandidate.serviceUrl,
-            pieceCid,
-            request,
-            env.ORIGIN_CACHE_TTL,
-            {
-              signal: request.signal,
-              addCacheMissResponseValidation: validateCacheMissResponse,
-            },
-          )
-          if (retrievalResult.response.ok) {
-            console.log(
-              `Retrieval attempt succeeded (cache ${retrievalResult.cacheMiss ? 'miss' : 'hit'})`,
-            )
-            break
-          }
-          console.log(
-            `Retrieval attempt failed: HTTP ${retrievalResult.response.status}`,
-            {
-              retrievalCandidate,
-              willRetry: retrievalCandidates.length > 0,
-            },
-          )
-        } catch (err) {
-          const msg =
-            typeof err === 'object' && err !== null && 'message' in err
-              ? err.message
-              : String(err)
-          console.log(`Retrieval attempt failed: ${msg}`, {
-            retrievalCandidate,
-            willRetry: retrievalCandidates.length > 0,
-          })
-        }
-      }
+      const {
+        candidate: retrievalCandidate,
+        result: retrievalResult,
+        attempts: retrievalAttempts,
+      } = await selectRetrievalCandidate(retrievalCandidates, (candidate) =>
+        retrieveFile(
+          ctx,
+          candidate.serviceUrl,
+          pieceCid,
+          request,
+          env.ORIGIN_CACHE_TTL,
+          {
+            signal: request.signal,
+            addCacheMissResponseValidation: validateCacheMissResponse,
+          },
+        ),
+      )
 
       httpAssert(retrievalCandidate, 500, 'should never happen')
 
