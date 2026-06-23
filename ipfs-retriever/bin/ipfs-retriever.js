@@ -4,6 +4,7 @@ import {
   setRetrievalResponseHeaders,
   isCidDenied,
   BAD_BITS_DENIED_MESSAGE,
+  logRetrievalResult,
   recordRetrieval,
   logRetrievalError,
   handleFetchRequest,
@@ -134,33 +135,49 @@ export default {
 
       ctx.waitUntil(
         (async () => {
-          const egressBytes = await measureStreamedEgress(reader)
-          const lastByteFetchedAt = performance.now()
+          try {
+            const egressBytes = await measureStreamedEgress(reader)
+            const lastByteFetchedAt = performance.now()
 
-          // The client is served the raw bytes (`egressBytes`). On a cache miss
-          // the worker fetched a CAR from the service provider, which is larger
-          // than the raw bytes when converting from CAR to raw. The cache-miss
-          // egress is charged for that CAR size. When the body is passed through
-          // unchanged (e.g. `?format=car`), the two values are equal.
-          const cacheMissEgressBytes = originEgressBytes ?? egressBytes
+            // The client is served the raw bytes (`egressBytes`). On a cache
+            // miss the worker fetched a CAR from the service provider, which is
+            // larger than the raw bytes when converting from CAR to raw. The
+            // cache-miss egress is charged for that CAR size. When the body is
+            // passed through unchanged (e.g. `?format=car`), the two are equal.
+            const cacheMissEgressBytes = originEgressBytes ?? egressBytes
 
-          await recordRetrieval(env, {
-            cacheMiss,
-            cacheMissResponseValid: null,
-            responseStatus: originResponse.status,
-            egressBytes,
-            cacheMissEgressBytes,
-            requestCountryCode,
-            timestamp: requestTimestamp,
-            performanceStats: {
-              fetchTtfb: firstByteAt - fetchStartedAt,
-              fetchTtlb: lastByteFetchedAt - fetchStartedAt,
-              workerTtfb: firstByteAt - workerStartedAt,
-            },
-            dataSetId: candidate.dataSetId,
-            botName,
-            enforceEgressQuota: env.ENFORCE_EGRESS_QUOTA,
-          })
+            await recordRetrieval(env, {
+              cacheMiss,
+              cacheMissResponseValid: null,
+              responseStatus: originResponse.status,
+              egressBytes,
+              cacheMissEgressBytes,
+              requestCountryCode,
+              timestamp: requestTimestamp,
+              performanceStats: {
+                fetchTtfb: firstByteAt - fetchStartedAt,
+                fetchTtlb: lastByteFetchedAt - fetchStartedAt,
+                workerTtfb: firstByteAt - workerStartedAt,
+              },
+              dataSetId: candidate.dataSetId,
+              botName,
+              enforceEgressQuota: env.ENFORCE_EGRESS_QUOTA,
+            })
+          } catch (err) {
+            console.error('Error in server stream:', err)
+
+            await logRetrievalResult(env, {
+              cacheMiss,
+              cacheMissResponseValid: null,
+              responseStatus: 900,
+              egressBytes: 0,
+              cacheMissEgressBytes: 0,
+              requestCountryCode,
+              timestamp: requestTimestamp,
+              dataSetId: candidate.dataSetId,
+              botName,
+            })
+          }
         })(),
       )
 
