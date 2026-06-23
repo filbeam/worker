@@ -9,7 +9,7 @@ import {
   logRetrievalError,
   handleFetchRequest,
   selectRetrievalCandidate,
-  respondNoServiceProviderAvailable,
+  handleNoServiceProviderResponse,
 } from '@filbeam/retrieval'
 
 import { parseRequest } from '../lib/request.js'
@@ -99,7 +99,7 @@ export default {
 
       httpAssert(candidate, 500, 'should never happen')
 
-      const noServiceProviderResponse = respondNoServiceProviderAvailable(
+      const noServiceProviderResponse = handleNoServiceProviderResponse(
         env,
         ctx,
         {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { respondNoServiceProviderAvailable } from '../lib/retrieval-failure.js'
+import { handleNoServiceProviderResponse } from '../lib/retrieval-failure.js'
 import {
   env,
   createExecutionContext,
@@ -11,10 +11,10 @@ const attempts = [
   { serviceProviderId: '2', serviceUrl: 'https://b.example/', dataSetId: '11' },
 ]
 
-describe('respondNoServiceProviderAvailable', () => {
+describe('handleNoServiceProviderResponse', () => {
   it('responds with a 502 listing every attempted provider', async () => {
     const ctx = createExecutionContext()
-    const response = respondNoServiceProviderAvailable(env, ctx, {
+    const response = handleNoServiceProviderResponse(env, ctx, {
       retrievalResult: {
         response: new Response(null, { status: 503 }),
         cacheMiss: true,
@@ -36,7 +36,7 @@ describe('respondNoServiceProviderAvailable', () => {
 
   it('sets a content security policy on the response', async () => {
     const ctx = createExecutionContext()
-    const response = respondNoServiceProviderAvailable(env, ctx, {
+    const response = handleNoServiceProviderResponse(env, ctx, {
       retrievalResult: {
         response: new Response(null, { status: 503 }),
         cacheMiss: true,
@@ -55,7 +55,7 @@ describe('respondNoServiceProviderAvailable', () => {
   it('logs the failure with the cache miss flag and zero egress', async () => {
     const dataSetId = 'no-sp-cache-miss'
     const ctx = createExecutionContext()
-    respondNoServiceProviderAvailable(env, ctx, {
+    handleNoServiceProviderResponse(env, ctx, {
       retrievalResult: {
         response: new Response(null, { status: 503 }),
         cacheMiss: true,
@@ -87,7 +87,7 @@ describe('respondNoServiceProviderAvailable', () => {
   it('returns null and logs nothing when the retrieval succeeded', async () => {
     const dataSetId = 'sp-available'
     const ctx = createExecutionContext()
-    const response = respondNoServiceProviderAvailable(env, ctx, {
+    const response = handleNoServiceProviderResponse(env, ctx, {
       retrievalResult: {
         response: new Response(null, { status: 200 }),
         cacheMiss: false,
@@ -113,7 +113,7 @@ describe('respondNoServiceProviderAvailable', () => {
   it('logs a null cache miss when every attempt threw', async () => {
     const dataSetId = 'no-sp-all-threw'
     const ctx = createExecutionContext()
-    respondNoServiceProviderAvailable(env, ctx, {
+    handleNoServiceProviderResponse(env, ctx, {
       retrievalResult: undefined,
       attempts,
       dataSetId,
