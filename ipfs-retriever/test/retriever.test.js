@@ -523,6 +523,44 @@ describe('retriever.fetch', () => {
     assert.strictEqual(readOutput.results[0].egress_bytes, 0)
   })
 
+  it('logs a 900 retrieval result when the response stream errors', async () => {
+    const erroringBody = new ReadableStream({
+      pull(controller) {
+        controller.enqueue(new Uint8Array([1, 2, 3]))
+        controller.error(new Error('stream boom'))
+      },
+    })
+    const mockRetrieveIpfsContent = vi.fn().mockResolvedValue({
+      response: new Response(erroringBody, { status: 200 }),
+      cacheMiss: true,
+    })
+
+    const ctx = createExecutionContext()
+    // `?format=car` passes the body through unchanged, so the erroring stream
+    // reaches the egress measurement.
+    const req = withRequest(
+      realDataSetId,
+      realPieceId,
+      'GET',
+      {},
+      {
+        format: 'car',
+      },
+    )
+    const res = await worker.fetch(req, env, ctx, {
+      retrieveIpfsContent: mockRetrieveIpfsContent,
+    })
+    expect(res.status).toBe(200)
+    await waitOnExecutionContext(ctx)
+
+    const log = await env.DB.prepare(
+      'SELECT response_status, egress_bytes FROM retrieval_logs WHERE data_set_id = ? AND response_status = 900',
+    )
+      .bind(String(realDataSetId))
+      .first()
+    expect(log).toEqual({ response_status: 900, egress_bytes: 0 })
+  })
+
   // FIXME - update the test to retrieve real IPFS content
   // This is blocked by Curio not indexing CAR files inside PDP deals yet
   it.skip(
