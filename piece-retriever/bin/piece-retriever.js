@@ -8,7 +8,6 @@ import {
   logRetrievalResult,
   recordRetrieval,
   logRetrievalError,
-  redirectLegacyDomain,
   handleFetchRequest,
 } from '@filbeam/retrieval'
 
@@ -46,8 +45,6 @@ export default {
     if (URL.parse(request.url)?.pathname === '/') {
       return Response.redirect('https://filbeam.com/', 302)
     }
-    const legacyRedirect = redirectLegacyDomain(request)
-    if (legacyRedirect) return legacyRedirect
 
     const requestTimestamp = new Date().toISOString()
     const workerStartedAt = performance.now()

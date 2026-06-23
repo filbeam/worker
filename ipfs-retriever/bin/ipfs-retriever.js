@@ -8,7 +8,6 @@ import {
   logRetrievalResult,
   recordRetrieval,
   logRetrievalError,
-  redirectLegacyDomain,
   handleFetchRequest,
 } from '@filbeam/retrieval'
 
@@ -58,9 +57,6 @@ export default {
     ) {
       return handleDnsRootRequest(request, env)
     }
-
-    const legacyRedirect = redirectLegacyDomain(request)
-    if (legacyRedirect) return legacyRedirect
 
     const requestTimestamp = new Date().toISOString()
     const workerStartedAt = performance.now()
