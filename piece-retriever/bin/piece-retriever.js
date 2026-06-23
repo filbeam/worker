@@ -5,10 +5,10 @@ import {
   BAD_BITS_DENIED_MESSAGE,
   logRetrievalResult,
   recordRetrieval,
-  logRetrievalError,
   handleFetchRequest,
   selectRetrievalCandidate,
   handleEmptyBodyResponse,
+  withRetrievalErrorLogging,
 } from '@filbeam/retrieval'
 
 import { parseRequest } from '../lib/request.js'
@@ -46,14 +46,21 @@ export default {
       return Response.redirect('https://filbeam.com/', 302)
     }
 
-    const requestTimestamp = new Date().toISOString()
-    const workerStartedAt = performance.now()
-    const requestCountryCode = request.headers.get('CF-IPCountry')
-
     const { payerWalletAddress, pieceCid, botName, validateCacheMissResponse } =
       parseRequest(request, env)
 
-    try {
+    /**
+     * @type {(context: {
+     *   requestTimestamp: string
+     *   workerStartedAt: number
+     *   requestCountryCode: string | null
+     * }) => Promise<Response>}
+     */
+    const handleRetrieval = async ({
+      requestTimestamp,
+      workerStartedAt,
+      requestCountryCode,
+    }) => {
       // Timestamp to measure file retrieval performance (from cache and from SP)
       const fetchStartedAt = performance.now()
 
@@ -237,14 +244,14 @@ export default {
         clientCacheTtl: env.CLIENT_CACHE_TTL,
       })
       return response
-    } catch (error) {
-      logRetrievalError(env, ctx, error, {
-        requestCountryCode,
-        timestamp: requestTimestamp,
-        botName,
-      })
-
-      throw error
     }
+
+    return withRetrievalErrorLogging(
+      request,
+      env,
+      ctx,
+      { botName },
+      handleRetrieval,
+    )
   },
 }

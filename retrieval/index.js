@@ -11,6 +11,7 @@ export * from './lib/http-error.js'
 export * from './lib/origin-cache.js'
 export * from './lib/redirect.js'
 export * from './lib/response-headers.js'
+export * from './lib/retrieval-error-logging.js'
 export * from './lib/stats.js'
 
 export default {
