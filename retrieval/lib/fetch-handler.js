@@ -17,8 +17,6 @@ import { recordRetrieval, logRetrievalResult } from './stats.js'
  * @property {boolean} cacheMiss
  * @property {string} dataSetId
  * @property {string | undefined} botName
- * @property {string | null} requestCountryCode
- * @property {string} timestamp
  * @property {number} workerStartedAt
  * @property {number} fetchStartedAt
  * @property {(egressBytes: number) => Promise<{
@@ -28,6 +26,14 @@ import { recordRetrieval, logRetrievalResult } from './stats.js'
  *   - Computes the worker-specific cache-miss accounting once the bytes served to
  *       the client are known. Runs after the response has streamed, before the
  *       retrieval is logged.
+ */
+
+/**
+ * Per-request telemetry shared by the success and error logging paths.
+ *
+ * @typedef {object} RequestContext
+ * @property {string} requestTimestamp - ISO timestamp of the request.
+ * @property {string | null} requestCountryCode - The request's `CF-IPCountry`.
  */
 
 /**
@@ -48,13 +54,22 @@ import { recordRetrieval, logRetrievalResult } from './stats.js'
  *   ENFORCE_EGRESS_QUOTA: boolean
  * }} env
  * @param {ExecutionContext} ctx
- * @param {() => Promise<Response | RetrievalOutcome>} run
+ * @param {(context: RequestContext) => Promise<Response | RetrievalOutcome>} run
+ *   - Invokes the worker handler with the per-request telemetry context.
+ *
  * @returns {Promise<Response>}
  */
 export async function handleFetchRequest(request, env, ctx, run) {
   request.signal.addEventListener('abort', () => {
     console.log('The request was aborted!', { url: request.url })
   })
+
+  /** @type {RequestContext} */
+  const context = {
+    requestTimestamp: new Date().toISOString(),
+    requestCountryCode: request.headers.get('CF-IPCountry'),
+  }
+
   try {
     httpAssert(
       ['GET', 'HEAD'].includes(request.method),
@@ -64,10 +79,10 @@ export async function handleFetchRequest(request, env, ctx, run) {
     const legacyRedirect = redirectLegacyDomain(request)
     if (legacyRedirect) return legacyRedirect
 
-    const result = await run()
+    const result = await run(context)
     if (result instanceof Response) return result
 
-    return serveRetrievalOutcome(env, ctx, result)
+    return serveRetrievalOutcome(env, ctx, result, context)
   } catch (error) {
     return handleError(error)
   }
@@ -84,16 +99,20 @@ export async function handleFetchRequest(request, env, ctx, run) {
  * }} env
  * @param {ExecutionContext} ctx
  * @param {RetrievalOutcome} result
+ * @param {RequestContext} context
  * @returns {Response}
  */
-function serveRetrievalOutcome(env, ctx, result) {
+function serveRetrievalOutcome(
+  env,
+  ctx,
+  result,
+  { requestCountryCode, requestTimestamp: timestamp },
+) {
   const {
     response,
     cacheMiss,
     dataSetId,
     botName,
-    requestCountryCode,
-    timestamp,
     workerStartedAt,
     fetchStartedAt,
     finalizeCacheMiss,

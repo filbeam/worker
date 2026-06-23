@@ -23,8 +23,8 @@ export default {
    * @returns
    */
   async fetch(request, env, ctx, options) {
-    return handleFetchRequest(request, env, ctx, () =>
-      this._fetch(request, env, ctx, options),
+    return handleFetchRequest(request, env, ctx, (context) =>
+      this._fetch(request, env, ctx, options, context),
     )
   },
 
@@ -34,18 +34,23 @@ export default {
    * @param {ExecutionContext} ctx
    * @param {object} options
    * @param {typeof defaultRetrieveFile} [options.retrieveFile]
+   * @param {import('@filbeam/retrieval').RequestContext} context
    * @returns {Promise<
    *   Response | import('@filbeam/retrieval').RetrievalOutcome
    * >}
    */
-  async _fetch(request, env, ctx, { retrieveFile = defaultRetrieveFile } = {}) {
+  async _fetch(
+    request,
+    env,
+    ctx,
+    { retrieveFile = defaultRetrieveFile } = {},
+    { requestTimestamp, requestCountryCode },
+  ) {
     if (URL.parse(request.url)?.pathname === '/') {
       return Response.redirect('https://filbeam.com/', 302)
     }
 
-    const requestTimestamp = new Date().toISOString()
     const workerStartedAt = performance.now()
-    const requestCountryCode = request.headers.get('CF-IPCountry')
 
     const { payerWalletAddress, pieceCid, botName, validateCacheMissResponse } =
       parseRequest(request, env)
@@ -102,8 +107,6 @@ export default {
         cacheMiss: retrievalResult.cacheMiss,
         dataSetId: retrievalCandidate.dataSetId,
         botName,
-        requestCountryCode,
-        timestamp: requestTimestamp,
         workerStartedAt,
         fetchStartedAt,
         // Validate the cache-miss response (a `?validate` request) once it has

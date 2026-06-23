@@ -27,8 +27,8 @@ export default {
    * @returns
    */
   async fetch(request, env, ctx, options) {
-    return handleFetchRequest(request, env, ctx, () =>
-      this._fetch(request, env, ctx, options),
+    return handleFetchRequest(request, env, ctx, (context) =>
+      this._fetch(request, env, ctx, options, context),
     )
   },
 
@@ -38,6 +38,7 @@ export default {
    * @param {ExecutionContext} ctx
    * @param {object} options
    * @param {typeof defaultRetrieveIpfsContent} [options.retrieveIpfsContent]
+   * @param {import('@filbeam/retrieval').RequestContext} context
    * @returns {Promise<
    *   Response | import('@filbeam/retrieval').RetrievalOutcome
    * >}
@@ -47,6 +48,7 @@ export default {
     env,
     ctx,
     { retrieveIpfsContent = defaultRetrieveIpfsContent } = {},
+    { requestTimestamp, requestCountryCode },
   ) {
     if (
       URL.parse(request.url)?.hostname === env.DNS_ROOT.slice(1) ||
@@ -55,9 +57,7 @@ export default {
       return handleDnsRootRequest(request, env)
     }
 
-    const requestTimestamp = new Date().toISOString()
     const workerStartedAt = performance.now()
-    const requestCountryCode = request.headers.get('CF-IPCountry')
 
     const { dataSetId, pieceId, ipfsSubpath, ipfsFormat, botName } =
       parseRequest(request, env)
@@ -126,8 +126,6 @@ export default {
         cacheMiss,
         dataSetId: candidate.dataSetId,
         botName,
-        requestCountryCode,
-        timestamp: requestTimestamp,
         workerStartedAt,
         fetchStartedAt,
         // The client is served the raw bytes. On a cache miss the worker

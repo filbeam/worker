@@ -18,8 +18,6 @@ function retrievalResult(overrides = {}) {
     cacheMiss: true,
     dataSetId: 'fh-test',
     botName: undefined,
-    requestCountryCode: 'US',
-    timestamp: new Date().toISOString(),
     workerStartedAt: performance.now(),
     fetchStartedAt: performance.now(),
     finalizeCacheMiss: async () => ({ cacheMissResponseValid: true }),
@@ -124,7 +122,9 @@ describe('handleFetchRequest', () => {
     const dataSetId = 'fh-stream'
     let finalizedEgress
     const res = await handleFetchRequest(
-      new Request('https://example.com/'),
+      new Request('https://example.com/', {
+        headers: { 'CF-IPCountry': 'US' },
+      }),
       testEnv,
       ctx,
       async () =>
@@ -144,15 +144,17 @@ describe('handleFetchRequest', () => {
 
     expect(finalizedEgress).toBe('hello world'.length)
     const log = await env.DB.prepare(
-      `SELECT response_status, egress_bytes, cache_miss
+      `SELECT response_status, egress_bytes, cache_miss, request_country_code
        FROM retrieval_logs WHERE data_set_id = ?`,
     )
       .bind(dataSetId)
       .first()
+    // request_country_code is sourced by handleFetchRequest from the request.
     expect(log).toEqual({
       response_status: 200,
       egress_bytes: 'hello world'.length,
       cache_miss: 1,
+      request_country_code: 'US',
     })
   })
 
