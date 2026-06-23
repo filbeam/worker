@@ -9,7 +9,7 @@ import {
   recordRetrieval,
   logRetrievalError,
   redirectLegacyDomain,
-  handleError,
+  handleFetchRequest,
 } from '@filbeam/retrieval'
 
 import { parseRequest } from '../lib/request.js'
@@ -32,19 +32,10 @@ export default {
    * @param {typeof defaultRetrieveIpfsContent} [options.retrieveIpfsContent]
    * @returns
    */
-  async fetch(
-    request,
-    env,
-    ctx,
-    { retrieveIpfsContent = defaultRetrieveIpfsContent } = {},
-  ) {
-    try {
-      return await this._fetch(request, env, ctx, {
-        retrieveIpfsContent,
-      })
-    } catch (error) {
-      return handleError(error)
-    }
+  async fetch(request, env, ctx, options) {
+    return handleFetchRequest(request, () =>
+      this._fetch(request, env, ctx, options),
+    )
   },
 
   /**
