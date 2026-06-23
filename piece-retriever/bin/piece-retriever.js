@@ -1,6 +1,5 @@
 import {
   httpAssert,
-  setContentSecurityPolicy,
   setRetrievalResponseHeaders,
   isCidDenied,
   BAD_BITS_DENIED_MESSAGE,
@@ -9,6 +8,7 @@ import {
   logRetrievalError,
   handleFetchRequest,
   selectRetrievalCandidate,
+  respondNoServiceProviderAvailable,
 } from '@filbeam/retrieval'
 
 import { parseRequest } from '../lib/request.js'
@@ -96,31 +96,14 @@ export default {
       httpAssert(retrievalCandidate, 500, 'should never happen')
 
       if (!retrievalResult || retrievalResult.response.status >= 500) {
-        ctx.waitUntil(
-          logRetrievalResult(env, {
-            cacheMiss: retrievalResult?.cacheMiss || null,
-            cacheMissResponseValid: null,
-            responseStatus: 502,
-            egressBytes: 0,
-            requestCountryCode,
-            timestamp: requestTimestamp,
-            dataSetId: retrievalCandidate.dataSetId,
-            botName,
-          }),
-        )
-        const response = new Response(
-          `No available service provider found. Attempted: ${retrievalAttempts.map((a) => `ID=${a.serviceProviderId} (Service URL=${a.serviceUrl})`).join(', ')}`,
-          {
-            status: 502,
-            headers: new Headers({
-              'X-Data-Set-ID': retrievalAttempts
-                .map((a) => a.dataSetId)
-                .join(','),
-            }),
-          },
-        )
-        setContentSecurityPolicy(response)
-        return response
+        return respondNoServiceProviderAvailable(env, ctx, {
+          retrievalResult,
+          attempts: retrievalAttempts,
+          dataSetId: retrievalCandidate.dataSetId,
+          requestCountryCode,
+          timestamp: requestTimestamp,
+          botName,
+        })
       }
 
       if (!retrievalResult.response.body) {
