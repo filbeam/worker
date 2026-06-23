@@ -50,10 +50,14 @@ export function filterAuthorizedRetrievalCandidates(
   const withPayerNotSanctioned = withCDN.filter((row) => !row.is_sanctioned)
   httpAssert(withPayerNotSanctioned.length > 0, 403, messages.sanctioned)
 
-  const withApprovedProvider = withPayerNotSanctioned.filter(
+  const authorizedRetrievalCandidates = withPayerNotSanctioned.filter(
     (row) => row.service_url,
   )
-  httpAssert(withApprovedProvider.length > 0, 404, messages.noApprovedProvider)
+  httpAssert(
+    authorizedRetrievalCandidates.length > 0,
+    404,
+    messages.noApprovedProvider,
+  )
 
-  return withApprovedProvider
+  return authorizedRetrievalCandidates
 }

@@ -70,29 +70,32 @@ export async function getRetrievalCandidatesAndValidatePayer(
       (await env.DB.prepare(query).bind(pieceCid).all()).results
     )
   )
-  const withApprovedProvider = filterAuthorizedRetrievalCandidates(results, {
-    payerAddress,
-    messages: {
-      notIndexed: `Piece_cid '${pieceCid}' does not exist or may not have been indexed yet.`,
-      noServiceProvider: `Piece_cid '${pieceCid}' exists but has no associated service provider.`,
-      noPaymentRail: `There is no Filecoin Warm Storage Service deal for payer '${payerAddress}' and piece_cid '${pieceCid}'.`,
-      cdnDisabled: `The Filecoin Warm Storage Service deal for payer '${payerAddress}' and piece_cid '${pieceCid}' has withCDN=false.`,
-      sanctioned: `Wallet '${payerAddress}' is sanctioned and cannot retrieve piece_cid '${pieceCid}'.`,
-      noApprovedProvider: `No approved service provider found for payer '${payerAddress}' and piece_cid '${pieceCid}'.`,
+  const authorizedRetrievalCandidates = filterAuthorizedRetrievalCandidates(
+    results,
+    {
+      payerAddress,
+      messages: {
+        notIndexed: `Piece_cid '${pieceCid}' does not exist or may not have been indexed yet.`,
+        noServiceProvider: `Piece_cid '${pieceCid}' exists but has no associated service provider.`,
+        noPaymentRail: `There is no Filecoin Warm Storage Service deal for payer '${payerAddress}' and piece_cid '${pieceCid}'.`,
+        cdnDisabled: `The Filecoin Warm Storage Service deal for payer '${payerAddress}' and piece_cid '${pieceCid}' has withCDN=false.`,
+        sanctioned: `Wallet '${payerAddress}' is sanctioned and cannot retrieve piece_cid '${pieceCid}'.`,
+        noApprovedProvider: `No approved service provider found for payer '${payerAddress}' and piece_cid '${pieceCid}'.`,
+      },
     },
-  })
+  )
 
   // Check CDN quota first
   const withSufficientCDNQuota = enforceEgressQuota
-    ? withApprovedProvider.filter((row) => {
+    ? authorizedRetrievalCandidates.filter((row) => {
         return BigInt(row.cdn_egress_quota ?? '0') > 0n
       })
-    : withApprovedProvider
+    : authorizedRetrievalCandidates
 
   httpAssert(
     withSufficientCDNQuota.length > 0,
     402,
-    `CDN egress quota exhausted for payer '${payerAddress}' and data set '${withApprovedProvider[0]?.data_set_id}'. Please top up your CDN egress quota.`,
+    `CDN egress quota exhausted for payer '${payerAddress}' and data set '${authorizedRetrievalCandidates[0]?.data_set_id}'. Please top up your CDN egress quota.`,
   )
 
   // Check cache-miss quota
