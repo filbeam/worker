@@ -9,7 +9,6 @@ import {
   logRetrievalError,
   handleFetchRequest,
   selectRetrievalCandidate,
-  maybeHandleNoServiceProvider,
 } from '@filbeam/retrieval'
 
 import { parseRequest } from '../lib/request.js'
@@ -83,33 +82,20 @@ export default {
       const isBadBit = await isCidDenied(env, ipfsRootCid)
       httpAssert(!isBadBit, 404, BAD_BITS_DENIED_MESSAGE)
 
-      const {
-        candidate,
-        result: retrievalResult,
-        attempts: retrievalAttempts,
-      } = await selectRetrievalCandidate(candidates, (candidate) =>
-        retrieveIpfsContent(
-          candidate.serviceUrl,
-          ipfsRootCid,
-          ipfsSubpath,
-          env.ORIGIN_CACHE_TTL,
-          { signal: request.signal },
-        ),
+      const selection = await selectRetrievalCandidate(
+        candidates,
+        (candidate) =>
+          retrieveIpfsContent(
+            candidate.serviceUrl,
+            ipfsRootCid,
+            ipfsSubpath,
+            env.ORIGIN_CACHE_TTL,
+            { signal: request.signal },
+          ),
+        { env, ctx, requestCountryCode, timestamp: requestTimestamp, botName },
       )
-
-      httpAssert(candidate, 500, 'should never happen')
-
-      const noServiceProviderResponse = maybeHandleNoServiceProvider(env, ctx, {
-        retrievalResult,
-        attempts: retrievalAttempts,
-        dataSetId: candidate.dataSetId,
-        requestCountryCode,
-        timestamp: requestTimestamp,
-        botName,
-      })
-      if (noServiceProviderResponse) return noServiceProviderResponse
-
-      httpAssert(retrievalResult, 500, 'should never happen')
+      if (selection.failureResponse) return selection.failureResponse
+      const { candidate, result: retrievalResult } = selection
 
       const originResponse = retrievalResult.response
       const cacheMiss = retrievalResult.cacheMiss
