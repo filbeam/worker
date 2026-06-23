@@ -22,6 +22,23 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
+/**
+ * Calls the worker and drains the response body so the back-pressured egress
+ * measurement (which only advances as the client reads) completes before the
+ * test waits on the execution context. Returns a re-readable response with the
+ * same status, headers and bytes. A body-less response is returned unchanged.
+ *
+ * @param {Request} req
+ * @param {Env} env
+ * @param {ExecutionContext} ctx
+ * @param {object} [options]
+ */
+async function fetchAndRead(req, env, ctx, options = {}) {
+  const res = await worker.fetch(req, env, ctx, options)
+  if (!res.body) return res
+  return new Response(await res.arrayBuffer(), res)
+}
+
 const DNS_ROOT = '.ipfs.filbeam.io'
 env.DNS_ROOT = DNS_ROOT
 const botTokens = { secret: 'testbot' }
@@ -81,7 +98,7 @@ describe('retriever.fetch', () => {
   it('redirects to https://filbeam.com when no CID and no wallet address were provided', async () => {
     const ctx = createExecutionContext()
     const req = new Request(`https://${DNS_ROOT.slice(1)}/`)
-    const res = await worker.fetch(req, env, ctx)
+    const res = await fetchAndRead(req, env, ctx)
     await waitOnExecutionContext(ctx)
     expect(res.status).toBe(302)
     expect(res.headers.get('Location')).toBe('https://filbeam.com/')
@@ -92,7 +109,7 @@ describe('retriever.fetch', () => {
     const req = new Request(
       `https://${DNS_ROOT.slice(1)}/${defaultPayerAddress}`,
     )
-    const res = await worker.fetch(req, env, ctx)
+    const res = await fetchAndRead(req, env, ctx)
     await waitOnExecutionContext(ctx)
     expect(res.status).toBe(404)
     expect(await res.text()).toContain('Invalid path format')
@@ -105,7 +122,7 @@ describe('retriever.fetch', () => {
     const req = new Request(
       `https://${DNS_ROOT.slice(1)}/${invalidWallet}/${ipfsRootCid}`,
     )
-    const res = await worker.fetch(req, env, ctx)
+    const res = await fetchAndRead(req, env, ctx)
     await waitOnExecutionContext(ctx)
     expect(res.status).toBe(404)
     expect(await res.text()).toContain('Invalid wallet address')
@@ -137,7 +154,7 @@ describe('retriever.fetch', () => {
     const req = new Request(
       `https://${DNS_ROOT.slice(1)}/${testPayerAddress}/${testIpfsRootCid}`,
     )
-    const res = await worker.fetch(req, env, ctx)
+    const res = await fetchAndRead(req, env, ctx)
     await waitOnExecutionContext(ctx)
     expect(res.status).toBe(302)
     const location = res.headers.get('Location')
@@ -170,7 +187,7 @@ describe('retriever.fetch', () => {
     const req = new Request(
       `https://${DNS_ROOT.slice(1)}/${testPayerAddress.toUpperCase()}/${testIpfsRootCid}`,
     )
-    const res = await worker.fetch(req, env, ctx)
+    const res = await fetchAndRead(req, env, ctx)
     await waitOnExecutionContext(ctx)
     expect(res.status).toBe(302)
     const location = res.headers.get('Location')
@@ -204,7 +221,7 @@ describe('retriever.fetch', () => {
     const req = new Request(
       `https://${DNS_ROOT.slice(1)}/${testPayerAddress}/${testIpfsRootCid}/${subpath}`,
     )
-    const res = await worker.fetch(req, env, ctx)
+    const res = await fetchAndRead(req, env, ctx)
     await waitOnExecutionContext(ctx)
     expect(res.status).toBe(302)
     const location = res.headers.get('Location')
@@ -217,7 +234,7 @@ describe('retriever.fetch', () => {
   it('redirects to https://*.filcdn.io/* when old domain was used', async () => {
     const ctx = createExecutionContext()
     const req = new Request(`https://foo.filcdn.io/bar`)
-    const res = await worker.fetch(req, env, ctx)
+    const res = await fetchAndRead(req, env, ctx)
     await waitOnExecutionContext(ctx)
     expect(res.status).toBe(301)
     expect(res.headers.get('Location')).toBe(`https://foo.filbeam.io/bar`)
@@ -226,7 +243,7 @@ describe('retriever.fetch', () => {
   it('returns 405 for unsupported request methods', async () => {
     const ctx = createExecutionContext()
     const req = withRequest('1', '1', 'POST')
-    const res = await worker.fetch(req, env, ctx)
+    const res = await fetchAndRead(req, env, ctx)
     await waitOnExecutionContext(ctx)
     expect(res.status).toBe(405)
     expect(await res.text()).toBe('Method Not Allowed')
@@ -238,7 +255,7 @@ describe('retriever.fetch', () => {
     const req = new Request(
       `http://${buildSlug(BigInt(realDataSetId), BigInt(realPieceId)).replace(/^(1-)/, '')}.${DNS_ROOT.slice(1)}`,
     )
-    const res = await worker.fetch(req, env, ctx, {
+    const res = await fetchAndRead(req, env, ctx, {
       retrieveIpfsContent: mockRetrieveIpfsContent,
     })
     await waitOnExecutionContext(ctx)
@@ -251,7 +268,7 @@ describe('retriever.fetch', () => {
     const req = new Request(
       `http://${buildSlug(BigInt(realDataSetId), BigInt(realPieceId))}1.${DNS_ROOT.slice(1)}`,
     )
-    const res = await worker.fetch(req, env, ctx, {
+    const res = await fetchAndRead(req, env, ctx, {
       retrieveIpfsContent: mockRetrieveIpfsContent,
     })
     await waitOnExecutionContext(ctx)
@@ -270,7 +287,7 @@ describe('retriever.fetch', () => {
     })
     const ctx = createExecutionContext()
     const req = withRequest(realDataSetId, realPieceId)
-    const res = await worker.fetch(req, env, ctx, {
+    const res = await fetchAndRead(req, env, ctx, {
       retrieveIpfsContent: mockRetrieveIpfsContent,
     })
     await waitOnExecutionContext(ctx)
@@ -287,7 +304,7 @@ describe('retriever.fetch', () => {
     })
     const ctx = createExecutionContext()
     const req = withRequest(realDataSetId, realPieceId)
-    const res = await worker.fetch(req, env, ctx, {
+    const res = await fetchAndRead(req, env, ctx, {
       retrieveIpfsContent: mockRetrieveIpfsContent,
     })
     await waitOnExecutionContext(ctx)
@@ -304,7 +321,7 @@ describe('retriever.fetch', () => {
     })
     const ctx = createExecutionContext()
     const req = withRequest(realDataSetId, realPieceId)
-    const res = await worker.fetch(req, env, ctx, {
+    const res = await fetchAndRead(req, env, ctx, {
       retrieveIpfsContent: mockRetrieveIpfsContent,
     })
     await waitOnExecutionContext(ctx)
@@ -325,7 +342,7 @@ describe('retriever.fetch', () => {
     })
     const ctx = createExecutionContext()
     const req = withRequest(realDataSetId, realPieceId)
-    const res = await worker.fetch(req, env, ctx, {
+    const res = await fetchAndRead(req, env, ctx, {
       retrieveIpfsContent: mockRetrieveIpfsContent,
     })
     await waitOnExecutionContext(ctx)
@@ -341,7 +358,7 @@ describe('retriever.fetch', () => {
       '804edafec384735102b5e9bd99a0bc57922381bdc8685221f7e30ab865176f13'
     const ctx = createExecutionContext()
     const req = withRequest(realDataSetId, realPieceId)
-    const res = await worker.fetch(req, env, ctx, { retrieveIpfsContent })
+    const res = await fetchAndRead(req, env, ctx, { retrieveIpfsContent })
     await waitOnExecutionContext(ctx)
     expect(res.status).toBe(200)
     // get the sha256 hash of the content
@@ -364,7 +381,7 @@ describe('retriever.fetch', () => {
     })
     const ctx = createExecutionContext()
     const req = withRequest(realDataSetId, realPieceId)
-    const res = await worker.fetch(req, env, ctx, {
+    const res = await fetchAndRead(req, env, ctx, {
       retrieveIpfsContent: mockRetrieveIpfsContent,
     })
     await waitOnExecutionContext(ctx)
@@ -401,7 +418,7 @@ describe('retriever.fetch', () => {
     })
     const ctx = createExecutionContext()
     const req = withRequest(realDataSetId, realPieceId)
-    const res = await worker.fetch(req, env, ctx, {
+    const res = await fetchAndRead(req, env, ctx, {
       retrieveIpfsContent: mockRetrieveIpfsContent,
     })
     await waitOnExecutionContext(ctx)
@@ -440,7 +457,7 @@ describe('retriever.fetch', () => {
     }
     const ctx = createExecutionContext()
     const req = withRequest(realDataSetId, realPieceId)
-    const res = await worker.fetch(req, env, ctx, {
+    const res = await fetchAndRead(req, env, ctx, {
       retrieveIpfsContent: mockRetrieveIpfsContent,
     })
     await waitOnExecutionContext(ctx)
@@ -478,7 +495,7 @@ describe('retriever.fetch', () => {
     const req = withRequest(realDataSetId, realPieceId, 'GET', {
       'CF-IPCountry': 'US',
     })
-    const res = await worker.fetch(req, env, ctx, {
+    const res = await fetchAndRead(req, env, ctx, {
       retrieveIpfsContent: mockRetrieveIpfsContent,
     })
     await waitOnExecutionContext(ctx)
@@ -509,7 +526,7 @@ describe('retriever.fetch', () => {
     })
     const ctx = createExecutionContext()
     const req = withRequest(realDataSetId, realPieceId)
-    const res = await worker.fetch(req, env, ctx, {
+    const res = await fetchAndRead(req, env, ctx, {
       retrieveIpfsContent: mockRetrieveIpfsContent,
     })
     await waitOnExecutionContext(ctx)
@@ -547,6 +564,8 @@ describe('retriever.fetch', () => {
         format: 'car',
       },
     )
+    // Not fetchAndRead: the body errors mid-stream, and the source error (not
+    // client consumption) drives the 900. Draining it here would throw.
     const res = await worker.fetch(req, env, ctx, {
       retrieveIpfsContent: mockRetrieveIpfsContent,
     })
@@ -558,6 +577,8 @@ describe('retriever.fetch', () => {
     )
       .bind(String(realDataSetId))
       .first()
+    // The client never reads, so back-pressure stops the chunk being counted
+    // before the source errors.
     expect(log).toEqual({ response_status: 900, egress_bytes: 0 })
   })
 
@@ -573,7 +594,7 @@ describe('retriever.fetch', () => {
             try {
               const ctx = createExecutionContext()
               const req = withRequest(dataSetId, pieceCid)
-              const res = await worker.fetch(req, env, ctx, {
+              const res = await fetchAndRead(req, env, ctx, {
                 retrieveIpfsContent,
               })
               await waitOnExecutionContext(ctx)
@@ -634,7 +655,7 @@ describe('retriever.fetch', () => {
     const req = withRequest(realDataSetId, realPieceId, 'GET', {
       authorization: `Bearer ${botToken}`,
     })
-    const res = await worker.fetch(req, env, ctx, {
+    const res = await fetchAndRead(req, env, ctx, {
       retrieveIpfsContent: mockRetrieveIpfsContent,
     })
     await waitOnExecutionContext(ctx)
@@ -684,7 +705,7 @@ describe('retriever.fetch', () => {
       {},
       { format: null },
     )
-    const res = await worker.fetch(req, env, ctx, {
+    const res = await fetchAndRead(req, env, ctx, {
       retrieveIpfsContent: mockRetrieveIpfsContent,
     })
     await waitOnExecutionContext(ctx)
@@ -744,7 +765,7 @@ describe('retriever.fetch', () => {
 
     const ctx = createExecutionContext()
     const req = withRequest(dataSetId, pieceId, 'GET', {}, { format: null })
-    const res = await worker.fetch(
+    const res = await fetchAndRead(
       req,
       { ...env, ENFORCE_EGRESS_QUOTA: true },
       ctx,
@@ -801,7 +822,7 @@ describe('retriever.fetch', () => {
 
     const ctx = createExecutionContext()
     const req = withRequest(dataSetId, pieceId, 'GET', {}, { format: 'car' })
-    const res = await worker.fetch(
+    const res = await fetchAndRead(
       req,
       { ...env, ENFORCE_EGRESS_QUOTA: true },
       ctx,
@@ -873,7 +894,7 @@ describe('retriever.fetch', () => {
 
     const ctx = createExecutionContext()
     const req = withRequest('8800', '8800', 'GET', {}, { format: 'car' })
-    const res = await worker.fetch(req, env, ctx, {
+    const res = await fetchAndRead(req, env, ctx, {
       retrieveIpfsContent: mockRetrieveIpfsContent,
     })
     await waitOnExecutionContext(ctx)
@@ -924,7 +945,7 @@ describe('retriever.fetch', () => {
 
     const ctx = createExecutionContext()
     const req = withRequest(dataSetId, pieceId, 'GET')
-    const res = await worker.fetch(req, env, ctx)
+    const res = await fetchAndRead(req, env, ctx)
     await waitOnExecutionContext(ctx)
 
     assert.strictEqual(res.status, 402)
@@ -961,7 +982,7 @@ describe('retriever.fetch', () => {
 
     const ctx = createExecutionContext()
     const req = withRequest(dataSetId, pieceId)
-    const res = await worker.fetch(req, env, ctx, {
+    const res = await fetchAndRead(req, env, ctx, {
       retrieveIpfsContent: mockRetrieveIpfsContent,
     })
     await waitOnExecutionContext(ctx)
@@ -988,7 +1009,7 @@ describe('retriever.fetch', () => {
 
     const ctx = createExecutionContext()
     const req = withRequest(dataSetId, pieceId)
-    const res = await worker.fetch(req, env, ctx)
+    const res = await fetchAndRead(req, env, ctx)
     await waitOnExecutionContext(ctx)
 
     // Expect an error because no URL was found
@@ -1006,7 +1027,7 @@ describe('retriever.fetch', () => {
     })
     const ctx = createExecutionContext()
     const req = withRequest(realDataSetId, realPieceId)
-    const res = await worker.fetch(req, env, ctx, {
+    const res = await fetchAndRead(req, env, ctx, {
       retrieveIpfsContent: mockRetrieveIpfsContent,
     })
     await waitOnExecutionContext(ctx)
@@ -1022,7 +1043,7 @@ describe('retriever.fetch', () => {
     })
     const ctx = createExecutionContext()
     const req = withRequest(realDataSetId, realPieceId)
-    const res = await worker.fetch(req, env, ctx, {
+    const res = await fetchAndRead(req, env, ctx, {
       retrieveIpfsContent: mockRetrieveIpfsContent,
     })
     await waitOnExecutionContext(ctx)
@@ -1053,7 +1074,7 @@ describe('retriever.fetch', () => {
     })
     const ctx = createExecutionContext()
     const req = withRequest(realDataSetId, realPieceId)
-    const res = await worker.fetch(req, env, ctx, {
+    const res = await fetchAndRead(req, env, ctx, {
       retrieveIpfsContent: mockRetrieveIpfsContent,
     })
     await waitOnExecutionContext(ctx)
@@ -1071,7 +1092,7 @@ describe('retriever.fetch', () => {
     })
     const ctx = createExecutionContext()
     const req = withRequest(realDataSetId, realPieceId, 'HEAD')
-    const res = await worker.fetch(req, env, ctx, {
+    const res = await fetchAndRead(req, env, ctx, {
       retrieveIpfsContent: mockRetrieveIpfsContent,
     })
     await waitOnExecutionContext(ctx)
@@ -1089,7 +1110,7 @@ describe('retriever.fetch', () => {
 
     const ctx = createExecutionContext()
     const req = withRequest(realDataSetId, realPieceId)
-    const res = await worker.fetch(req, env, ctx, {
+    const res = await fetchAndRead(req, env, ctx, {
       retrieveIpfsContent: mockRetrieveIpfsContent,
     })
     await waitOnExecutionContext(ctx)
@@ -1131,7 +1152,7 @@ describe('retriever.fetch', () => {
     )
     const ctx = createExecutionContext()
     const req = withRequest(dataSetId, pieceId)
-    const res = await worker.fetch(req, env, ctx)
+    const res = await fetchAndRead(req, env, ctx)
     await waitOnExecutionContext(ctx)
 
     assert.strictEqual(res.status, 403)
@@ -1139,7 +1160,7 @@ describe('retriever.fetch', () => {
   it('does not log to retrieval_logs on method not allowed (405)', async () => {
     const ctx = createExecutionContext()
     const req = withRequest(realDataSetId, realPieceId, 'POST')
-    const res = await worker.fetch(req, env, ctx)
+    const res = await fetchAndRead(req, env, ctx)
     await waitOnExecutionContext(ctx)
 
     expect(res.status).toBe(405)
@@ -1177,7 +1198,7 @@ describe('retriever.fetch', () => {
 
     const ctx = createExecutionContext()
     const req = withRequest(dataSetId, pieceId)
-    const res = await worker.fetch(req, env, ctx)
+    const res = await fetchAndRead(req, env, ctx)
     await waitOnExecutionContext(ctx)
 
     expect(res.status).toBe(404)
@@ -1197,7 +1218,7 @@ describe('retriever.fetch', () => {
     const req = new Request(
       `http://${buildSlug(BigInt(realDataSetId), BigInt(realPieceId))}1.${DNS_ROOT.slice(1)}`,
     )
-    const res = await worker.fetch(req, env, ctx)
+    const res = await fetchAndRead(req, env, ctx)
     await waitOnExecutionContext(ctx)
 
     expect(res.status).toBe(400)
@@ -1227,7 +1248,7 @@ describe('retriever.fetch', () => {
     )
     const req = new Request(url)
 
-    const res = await worker.fetch(req, env, ctx, { retrieveIpfsContent })
+    const res = await fetchAndRead(req, env, ctx, { retrieveIpfsContent })
     await waitOnExecutionContext(ctx)
 
     expect(res.status).toBe(200)

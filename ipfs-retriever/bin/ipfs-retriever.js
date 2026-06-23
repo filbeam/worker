@@ -1,20 +1,15 @@
 import {
   isValidEthereumAddress,
   httpAssert,
-  setRetrievalResponseHeaders,
   assertCidNotDenied,
-  logRetrievalResult,
-  recordRetrieval,
   logRetrievalError,
   handleFetchRequest,
   selectRetrievalCandidate,
-  handleEmptyBodyResponse,
 } from '@filbeam/retrieval'
 
 import { parseRequest } from '../lib/request.js'
 import {
   retrieveIpfsContent as defaultRetrieveIpfsContent,
-  measureStreamedEgress,
   processIpfsResponse,
 } from '../lib/retrieval.js'
 import {
@@ -32,8 +27,8 @@ export default {
    * @returns
    */
   async fetch(request, env, ctx, options) {
-    return handleFetchRequest(request, () =>
-      this._fetch(request, env, ctx, options),
+    return handleFetchRequest(request, env, ctx, (context) =>
+      this._fetch(request, env, ctx, options, context),
     )
   },
 
@@ -43,13 +38,17 @@ export default {
    * @param {ExecutionContext} ctx
    * @param {object} options
    * @param {typeof defaultRetrieveIpfsContent} [options.retrieveIpfsContent]
-   * @returns
+   * @param {import('@filbeam/retrieval').RequestContext} context
+   * @returns {Promise<
+   *   Response | import('@filbeam/retrieval').RetrievalOutcome
+   * >}
    */
   async _fetch(
     request,
     env,
     ctx,
     { retrieveIpfsContent = defaultRetrieveIpfsContent } = {},
+    { requestTimestamp, requestCountryCode },
   ) {
     if (
       URL.parse(request.url)?.hostname === env.DNS_ROOT.slice(1) ||
@@ -57,10 +56,6 @@ export default {
     ) {
       return handleDnsRootRequest(request, env)
     }
-
-    const requestTimestamp = new Date().toISOString()
-    const workerStartedAt = performance.now()
-    const requestCountryCode = request.headers.get('CF-IPCountry')
 
     const { dataSetId, pieceId, ipfsSubpath, ipfsFormat, botName } =
       parseRequest(request, env)
@@ -114,90 +109,33 @@ export default {
         signal: request.signal,
       })
 
-      if (!responseBody) {
-        return handleEmptyBodyResponse(env, ctx, {
-          response: originResponse,
-          cacheMiss,
-          dataSetId: candidate.dataSetId,
-          requestCountryCode,
-          timestamp: requestTimestamp,
-          botName,
-        })
-      }
+      // When converting CAR to raw, the headers already carry the CAR-to-raw
+      // adjustments. A null body (e.g. a HEAD request) is served as-is.
+      const response = responseBody
+        ? new Response(responseBody, {
+            status: originResponse.status,
+            statusText: originResponse.statusText,
+            headers: responseHeaders,
+          })
+        : originResponse
 
-      // Stream and count bytes
-      // We create two identical streams, one for the egress measurement and the other for returning the response as soon as possible
-      const [returnedStream, egressMeasurementStream] = responseBody.tee()
-      const reader = egressMeasurementStream.getReader()
-      const firstByteAt = performance.now()
-
-      ctx.waitUntil(
-        (async () => {
-          try {
-            const egressBytes = await measureStreamedEgress(reader)
-            const lastByteFetchedAt = performance.now()
-
-            // The client is served the raw bytes (`egressBytes`). On a cache
-            // miss the worker fetched a CAR from the service provider, which is
-            // larger than the raw bytes when converting from CAR to raw. The
-            // cache-miss egress is charged for that CAR size. When the body is
-            // passed through unchanged (e.g. `?format=car`), the two are equal.
-            const cacheMissEgressBytes = originEgressBytes ?? egressBytes
-
-            await recordRetrieval(env, {
-              cacheMiss,
-              // Charge the cache-miss egress quota for every cache miss: the
-              // worker fetched the CAR from the service provider whether it was
-              // converted to raw or passed through (`?format=car`). Reaching
-              // here means the response streamed successfully (a converted CAR
-              // is validated during conversion, so an invalid one never gets
-              // here).
-              cacheMissResponseValid: cacheMiss ? true : null,
-              responseStatus: originResponse.status,
-              egressBytes,
-              cacheMissEgressBytes,
-              requestCountryCode,
-              timestamp: requestTimestamp,
-              performanceStats: {
-                fetchTtfb: firstByteAt - fetchStartedAt,
-                fetchTtlb: lastByteFetchedAt - fetchStartedAt,
-                workerTtfb: firstByteAt - workerStartedAt,
-              },
-              dataSetId: candidate.dataSetId,
-              botName,
-              enforceEgressQuota: env.ENFORCE_EGRESS_QUOTA,
-            })
-          } catch (err) {
-            console.error('Error in server stream:', err)
-
-            await logRetrievalResult(env, {
-              cacheMiss,
-              cacheMissResponseValid: null,
-              responseStatus: 900,
-              egressBytes: 0,
-              cacheMissEgressBytes: 0,
-              requestCountryCode,
-              timestamp: requestTimestamp,
-              dataSetId: candidate.dataSetId,
-              botName,
-            })
-          }
-        })(),
-      )
-
-      // Return immediately, proxying the transformed response. The headers
-      // already carry the CAR-to-raw adjustments from processIpfsResponse.
-      const response = new Response(returnedStream, {
-        status: originResponse.status,
-        statusText: originResponse.statusText,
-        headers: responseHeaders,
-      })
-      setRetrievalResponseHeaders(response, {
+      return {
+        response,
+        cacheMiss,
         dataSetId: candidate.dataSetId,
-        clientCacheTtl: env.CLIENT_CACHE_TTL,
-      })
-
-      return response
+        botName,
+        fetchStartedAt,
+        // The client is served the raw bytes. On a cache miss the worker
+        // fetched a (larger) CAR from the service provider, which the cache-miss
+        // quota is charged for; for a passed-through CAR (`?format=car`) the two
+        // are equal. Reaching here means the response streamed successfully (a
+        // converted CAR is validated during conversion), so charge every cache
+        // miss.
+        finalizeCacheMiss: async (egressBytes) => ({
+          cacheMissEgressBytes: originEgressBytes ?? egressBytes,
+          cacheMissResponseValid: cacheMiss ? true : null,
+        }),
+      }
     } catch (error) {
       logRetrievalError(env, ctx, error, {
         requestCountryCode,
