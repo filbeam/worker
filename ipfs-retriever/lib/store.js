@@ -53,8 +53,6 @@ function validateQueryResultsAndGetCandidates(params) {
     { payerAddress },
   )
 
-  // IPFS indexing is specific to IPFS retrievals, so it is checked here rather
-  // than in the shared cascade.
   const withIpfsIndexing = authorizedRetrievalCandidates.filter(
     (row) => row.with_ipfs_indexing === 1,
   )
