@@ -1,3 +1,5 @@
+import { getErrorHttpStatusMessage } from './http-error.js'
+
 /**
  * @param {{ DB: D1Database }} env - Worker environment (contains D1 binding).
  * @param {object} params - Parameters for the data set update.
@@ -12,7 +14,7 @@
  *   CAR that is larger than the raw bytes served to the client.
  * @param {boolean} params.cacheMiss - Whether this was a cache miss (true) or
  *   cache hit (false).
- * @param {boolean} [params.cacheMissResponseValid]
+ * @param {boolean | null} [params.cacheMissResponseValid]
  * @param {boolean} [params.enforceEgressQuota=false] - Whether to decrement
  *   egress quotas. Default is `false`
  * @param {boolean} [params.isBotTraffic=false] - Whether the egress traffic
@@ -143,4 +145,75 @@ export async function logRetrievalResult(env, params) {
     // TODO: Handle specific SQL error codes if needed
     throw error
   }
+}
+
+/**
+ * Records a failed retrieval: logs the resolved HTTP status with no egress and
+ * no data set, scheduled on the execution context. Intended for a worker's
+ * request error handler.
+ *
+ * @param {{ DB: D1Database }} env - Worker environment (contains D1 binding).
+ * @param {ExecutionContext} ctx
+ * @param {unknown} error - The error thrown while handling the request.
+ * @param {object} context
+ * @param {string | null} context.requestCountryCode
+ * @param {string} context.timestamp
+ * @param {string | undefined} context.botName
+ */
+export function logRetrievalError(
+  env,
+  ctx,
+  error,
+  { requestCountryCode, timestamp, botName },
+) {
+  const { status } = getErrorHttpStatusMessage(error)
+
+  ctx.waitUntil(
+    logRetrievalResult(env, {
+      cacheMiss: null,
+      cacheMissResponseValid: null,
+      responseStatus: status,
+      egressBytes: null,
+      requestCountryCode,
+      timestamp,
+      dataSetId: null,
+      botName,
+    }),
+  )
+}
+
+/**
+ * Records a completed retrieval: writes the retrieval log and updates the data
+ * set egress stats and quotas. These are always performed together for a
+ * successful streamed response.
+ *
+ * @param {{ DB: D1Database }} env - Worker environment (contains D1 binding).
+ * @param {object} params - Combined parameters for {@link logRetrievalResult}
+ *   and {@link updateDataSetStats}.
+ * @param {string} params.dataSetId
+ * @param {number} params.egressBytes
+ * @param {number} [params.cacheMissEgressBytes]
+ * @param {boolean} params.cacheMiss
+ * @param {boolean | null} params.cacheMissResponseValid
+ * @param {number} params.responseStatus
+ * @param {string | null} params.requestCountryCode
+ * @param {string} params.timestamp
+ * @param {{
+ *   fetchTtfb: number
+ *   fetchTtlb: number
+ *   workerTtfb: number
+ * }} [params.performanceStats]
+ * @param {string | undefined} params.botName
+ * @param {boolean} [params.enforceEgressQuota]
+ */
+export async function recordRetrieval(env, params) {
+  await logRetrievalResult(env, params)
+  await updateDataSetStats(env, {
+    dataSetId: params.dataSetId,
+    egressBytes: params.egressBytes,
+    cacheMissEgressBytes: params.cacheMissEgressBytes,
+    cacheMiss: params.cacheMiss,
+    cacheMissResponseValid: params.cacheMissResponseValid,
+    enforceEgressQuota: params.enforceEgressQuota,
+  })
 }

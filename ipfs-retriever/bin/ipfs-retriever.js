@@ -5,9 +5,10 @@ import {
   setRetrievalResponseHeaders,
   isCidDenied,
   BAD_BITS_DENIED_MESSAGE,
-  updateDataSetStats,
   logRetrievalResult,
-  getErrorHttpStatusMessage,
+  recordRetrieval,
+  logRetrievalError,
+  redirectLegacyDomain,
   handleError,
 } from '@filbeam/retrieval'
 
@@ -73,12 +74,8 @@ export default {
       return handleDnsRootRequest(request, env)
     }
 
-    if (URL.parse(request.url)?.hostname.endsWith('filcdn.io')) {
-      return Response.redirect(
-        request.url.replace('filcdn.io', 'filbeam.io'),
-        301,
-      )
-    }
+    const legacyRedirect = redirectLegacyDomain(request)
+    if (legacyRedirect) return legacyRedirect
 
     const requestTimestamp = new Date().toISOString()
     const workerStartedAt = performance.now()
@@ -231,7 +228,7 @@ export default {
           // unchanged (e.g. `?format=car`), the two values are equal.
           const cacheMissEgressBytes = originEgressBytes ?? egressBytes
 
-          await logRetrievalResult(env, {
+          await recordRetrieval(env, {
             cacheMiss,
             cacheMissResponseValid: null,
             responseStatus: originResponse.status,
@@ -246,13 +243,6 @@ export default {
             },
             dataSetId: candidate.dataSetId,
             botName,
-          })
-
-          await updateDataSetStats(env, {
-            dataSetId: candidate.dataSetId,
-            egressBytes,
-            cacheMissEgressBytes,
-            cacheMiss,
             enforceEgressQuota: env.ENFORCE_EGRESS_QUOTA,
           })
         })(),
@@ -272,20 +262,11 @@ export default {
 
       return response
     } catch (error) {
-      const { status } = getErrorHttpStatusMessage(error)
-
-      ctx.waitUntil(
-        logRetrievalResult(env, {
-          cacheMiss: null,
-          cacheMissResponseValid: null,
-          responseStatus: status,
-          egressBytes: null,
-          requestCountryCode,
-          timestamp: requestTimestamp,
-          dataSetId: null,
-          botName,
-        }),
-      )
+      logRetrievalError(env, ctx, error, {
+        requestCountryCode,
+        timestamp: requestTimestamp,
+        botName,
+      })
 
       throw error
     }
