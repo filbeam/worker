@@ -115,3 +115,47 @@ export function filterAuthorizedRetrievalCandidates(
 
   return withSufficientCacheMissQuota
 }
+
+/**
+ * Builds the SELECT that joins pieces, data_sets, data_set_egress_quotas,
+ * service_providers and wallet_details and returns the columns the
+ * authorization cascade in {@link filterAuthorizedRetrievalCandidates} reads.
+ * Callers supply the lookup-specific `where` clause and any extra columns.
+ *
+ * Deleted pieces are always excluded.
+ *
+ * @param {object} options
+ * @param {string[]} [options.extraColumns] - Extra columns to select, in
+ *   addition to the ones the cascade reads.
+ * @param {string} options.where - The lookup condition, without the `WHERE`
+ *   keyword. It is combined with a filter that excludes deleted pieces.
+ * @returns {string}
+ */
+export function buildRetrievalCandidateQuery({ extraColumns = [], where }) {
+  const columns = [
+    'pieces.data_set_id',
+    'data_sets.service_provider_id',
+    'data_sets.payer_address',
+    'data_sets.with_cdn',
+    'data_set_egress_quotas.cdn_egress_quota',
+    'data_set_egress_quotas.cache_miss_egress_quota',
+    'service_providers.service_url',
+    'service_providers.is_deleted AS service_provider_is_deleted',
+    'wallet_details.is_sanctioned',
+    ...extraColumns,
+  ]
+
+  return `
+    SELECT ${columns.join(', ')}
+    FROM pieces
+    LEFT OUTER JOIN data_sets
+      ON pieces.data_set_id = data_sets.id
+    LEFT OUTER JOIN data_set_egress_quotas
+      ON pieces.data_set_id = data_set_egress_quotas.data_set_id
+    LEFT OUTER JOIN service_providers
+      ON data_sets.service_provider_id = service_providers.id
+    LEFT OUTER JOIN wallet_details
+      ON data_sets.payer_address = wallet_details.address
+    WHERE (${where}) AND pieces.is_deleted IS FALSE
+  `
+}

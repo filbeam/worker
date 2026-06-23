@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest'
-import { filterAuthorizedRetrievalCandidates } from '../lib/access.js'
+import {
+  filterAuthorizedRetrievalCandidates,
+  buildRetrievalCandidateQuery,
+} from '../lib/access.js'
 
 const payerAddress = '0xabcdef'
 
@@ -159,5 +162,53 @@ describe('filterAuthorizedRetrievalCandidates', () => {
       402,
       `Cache miss egress quota exhausted for payer '${payerAddress}' and the requested content. Please top up your cache miss egress quota.`,
     )
+  })
+})
+
+describe('buildRetrievalCandidateQuery', () => {
+  it('selects the cascade columns, the joins, and the given where clause', () => {
+    const query = buildRetrievalCandidateQuery({
+      where: 'pieces.cid = ?',
+    })
+
+    for (const column of [
+      'pieces.data_set_id',
+      'data_sets.service_provider_id',
+      'data_sets.payer_address',
+      'data_sets.with_cdn',
+      'data_set_egress_quotas.cdn_egress_quota',
+      'data_set_egress_quotas.cache_miss_egress_quota',
+      'service_providers.service_url',
+      'service_providers.is_deleted AS service_provider_is_deleted',
+      'wallet_details.is_sanctioned',
+    ]) {
+      expect(query).toContain(column)
+    }
+    expect(query).toContain('FROM pieces')
+    expect(query).toContain(
+      'LEFT OUTER JOIN data_sets\n      ON pieces.data_set_id = data_sets.id',
+    )
+    expect(query).toContain('WHERE (pieces.cid = ?)')
+  })
+
+  it('always excludes deleted pieces', () => {
+    const query = buildRetrievalCandidateQuery({
+      where: 'pieces.cid = ?',
+    })
+
+    expect(query).toContain(
+      'WHERE (pieces.cid = ?) AND pieces.is_deleted IS FALSE',
+    )
+  })
+
+  it('appends the extra columns', () => {
+    const query = buildRetrievalCandidateQuery({
+      extraColumns: ['pieces.id AS piece_id', 'pieces.ipfs_root_cid'],
+      where: 'pieces.ipfs_root_cid = ?',
+    })
+
+    expect(query).toContain('pieces.id AS piece_id')
+    expect(query).toContain('pieces.ipfs_root_cid')
+    expect(query).toContain('WHERE (pieces.ipfs_root_cid = ?)')
   })
 })

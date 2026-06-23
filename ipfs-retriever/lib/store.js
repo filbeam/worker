@@ -2,33 +2,17 @@ import { bigIntToBase32 } from './bigint-util.js'
 import {
   httpAssert,
   filterAuthorizedRetrievalCandidates,
+  buildRetrievalCandidateQuery,
 } from '@filbeam/retrieval'
 
-const SELECT_CANDIDATES_BY_CID = `
-   SELECT
-     pieces.id as piece_id,
-     pieces.data_set_id,
-     pieces.ipfs_root_cid,
-     data_sets.service_provider_id,
-     data_sets.payer_address,
-     data_sets.with_cdn,
-     data_sets.with_ipfs_indexing,
-     data_set_egress_quotas.cdn_egress_quota,
-     data_set_egress_quotas.cache_miss_egress_quota,
-     service_providers.service_url,
-     service_providers.is_deleted as service_provider_is_deleted,
-     wallet_details.is_sanctioned
-   FROM pieces
-   LEFT OUTER JOIN data_sets
-     ON pieces.data_set_id = data_sets.id
-   LEFT OUTER JOIN data_set_egress_quotas
-     ON pieces.data_set_id = data_set_egress_quotas.data_set_id
-   LEFT OUTER JOIN service_providers
-     ON data_sets.service_provider_id = service_providers.id
-   LEFT OUTER JOIN wallet_details
-     ON data_sets.payer_address = wallet_details.address
-   WHERE pieces.ipfs_root_cid = ?
- `
+const SELECT_CANDIDATES_BY_CID = buildRetrievalCandidateQuery({
+  extraColumns: [
+    'pieces.id AS piece_id',
+    'pieces.ipfs_root_cid',
+    'data_sets.with_ipfs_indexing',
+  ],
+  where: 'pieces.ipfs_root_cid = ?',
+})
 
 /**
  * Validates query results and returns every approved retrieval candidate. This
