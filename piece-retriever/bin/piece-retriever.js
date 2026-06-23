@@ -8,7 +8,7 @@ import {
   logRetrievalError,
   handleFetchRequest,
   selectRetrievalCandidate,
-  handleNoServiceProviderResponse,
+  maybeHandleNoServiceProvider,
 } from '@filbeam/retrieval'
 
 import { parseRequest } from '../lib/request.js'
@@ -95,18 +95,14 @@ export default {
 
       httpAssert(retrievalCandidate, 500, 'should never happen')
 
-      const noServiceProviderResponse = handleNoServiceProviderResponse(
-        env,
-        ctx,
-        {
-          retrievalResult,
-          attempts: retrievalAttempts,
-          dataSetId: retrievalCandidate.dataSetId,
-          requestCountryCode,
-          timestamp: requestTimestamp,
-          botName,
-        },
-      )
+      const noServiceProviderResponse = maybeHandleNoServiceProvider(env, ctx, {
+        retrievalResult,
+        attempts: retrievalAttempts,
+        dataSetId: retrievalCandidate.dataSetId,
+        requestCountryCode,
+        timestamp: requestTimestamp,
+        botName,
+      })
       if (noServiceProviderResponse) return noServiceProviderResponse
 
       httpAssert(retrievalResult, 500, 'should never happen')

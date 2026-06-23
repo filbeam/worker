@@ -31,7 +31,7 @@ import { setContentSecurityPolicy } from './content-security-policy.js'
  * @param {string | undefined} params.botName
  * @returns {Response | null}
  */
-export function handleNoServiceProviderResponse(
+export function maybeHandleNoServiceProvider(
   env,
   ctx,
   {
