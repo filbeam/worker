@@ -3,7 +3,11 @@ import { httpAssert } from './http-assert.js'
 import { redirectLegacyDomain } from './redirect.js'
 import { handleEmptyBodyResponse } from './empty-body-response.js'
 import { setRetrievalResponseHeaders } from './response-headers.js'
-import { recordRetrieval, logRetrievalResult } from './stats.js'
+import {
+  recordRetrieval,
+  logRetrievalResult,
+  logRetrievalError,
+} from './stats.js'
 
 /**
  * The successful retrieval outcome a worker hands back to
@@ -16,7 +20,6 @@ import { recordRetrieval, logRetrievalResult } from './stats.js'
  *   and returned unchanged.
  * @property {boolean} cacheMiss
  * @property {string} dataSetId
- * @property {string | undefined} botName
  * @property {number} fetchStartedAt
  * @property {(egressBytes: number) => Promise<{
  *   cacheMissEgressBytes?: number
@@ -28,6 +31,15 @@ import { recordRetrieval, logRetrievalResult } from './stats.js'
  */
 
 /**
+ * A worker's retrieval step: looks up and retrieves the content. Returns the
+ * {@link RetrievalOutcome} to serve, or a {@link Response} when no service
+ * provider could serve the content. An error thrown here is logged as a
+ * retrieval error.
+ *
+ * @typedef {() => Promise<Response | RetrievalOutcome>} Retrieve
+ */
+
+/**
  * Per-request telemetry shared by the success and error logging paths.
  *
  * @typedef {object} RequestContext
@@ -35,6 +47,8 @@ import { recordRetrieval, logRetrievalResult } from './stats.js'
  * @property {string | null} requestCountryCode - The request's `CF-IPCountry`.
  * @property {number} workerStartedAt - `performance.now()` when the worker
  *   started handling the request.
+ * @property {string} [botName] - The bot name, set by the worker once the
+ *   request has been parsed.
  */
 
 /**
@@ -43,10 +57,12 @@ import { recordRetrieval, logRetrievalResult } from './stats.js'
  * legacy `*.filcdn.io` requests to `*.filbeam.io`, and turn thrown errors into
  * HTTP responses via {@link handleError}.
  *
- * The handler returns either a plain {@link Response} (redirects, the
- * no-service-provider response, ...), which is served as-is, or a
- * {@link RetrievalOutcome}, whose body is streamed to the client while its
- * egress is measured and the retrieval is logged.
+ * The handler returns either a plain {@link Response} (redirects), served as-is,
+ * or a {@link Retrieve} function. The retrieval is run inside a try/catch that
+ * logs a retrieval error on failure; its result is then served: a
+ * {@link Response} (the no-service-provider response) as-is, or a
+ * {@link RetrievalOutcome} whose body is streamed while egress is measured and
+ * the retrieval is logged.
  *
  * @param {Request} request
  * @param {{
@@ -55,8 +71,10 @@ import { recordRetrieval, logRetrievalResult } from './stats.js'
  *   ENFORCE_EGRESS_QUOTA: boolean
  * }} env
  * @param {ExecutionContext} ctx
- * @param {(context: RequestContext) => Promise<Response | RetrievalOutcome>} run
- *   - Invokes the worker handler with the per-request telemetry context.
+ * @param {(context: RequestContext) => Promise<Response | Retrieve>} run
+ *
+ *   - Invokes the worker handler with the per-request telemetry context. The worker
+ *       sets `context.botName` before returning its retrieval function.
  *
  * @returns {Promise<Response>}
  */
@@ -81,10 +99,23 @@ export async function handleFetchRequest(request, env, ctx, run) {
     const legacyRedirect = redirectLegacyDomain(request)
     if (legacyRedirect) return legacyRedirect
 
-    const result = await run(context)
-    if (result instanceof Response) return result
+    const retrieve = await run(context)
+    if (retrieve instanceof Response) return retrieve
 
-    return serveRetrievalOutcome(env, ctx, result, context)
+    let outcome
+    try {
+      outcome = await retrieve()
+    } catch (error) {
+      logRetrievalError(env, ctx, error, {
+        requestCountryCode: context.requestCountryCode,
+        timestamp: context.requestTimestamp,
+        botName: context.botName,
+      })
+      throw error
+    }
+
+    if (outcome instanceof Response) return outcome
+    return serveRetrievalOutcome(env, ctx, outcome, context)
   } catch (error) {
     return handleError(error)
   }
@@ -108,16 +139,10 @@ function serveRetrievalOutcome(
   env,
   ctx,
   result,
-  { requestCountryCode, requestTimestamp: timestamp, workerStartedAt },
+  { requestCountryCode, requestTimestamp: timestamp, workerStartedAt, botName },
 ) {
-  const {
-    response,
-    cacheMiss,
-    dataSetId,
-    botName,
-    fetchStartedAt,
-    finalizeCacheMiss,
-  } = result
+  const { response, cacheMiss, dataSetId, fetchStartedAt, finalizeCacheMiss } =
+    result
 
   // No readable body (e.g. a HEAD request or an error status): nothing to
   // stream or measure.

@@ -17,11 +17,15 @@ function retrievalResult(overrides = {}) {
     response: new Response('hello world', { status: 200 }),
     cacheMiss: true,
     dataSetId: 'fh-test',
-    botName: undefined,
     fetchStartedAt: performance.now(),
     finalizeCacheMiss: async () => ({ cacheMissResponseValid: true }),
     ...overrides,
   }
+}
+
+/** A `run` that resolves to a retrieve function yielding the given outcome. */
+function runYielding(overrides = {}) {
+  return async () => async () => retrievalResult(overrides)
 }
 
 describe('handleFetchRequest', () => {
@@ -126,14 +130,13 @@ describe('handleFetchRequest', () => {
       }),
       testEnv,
       ctx,
-      async () =>
-        retrievalResult({
-          dataSetId,
-          finalizeCacheMiss: async (egressBytes) => {
-            finalizedEgress = egressBytes
-            return { cacheMissResponseValid: true }
-          },
-        }),
+      runYielding({
+        dataSetId,
+        finalizeCacheMiss: async (egressBytes) => {
+          finalizedEgress = egressBytes
+          return { cacheMissResponseValid: true }
+        },
+      }),
     )
 
     expect(res.status).toBe(200)
@@ -164,11 +167,10 @@ describe('handleFetchRequest', () => {
       new Request('https://example.com/'),
       testEnv,
       ctx,
-      async () =>
-        retrievalResult({
-          dataSetId,
-          response: new Response(null, { status: 404 }),
-        }),
+      runYielding({
+        dataSetId,
+        response: new Response(null, { status: 404 }),
+      }),
     )
     await waitOnExecutionContext(ctx)
 
@@ -196,11 +198,10 @@ describe('handleFetchRequest', () => {
       new Request('https://example.com/'),
       testEnv,
       ctx,
-      async () =>
-        retrievalResult({
-          dataSetId,
-          response: new Response(erroringBody, { status: 200 }),
-        }),
+      runYielding({
+        dataSetId,
+        response: new Response(erroringBody, { status: 200 }),
+      }),
     )
     expect(res.status).toBe(200)
     await waitOnExecutionContext(ctx)

@@ -2,7 +2,6 @@ import {
   isValidEthereumAddress,
   httpAssert,
   assertCidNotDenied,
-  logRetrievalError,
   handleFetchRequest,
   selectRetrievalCandidate,
 } from '@filbeam/retrieval'
@@ -39,16 +38,14 @@ export default {
    * @param {object} options
    * @param {typeof defaultRetrieveIpfsContent} [options.retrieveIpfsContent]
    * @param {import('@filbeam/retrieval').RequestContext} context
-   * @returns {Promise<
-   *   Response | import('@filbeam/retrieval').RetrievalOutcome
-   * >}
+   * @returns {Promise<Response | import('@filbeam/retrieval').Retrieve>}
    */
   async _fetch(
     request,
     env,
     ctx,
     { retrieveIpfsContent = defaultRetrieveIpfsContent } = {},
-    { requestTimestamp, requestCountryCode },
+    context,
   ) {
     if (
       URL.parse(request.url)?.hostname === env.DNS_ROOT.slice(1) ||
@@ -59,8 +56,9 @@ export default {
 
     const { dataSetId, pieceId, ipfsSubpath, ipfsFormat, botName } =
       parseRequest(request, env)
+    context.botName = botName
 
-    try {
+    return async () => {
       // Timestamp to measure file retrieval performance (from cache and from SP)
       const fetchStartedAt = performance.now()
 
@@ -90,7 +88,13 @@ export default {
             env.ORIGIN_CACHE_TTL,
             { signal: request.signal },
           ),
-        { env, ctx, requestCountryCode, timestamp: requestTimestamp, botName },
+        {
+          env,
+          ctx,
+          requestCountryCode: context.requestCountryCode,
+          timestamp: context.requestTimestamp,
+          botName,
+        },
       )
       if (failureResponse) return failureResponse
       httpAssert(candidate && retrievalResult, 500, 'should never happen')
@@ -123,7 +127,6 @@ export default {
         response,
         cacheMiss,
         dataSetId: candidate.dataSetId,
-        botName,
         fetchStartedAt,
         // The client is served the raw bytes. On a cache miss the worker
         // fetched a (larger) CAR from the service provider, which the cache-miss
@@ -136,14 +139,6 @@ export default {
           cacheMissResponseValid: cacheMiss ? true : null,
         }),
       }
-    } catch (error) {
-      logRetrievalError(env, ctx, error, {
-        requestCountryCode,
-        timestamp: requestTimestamp,
-        botName,
-      })
-
-      throw error
     }
   },
 }
