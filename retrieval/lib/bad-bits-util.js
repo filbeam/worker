@@ -1,3 +1,5 @@
+import { httpAssert } from './http-assert.js'
+
 /**
  * @param {string} cid
  * @returns {Promise<string>} Bad Bits entry in the legacy double-hash format
@@ -27,4 +29,15 @@ export async function isCidDenied(env, cid) {
     { type: 'json' },
   )
   return Boolean(entry)
+}
+
+/**
+ * Throws a `404` when the CID is on the Bad Bits denylist.
+ *
+ * @param {{ BAD_BITS_KV: KVNamespace }} env
+ * @param {string} cid
+ * @returns {Promise<void>}
+ */
+export async function assertCidNotDenied(env, cid) {
+  httpAssert(!(await isCidDenied(env, cid)), 404, BAD_BITS_DENIED_MESSAGE)
 }

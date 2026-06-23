@@ -1,8 +1,7 @@
 import {
   httpAssert,
   setRetrievalResponseHeaders,
-  isCidDenied,
-  BAD_BITS_DENIED_MESSAGE,
+  assertCidNotDenied,
   logRetrievalResult,
   recordRetrieval,
   logRetrievalError,
@@ -57,17 +56,15 @@ export default {
       // Timestamp to measure file retrieval performance (from cache and from SP)
       const fetchStartedAt = performance.now()
 
-      const [retrievalCandidates, isBadBit] = await Promise.all([
+      const [retrievalCandidates] = await Promise.all([
         getRetrievalCandidatesAndValidatePayer(
           env,
           payerWalletAddress,
           pieceCid,
           env.ENFORCE_EGRESS_QUOTA,
         ),
-        isCidDenied(env, pieceCid),
+        assertCidNotDenied(env, pieceCid),
       ])
-
-      httpAssert(!isBadBit, 404, BAD_BITS_DENIED_MESSAGE)
 
       httpAssert(
         retrievalCandidates.length > 0,

@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest'
-import { getBadBitsEntry, isCidDenied } from '../lib/bad-bits-util.js'
+import {
+  getBadBitsEntry,
+  isCidDenied,
+  assertCidNotDenied,
+} from '../lib/bad-bits-util.js'
 
 describe('getBadBitsEntry', () => {
   it('creates entry in the legacy double-hash format', async () => {
@@ -35,5 +39,21 @@ describe('isCidDenied', () => {
   it('returns false when the CID is not on the denylist', async () => {
     const env = { BAD_BITS_KV: { get: async () => null } }
     expect(await isCidDenied(env, 'bafytest')).toBe(false)
+  })
+})
+
+describe('assertCidNotDenied', () => {
+  it('throws a 404 when the CID is on the denylist', async () => {
+    const env = { BAD_BITS_KV: { get: async () => ({}) } }
+    await expect(assertCidNotDenied(env, 'bafytest')).rejects.toMatchObject({
+      status: 404,
+      message:
+        'The requested CID was flagged by the Bad Bits Denylist at https://badbits.dwebops.pub',
+    })
+  })
+
+  it('resolves when the CID is not on the denylist', async () => {
+    const env = { BAD_BITS_KV: { get: async () => null } }
+    await expect(assertCidNotDenied(env, 'bafytest')).resolves.toBeUndefined()
   })
 })
