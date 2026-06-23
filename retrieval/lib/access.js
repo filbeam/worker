@@ -85,3 +85,53 @@ export function filterAuthorizedRetrievalCandidates(rows, { payerAddress }) {
 
   return authorizedRetrievalCandidates
 }
+
+/**
+ * The egress quota columns read from a candidate row. Quotas are stored as
+ * integers but D1 may surface them as strings, so both are accepted.
+ *
+ * @typedef {object} EgressQuotaRow
+ * @property {string | number | null} [cdn_egress_quota]
+ * @property {string | number | null} [cache_miss_egress_quota]
+ */
+
+/**
+ * Filters retrieval candidates to those whose data set still has egress quota.
+ * When `enforceEgressQuota` is false the rows are returned unchanged. Otherwise
+ * rows with no remaining CDN or cache-miss quota are dropped, throwing a 402
+ * when none remain.
+ *
+ * @template {EgressQuotaRow} Row
+ * @param {Row[]} rows
+ * @param {object} options
+ * @param {string} options.payerAddress - Lower-cased payer address, used in
+ *   error messages.
+ * @param {boolean} [options.enforceEgressQuota]
+ * @returns {Row[]} The rows with sufficient quota.
+ */
+export function filterCandidatesWithSufficientEgressQuota(
+  rows,
+  { payerAddress, enforceEgressQuota = false },
+) {
+  if (!enforceEgressQuota) return rows
+
+  const withSufficientCDNQuota = rows.filter(
+    (row) => BigInt(row.cdn_egress_quota ?? '0') > 0n,
+  )
+  httpAssert(
+    withSufficientCDNQuota.length > 0,
+    402,
+    `CDN egress quota exhausted for payer '${payerAddress}' and the requested content. Please top up your CDN egress quota.`,
+  )
+
+  const withSufficientCacheMissQuota = withSufficientCDNQuota.filter(
+    (row) => BigInt(row.cache_miss_egress_quota ?? '0') > 0n,
+  )
+  httpAssert(
+    withSufficientCacheMissQuota.length > 0,
+    402,
+    `Cache miss egress quota exhausted for payer '${payerAddress}' and the requested content. Please top up your cache miss egress quota.`,
+  )
+
+  return withSufficientCacheMissQuota
+}

@@ -2,6 +2,7 @@ import { bigIntToBase32 } from './bigint-util.js'
 import {
   httpAssert,
   filterAuthorizedRetrievalCandidates,
+  filterCandidatesWithSufficientEgressQuota,
 } from '@filbeam/retrieval'
 
 const SELECT_CANDIDATES_BY_CID = `
@@ -13,12 +14,16 @@ const SELECT_CANDIDATES_BY_CID = `
      data_sets.payer_address,
      data_sets.with_cdn,
      data_sets.with_ipfs_indexing,
+     data_set_egress_quotas.cdn_egress_quota,
+     data_set_egress_quotas.cache_miss_egress_quota,
      service_providers.service_url,
      service_providers.is_deleted as service_provider_is_deleted,
      wallet_details.is_sanctioned
    FROM pieces
    LEFT OUTER JOIN data_sets
      ON pieces.data_set_id = data_sets.id
+   LEFT OUTER JOIN data_set_egress_quotas
+     ON pieces.data_set_id = data_set_egress_quotas.data_set_id
    LEFT OUTER JOIN service_providers
      ON data_sets.service_provider_id = service_providers.id
    LEFT OUTER JOIN wallet_details
@@ -37,6 +42,8 @@ const SELECT_CANDIDATES_BY_CID = `
  *   paying for the request
  * @param {string} params.lookupKey - Descriptive key for error messages (e.g.,
  *   "IPFS Root CID 'bafk...'")
+ * @param {boolean} [params.enforceEgressQuota] - Whether to require remaining
+ *   egress quota
  * @returns {{
  *   serviceProviderId: string
  *   serviceUrl: string
@@ -46,12 +53,18 @@ const SELECT_CANDIDATES_BY_CID = `
  * }[]}
  */
 function validateQueryResultsAndGetCandidates(params) {
-  const { results, payerAddress, lookupKey } = params
-
-  const authorizedRetrievalCandidates = filterAuthorizedRetrievalCandidates(
+  const {
     results,
-    { payerAddress },
-  )
+    payerAddress,
+    lookupKey,
+    enforceEgressQuota = false,
+  } = params
+
+  const authorizedRetrievalCandidates =
+    filterCandidatesWithSufficientEgressQuota(
+      filterAuthorizedRetrievalCandidates(results, { payerAddress }),
+      { payerAddress, enforceEgressQuota },
+    )
 
   const withIpfsIndexing = authorizedRetrievalCandidates.filter(
     (row) => row.with_ipfs_indexing === 1,
@@ -132,6 +145,8 @@ export async function getRetrievalCandidatesByWalletAndCid(
  *   binding
  * @param {string} dataSetId - The data set ID
  * @param {string} pieceId - The piece ID
+ * @param {boolean} [enforceEgressQuota=false] - Whether to require remaining
+ *   egress quota. Default is `false`
  * @returns {Promise<
  *   {
  *     serviceProviderId: string
@@ -146,6 +161,7 @@ export async function getRetrievalCandidatesByDataSetAndPiece(
   env,
   dataSetId,
   pieceId,
+  enforceEgressQuota = false,
 ) {
   const piece = /**
    * @type {{
@@ -194,6 +210,7 @@ export async function getRetrievalCandidatesByDataSetAndPiece(
     results,
     payerAddress: payerAddress.toLowerCase(),
     lookupKey: `data set ID '${dataSetId}' and piece ID '${pieceId}'`,
+    enforceEgressQuota,
   })
 }
 

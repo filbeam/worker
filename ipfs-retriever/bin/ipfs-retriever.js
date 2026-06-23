@@ -92,6 +92,7 @@ export default {
         env,
         dataSetId,
         pieceId,
+        env.ENFORCE_EGRESS_QUOTA,
       )
       // Every candidate serves the same content, so they share the root CID.
       const ipfsRootCid = candidates[0].ipfsRootCid

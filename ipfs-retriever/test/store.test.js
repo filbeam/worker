@@ -522,6 +522,101 @@ describe('getRetrievalCandidatesByDataSetAndPiece', () => {
       /has no associated service provider/,
     )
   })
+
+  it('throws 402 when the CDN egress quota is exhausted and enforcement is on', async () => {
+    await withApprovedProvider(env, {
+      id: 'sp-quota-cdn',
+      serviceUrl: 'https://qcdn.xyz',
+    })
+    await withDataSetPiece(env, {
+      payerAddress: '0xabc123def456abc123def456abc123def456abca',
+      serviceProviderId: 'sp-quota-cdn',
+      dataSetId: 'ds-quota-cdn',
+      pieceId: 'piece-quota-cdn',
+      withCDN: true,
+      withIpfsIndexing: true,
+      ipfsRootCid: 'bafkbyidsquotacdn',
+    })
+    await env.DB.prepare(
+      'INSERT INTO data_set_egress_quotas (data_set_id, cdn_egress_quota, cache_miss_egress_quota) VALUES (?, ?, ?)',
+    )
+      .bind('ds-quota-cdn', 0, 100)
+      .run()
+
+    await assert.rejects(
+      async () =>
+        await getRetrievalCandidatesByDataSetAndPiece(
+          env,
+          'ds-quota-cdn',
+          'piece-quota-cdn',
+          true,
+        ),
+      /CDN egress quota exhausted/,
+    )
+  })
+
+  it('throws 402 when the cache-miss egress quota is exhausted and enforcement is on', async () => {
+    await withApprovedProvider(env, {
+      id: 'sp-quota-cm',
+      serviceUrl: 'https://qcm.xyz',
+    })
+    await withDataSetPiece(env, {
+      payerAddress: '0xabc123def456abc123def456abc123def456abcb',
+      serviceProviderId: 'sp-quota-cm',
+      dataSetId: 'ds-quota-cm',
+      pieceId: 'piece-quota-cm',
+      withCDN: true,
+      withIpfsIndexing: true,
+      ipfsRootCid: 'bafkbyidsquotacm',
+    })
+    await env.DB.prepare(
+      'INSERT INTO data_set_egress_quotas (data_set_id, cdn_egress_quota, cache_miss_egress_quota) VALUES (?, ?, ?)',
+    )
+      .bind('ds-quota-cm', 100, 0)
+      .run()
+
+    await assert.rejects(
+      async () =>
+        await getRetrievalCandidatesByDataSetAndPiece(
+          env,
+          'ds-quota-cm',
+          'piece-quota-cm',
+          true,
+        ),
+      /Cache miss egress quota exhausted/,
+    )
+  })
+
+  it('returns candidates when enforcement is on and quota is sufficient', async () => {
+    await withApprovedProvider(env, {
+      id: 'sp-quota-ok',
+      serviceUrl: 'https://qok.xyz',
+    })
+    await withDataSetPiece(env, {
+      payerAddress: '0xabc123def456abc123def456abc123def456abcc',
+      serviceProviderId: 'sp-quota-ok',
+      dataSetId: 'ds-quota-ok',
+      pieceId: 'piece-quota-ok',
+      withCDN: true,
+      withIpfsIndexing: true,
+      ipfsRootCid: 'bafkbyidsquotaok',
+    })
+    await env.DB.prepare(
+      'INSERT INTO data_set_egress_quotas (data_set_id, cdn_egress_quota, cache_miss_egress_quota) VALUES (?, ?, ?)',
+    )
+      .bind('ds-quota-ok', 100, 100)
+      .run()
+
+    const result = await getRetrievalCandidatesByDataSetAndPiece(
+      env,
+      'ds-quota-ok',
+      'piece-quota-ok',
+      true,
+    )
+
+    assert.strictEqual(result.length, 1)
+    assert.strictEqual(result[0].serviceProviderId, 'sp-quota-ok')
+  })
 })
 
 describe('getSlugForWalletAndCid', () => {

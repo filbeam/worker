@@ -1,6 +1,6 @@
 import {
-  httpAssert,
   filterAuthorizedRetrievalCandidates,
+  filterCandidatesWithSufficientEgressQuota,
 } from '@filbeam/retrieval'
 
 /**
@@ -70,38 +70,13 @@ export async function getRetrievalCandidatesAndValidatePayer(
       (await env.DB.prepare(query).bind(pieceCid).all()).results
     )
   )
-  const authorizedRetrievalCandidates = filterAuthorizedRetrievalCandidates(
-    results,
-    { payerAddress },
-  )
+  const authorizedRetrievalCandidates =
+    filterCandidatesWithSufficientEgressQuota(
+      filterAuthorizedRetrievalCandidates(results, { payerAddress }),
+      { payerAddress, enforceEgressQuota },
+    )
 
-  // Check CDN quota first
-  const withSufficientCDNQuota = enforceEgressQuota
-    ? authorizedRetrievalCandidates.filter((row) => {
-        return BigInt(row.cdn_egress_quota ?? '0') > 0n
-      })
-    : authorizedRetrievalCandidates
-
-  httpAssert(
-    withSufficientCDNQuota.length > 0,
-    402,
-    `CDN egress quota exhausted for payer '${payerAddress}' and data set '${authorizedRetrievalCandidates[0]?.data_set_id}'. Please top up your CDN egress quota.`,
-  )
-
-  // Check cache-miss quota
-  const withSufficientCacheMissQuota = enforceEgressQuota
-    ? withSufficientCDNQuota.filter((row) => {
-        return BigInt(row.cache_miss_egress_quota ?? '0') > 0n
-      })
-    : withSufficientCDNQuota
-
-  httpAssert(
-    withSufficientCacheMissQuota.length > 0,
-    402,
-    `Cache miss egress quota exhausted for payer '${payerAddress}' and data set '${withSufficientCDNQuota[0]?.data_set_id}'. Please top up your cache miss egress quota.`,
-  )
-
-  const retrievalCandidates = withSufficientCacheMissQuota.map((row) => ({
+  const retrievalCandidates = authorizedRetrievalCandidates.map((row) => ({
     dataSetId: row.data_set_id,
     serviceProviderId: row.service_provider_id,
     // We need this cast to supress a TypeScript error. The compiler is not able to infer that
