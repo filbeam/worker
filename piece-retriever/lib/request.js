@@ -1,4 +1,8 @@
-import { httpAssert, checkBotAuthorization } from '@filbeam/retrieval'
+import {
+  httpAssert,
+  checkBotAuthorization,
+  isValidEthereumAddress,
+} from '@filbeam/retrieval'
 
 /**
  * Parse params found in path of the request URL
@@ -8,8 +12,8 @@ import { httpAssert, checkBotAuthorization } from '@filbeam/retrieval'
  * @param {string} options.DNS_ROOT
  * @param {string} options.BOT_TOKENS
  * @returns {{
- *   payerWalletAddress?: string
- *   pieceCid?: string
+ *   payerWalletAddress: string
+ *   pieceCid: string
  *   botName?: string
  *   validateCacheMissResponse: boolean
  * }}
@@ -32,6 +36,13 @@ export function parseRequest(request, { DNS_ROOT, BOT_TOKENS }) {
     pieceCid.startsWith('baga') || pieceCid.startsWith('bafk'),
     404,
     `Invalid CID: ${pieceCid}. It is not a valid CommP (v1 or v2).`,
+  )
+
+  httpAssert(payerWalletAddress && pieceCid, 400, 'Missing required fields')
+  httpAssert(
+    isValidEthereumAddress(payerWalletAddress),
+    400,
+    `Invalid address: ${payerWalletAddress}. Address must be a valid ethereum address.`,
   )
 
   const botName = checkBotAuthorization(request, { BOT_TOKENS })

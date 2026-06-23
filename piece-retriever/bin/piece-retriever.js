@@ -1,5 +1,4 @@
 import {
-  isValidEthereumAddress,
   httpAssert,
   setContentSecurityPolicy,
   setRetrievalResponseHeaders,
@@ -52,13 +51,6 @@ export default {
 
     const { payerWalletAddress, pieceCid, botName, validateCacheMissResponse } =
       parseRequest(request, env)
-
-    httpAssert(payerWalletAddress && pieceCid, 400, 'Missing required fields')
-    httpAssert(
-      isValidEthereumAddress(payerWalletAddress),
-      400,
-      `Invalid address: ${payerWalletAddress}. Address must be a valid ethereum address.`,
-    )
 
     try {
       // Timestamp to measure file retrieval performance (from cache and from SP)
