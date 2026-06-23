@@ -17,7 +17,6 @@ import { recordRetrieval, logRetrievalResult } from './stats.js'
  * @property {boolean} cacheMiss
  * @property {string} dataSetId
  * @property {string | undefined} botName
- * @property {number} workerStartedAt
  * @property {number} fetchStartedAt
  * @property {(egressBytes: number) => Promise<{
  *   cacheMissEgressBytes?: number
@@ -34,6 +33,8 @@ import { recordRetrieval, logRetrievalResult } from './stats.js'
  * @typedef {object} RequestContext
  * @property {string} requestTimestamp - ISO timestamp of the request.
  * @property {string | null} requestCountryCode - The request's `CF-IPCountry`.
+ * @property {number} workerStartedAt - `performance.now()` when the worker
+ *   started handling the request.
  */
 
 /**
@@ -68,6 +69,7 @@ export async function handleFetchRequest(request, env, ctx, run) {
   const context = {
     requestTimestamp: new Date().toISOString(),
     requestCountryCode: request.headers.get('CF-IPCountry'),
+    workerStartedAt: performance.now(),
   }
 
   try {
@@ -106,14 +108,13 @@ function serveRetrievalOutcome(
   env,
   ctx,
   result,
-  { requestCountryCode, requestTimestamp: timestamp },
+  { requestCountryCode, requestTimestamp: timestamp, workerStartedAt },
 ) {
   const {
     response,
     cacheMiss,
     dataSetId,
     botName,
-    workerStartedAt,
     fetchStartedAt,
     finalizeCacheMiss,
   } = result

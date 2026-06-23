@@ -50,8 +50,6 @@ export default {
       return Response.redirect('https://filbeam.com/', 302)
     }
 
-    const workerStartedAt = performance.now()
-
     const { payerWalletAddress, pieceCid, botName, validateCacheMissResponse } =
       parseRequest(request, env)
 
@@ -107,7 +105,6 @@ export default {
         cacheMiss: retrievalResult.cacheMiss,
         dataSetId: retrievalCandidate.dataSetId,
         botName,
-        workerStartedAt,
         fetchStartedAt,
         // Validate the cache-miss response (a `?validate` request) once it has
         // streamed, and drop the cache entry when it fails validation.

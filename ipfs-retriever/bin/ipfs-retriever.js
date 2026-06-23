@@ -57,8 +57,6 @@ export default {
       return handleDnsRootRequest(request, env)
     }
 
-    const workerStartedAt = performance.now()
-
     const { dataSetId, pieceId, ipfsSubpath, ipfsFormat, botName } =
       parseRequest(request, env)
 
@@ -126,7 +124,6 @@ export default {
         cacheMiss,
         dataSetId: candidate.dataSetId,
         botName,
-        workerStartedAt,
         fetchStartedAt,
         // The client is served the raw bytes. On a cache miss the worker
         // fetched a (larger) CAR from the service provider, which the cache-miss

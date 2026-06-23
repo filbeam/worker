@@ -18,7 +18,6 @@ function retrievalResult(overrides = {}) {
     cacheMiss: true,
     dataSetId: 'fh-test',
     botName: undefined,
-    workerStartedAt: performance.now(),
     fetchStartedAt: performance.now(),
     finalizeCacheMiss: async () => ({ cacheMissResponseValid: true }),
     ...overrides,
