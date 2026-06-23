@@ -95,16 +95,21 @@ export default {
 
       httpAssert(retrievalCandidate, 500, 'should never happen')
 
-      if (!retrievalResult || retrievalResult.response.status >= 500) {
-        return respondNoServiceProviderAvailable(env, ctx, {
+      const noServiceProviderResponse = respondNoServiceProviderAvailable(
+        env,
+        ctx,
+        {
           retrievalResult,
           attempts: retrievalAttempts,
           dataSetId: retrievalCandidate.dataSetId,
           requestCountryCode,
           timestamp: requestTimestamp,
           botName,
-        })
-      }
+        },
+      )
+      if (noServiceProviderResponse) return noServiceProviderResponse
+
+      httpAssert(retrievalResult, 500, 'should never happen')
 
       if (!retrievalResult.response.body) {
         // The upstream response does not have any readable body

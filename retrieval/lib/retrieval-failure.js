@@ -1,29 +1,35 @@
 import { logRetrievalResult } from './stats.js'
 import { setContentSecurityPolicy } from './content-security-policy.js'
 
+/** @typedef {{ response: Response; cacheMiss: boolean }} RetrievalResult */
+
 /**
- * Logs a failed retrieval and builds the `502` response returned when none of
- * the attempted service providers could serve the content (every attempt either
- * threw or returned a `5xx` response).
+ * @typedef {{
+ *   serviceProviderId: string
+ *   serviceUrl: string
+ *   dataSetId: string
+ * }} RetrievalAttempt
+ */
+
+/**
+ * Decides whether a retrieval failed at the service-provider level (no result,
+ * or a `5xx` response from the origin). When it did, logs the failure and
+ * returns the `502` "No available service provider found" response. Otherwise
+ * returns `null`, leaving the caller to serve the successful response.
  *
  * @param {{ DB: D1Database }} env - Worker environment (contains D1 binding).
  * @param {ExecutionContext} ctx
  * @param {object} params
- * @param {{ cacheMiss: boolean } | undefined} params.retrievalResult - The last
+ * @param {RetrievalResult | undefined} params.retrievalResult - The last
  *   retrieval result, or `undefined` when every attempt threw.
- * @param {{
- *   serviceProviderId: string
- *   serviceUrl: string
- *   dataSetId: string
- * }[]} params.attempts
- *   - Every service provider that was attempted.
- *
+ * @param {RetrievalAttempt[]} params.attempts - Every service provider that was
+ *   attempted.
  * @param {string} params.dataSetId - The data set ID to log the failure
  *   against.
  * @param {string | null} params.requestCountryCode
  * @param {string} params.timestamp
  * @param {string | undefined} params.botName
- * @returns {Response}
+ * @returns {Response | null}
  */
 export function respondNoServiceProviderAvailable(
   env,
@@ -37,6 +43,10 @@ export function respondNoServiceProviderAvailable(
     botName,
   },
 ) {
+  if (retrievalResult && retrievalResult.response.status < 500) {
+    return null
+  }
+
   ctx.waitUntil(
     logRetrievalResult(env, {
       cacheMiss: retrievalResult?.cacheMiss ?? null,

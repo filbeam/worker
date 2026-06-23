@@ -15,7 +15,10 @@ describe('respondNoServiceProviderAvailable', () => {
   it('responds with a 502 listing every attempted provider', async () => {
     const ctx = createExecutionContext()
     const response = respondNoServiceProviderAvailable(env, ctx, {
-      retrievalResult: { cacheMiss: true },
+      retrievalResult: {
+        response: new Response(null, { status: 503 }),
+        cacheMiss: true,
+      },
       attempts,
       dataSetId: '10',
       requestCountryCode: 'US',
@@ -34,7 +37,10 @@ describe('respondNoServiceProviderAvailable', () => {
   it('sets a content security policy on the response', async () => {
     const ctx = createExecutionContext()
     const response = respondNoServiceProviderAvailable(env, ctx, {
-      retrievalResult: { cacheMiss: true },
+      retrievalResult: {
+        response: new Response(null, { status: 503 }),
+        cacheMiss: true,
+      },
       attempts,
       dataSetId: '10',
       requestCountryCode: 'US',
@@ -50,7 +56,10 @@ describe('respondNoServiceProviderAvailable', () => {
     const dataSetId = 'no-sp-cache-miss'
     const ctx = createExecutionContext()
     respondNoServiceProviderAvailable(env, ctx, {
-      retrievalResult: { cacheMiss: true },
+      retrievalResult: {
+        response: new Response(null, { status: 503 }),
+        cacheMiss: true,
+      },
       attempts,
       dataSetId,
       requestCountryCode: 'US',
@@ -73,6 +82,32 @@ describe('respondNoServiceProviderAvailable', () => {
       cache_miss: 1,
       bot_name: 'bot1',
     })
+  })
+
+  it('returns null and logs nothing when the retrieval succeeded', async () => {
+    const dataSetId = 'sp-available'
+    const ctx = createExecutionContext()
+    const response = respondNoServiceProviderAvailable(env, ctx, {
+      retrievalResult: {
+        response: new Response(null, { status: 200 }),
+        cacheMiss: false,
+      },
+      attempts,
+      dataSetId,
+      requestCountryCode: 'US',
+      timestamp: new Date().toISOString(),
+      botName: undefined,
+    })
+    await waitOnExecutionContext(ctx)
+
+    expect(response).toBeNull()
+
+    const log = await env.DB.prepare(
+      'SELECT response_status FROM retrieval_logs WHERE data_set_id = ?',
+    )
+      .bind(dataSetId)
+      .first()
+    expect(log).toBeNull()
   })
 
   it('logs a null cache miss when every attempt threw', async () => {

@@ -99,16 +99,21 @@ export default {
 
       httpAssert(candidate, 500, 'should never happen')
 
-      if (!retrievalResult || retrievalResult.response.status >= 500) {
-        return respondNoServiceProviderAvailable(env, ctx, {
+      const noServiceProviderResponse = respondNoServiceProviderAvailable(
+        env,
+        ctx,
+        {
           retrievalResult,
           attempts: retrievalAttempts,
           dataSetId: candidate.dataSetId,
           requestCountryCode,
           timestamp: requestTimestamp,
           botName,
-        })
-      }
+        },
+      )
+      if (noServiceProviderResponse) return noServiceProviderResponse
+
+      httpAssert(retrievalResult, 500, 'should never happen')
 
       const originResponse = retrievalResult.response
       const cacheMiss = retrievalResult.cacheMiss
