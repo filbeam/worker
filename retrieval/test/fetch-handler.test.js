@@ -1,10 +1,39 @@
 import { describe, it, expect } from 'vitest'
 import { handleFetchRequest } from '../lib/fetch-handler.js'
+import {
+  env,
+  createExecutionContext,
+  waitOnExecutionContext,
+} from 'cloudflare:test'
+
+const testEnv = {
+  ...env,
+  CLIENT_CACHE_TTL: 31536000,
+  ENFORCE_EGRESS_QUOTA: false,
+}
+
+function retrievalResult(overrides = {}) {
+  return {
+    response: new Response('hello world', { status: 200 }),
+    cacheMiss: true,
+    dataSetId: 'fh-test',
+    botName: undefined,
+    requestCountryCode: 'US',
+    timestamp: new Date().toISOString(),
+    workerStartedAt: performance.now(),
+    fetchStartedAt: performance.now(),
+    finalizeCacheMiss: async () => ({ cacheMissResponseValid: true }),
+    ...overrides,
+  }
+}
 
 describe('handleFetchRequest', () => {
-  it('returns the handler response unchanged', async () => {
+  it('returns a plain handler response unchanged', async () => {
+    const ctx = createExecutionContext()
     const res = await handleFetchRequest(
       new Request('https://example.com/'),
+      testEnv,
+      ctx,
       async () => new Response('ok', { status: 200 }),
     )
 
@@ -13,9 +42,12 @@ describe('handleFetchRequest', () => {
   })
 
   it('rejects non-GET/HEAD methods with 405 without running the handler', async () => {
+    const ctx = createExecutionContext()
     let ran = false
     const res = await handleFetchRequest(
       new Request('https://example.com/', { method: 'POST' }),
+      testEnv,
+      ctx,
       async () => {
         ran = true
         return new Response('ok')
@@ -28,8 +60,11 @@ describe('handleFetchRequest', () => {
   })
 
   it('allows HEAD requests', async () => {
+    const ctx = createExecutionContext()
     const res = await handleFetchRequest(
       new Request('https://example.com/', { method: 'HEAD' }),
+      testEnv,
+      ctx,
       async () => new Response('ok', { status: 200 }),
     )
 
@@ -37,9 +72,12 @@ describe('handleFetchRequest', () => {
   })
 
   it('redirects legacy *.filcdn.io requests before running the handler', async () => {
+    const ctx = createExecutionContext()
     let ran = false
     const res = await handleFetchRequest(
       new Request('https://0xabc.filcdn.io/baga123'),
+      testEnv,
+      ctx,
       async () => {
         ran = true
         return new Response('ok')
@@ -52,8 +90,11 @@ describe('handleFetchRequest', () => {
   })
 
   it('turns a thrown error into a response via handleError', async () => {
+    const ctx = createExecutionContext()
     const res = await handleFetchRequest(
       new Request('https://example.com/'),
+      testEnv,
+      ctx,
       async () => {
         throw Object.assign(new Error('Bad Request'), { status: 400 })
       },
@@ -64,8 +105,11 @@ describe('handleFetchRequest', () => {
   })
 
   it('hides the message for server errors', async () => {
+    const ctx = createExecutionContext()
     const res = await handleFetchRequest(
       new Request('https://example.com/'),
+      testEnv,
+      ctx,
       async () => {
         throw new Error('boom')
       },
@@ -73,5 +117,98 @@ describe('handleFetchRequest', () => {
 
     expect(res.status).toBe(500)
     expect(await res.text()).toBe('Internal Server Error')
+  })
+
+  it('streams a retrieval result, measuring egress and logging it', async () => {
+    const ctx = createExecutionContext()
+    const dataSetId = 'fh-stream'
+    let finalizedEgress
+    const res = await handleFetchRequest(
+      new Request('https://example.com/'),
+      testEnv,
+      ctx,
+      async () =>
+        retrievalResult({
+          dataSetId,
+          finalizeCacheMiss: async (egressBytes) => {
+            finalizedEgress = egressBytes
+            return { cacheMissResponseValid: true }
+          },
+        }),
+    )
+
+    expect(res.status).toBe(200)
+    expect(res.headers.get('X-Data-Set-ID')).toBe(dataSetId)
+    expect(await res.text()).toBe('hello world')
+    await waitOnExecutionContext(ctx)
+
+    expect(finalizedEgress).toBe('hello world'.length)
+    const log = await env.DB.prepare(
+      `SELECT response_status, egress_bytes, cache_miss
+       FROM retrieval_logs WHERE data_set_id = ?`,
+    )
+      .bind(dataSetId)
+      .first()
+    expect(log).toEqual({
+      response_status: 200,
+      egress_bytes: 'hello world'.length,
+      cache_miss: 1,
+    })
+  })
+
+  it('logs a zero-egress result for a response without a body', async () => {
+    const ctx = createExecutionContext()
+    const dataSetId = 'fh-empty'
+    const res = await handleFetchRequest(
+      new Request('https://example.com/'),
+      testEnv,
+      ctx,
+      async () =>
+        retrievalResult({
+          dataSetId,
+          response: new Response(null, { status: 404 }),
+        }),
+    )
+    await waitOnExecutionContext(ctx)
+
+    expect(res.status).toBe(404)
+    expect(res.body).toBeNull()
+    expect(res.headers.get('X-Data-Set-ID')).toBe(dataSetId)
+    const log = await env.DB.prepare(
+      'SELECT response_status, egress_bytes FROM retrieval_logs WHERE data_set_id = ?',
+    )
+      .bind(dataSetId)
+      .first()
+    expect(log).toEqual({ response_status: 404, egress_bytes: 0 })
+  })
+
+  it('logs a 900 result when streaming the body errors', async () => {
+    const ctx = createExecutionContext()
+    const dataSetId = 'fh-stream-error'
+    const erroringBody = new ReadableStream({
+      pull(controller) {
+        controller.enqueue(new Uint8Array([1, 2, 3]))
+        controller.error(new Error('stream boom'))
+      },
+    })
+    const res = await handleFetchRequest(
+      new Request('https://example.com/'),
+      testEnv,
+      ctx,
+      async () =>
+        retrievalResult({
+          dataSetId,
+          response: new Response(erroringBody, { status: 200 }),
+        }),
+    )
+    expect(res.status).toBe(200)
+    await waitOnExecutionContext(ctx)
+
+    const log = await env.DB.prepare(
+      'SELECT response_status FROM retrieval_logs WHERE data_set_id = ? AND response_status = 900',
+    )
+      .bind(dataSetId)
+      .first()
+    expect(log).toEqual({ response_status: 900 })
   })
 })
