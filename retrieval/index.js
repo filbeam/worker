@@ -8,8 +8,6 @@ export * from './lib/fetch-handler.js'
 export * from './lib/http-assert.js'
 export * from './lib/http-error.js'
 export * from './lib/origin-cache.js'
-export * from './lib/redirect.js'
-export * from './lib/response-headers.js'
 export * from './lib/stats.js'
 
 export default {

@@ -77,7 +77,7 @@ describe('handleFetchRequest', () => {
     const ctx = createExecutionContext()
     let ran = false
     const res = await handleFetchRequest(
-      new Request('https://0xabc.filcdn.io/baga123'),
+      new Request('https://0xabc.filcdn.io/baga123?format=car'),
       testEnv,
       ctx,
       async () => {
@@ -87,7 +87,9 @@ describe('handleFetchRequest', () => {
     )
 
     expect(res.status).toBe(301)
-    expect(res.headers.get('Location')).toBe('https://0xabc.filbeam.io/baga123')
+    expect(res.headers.get('Location')).toBe(
+      'https://0xabc.filbeam.io/baga123?format=car',
+    )
     expect(ran).toBe(false)
   })
 
@@ -142,6 +144,9 @@ describe('handleFetchRequest', () => {
 
     expect(res.status).toBe(200)
     expect(res.headers.get('X-Data-Set-ID')).toBe(dataSetId)
+    expect(res.headers.get('Content-Security-Policy')).toMatch(
+      /^default-src 'self'/,
+    )
     expect(await res.text()).toBe('hello world')
     await waitOnExecutionContext(ctx)
 

@@ -1,8 +1,7 @@
 import { handleError } from './http-error.js'
 import { httpAssert } from './http-assert.js'
-import { redirectLegacyDomain } from './redirect.js'
 import { checkBotAuthorization } from './bot-auth.js'
-import { setRetrievalResponseHeaders } from './response-headers.js'
+import { setContentSecurityPolicy } from './content-security-policy.js'
 import {
   recordRetrieval,
   logRetrievalResult,
@@ -279,4 +278,36 @@ function handleEmptyBodyResponse(
     clientCacheTtl: env.CLIENT_CACHE_TTL,
   })
   return emptyResponse
+}
+
+/**
+ * Redirects legacy `*.filcdn.io` requests to the equivalent `*.filbeam.io` URL
+ * with a 301.
+ *
+ * @param {Request} request
+ * @returns {Response | undefined} A redirect response, or `undefined` when the
+ *   request is not for a legacy domain.
+ */
+function redirectLegacyDomain(request) {
+  if (URL.parse(request.url)?.hostname.endsWith('filcdn.io')) {
+    return Response.redirect(
+      request.url.replace('filcdn.io', 'filbeam.io'),
+      301,
+    )
+  }
+}
+
+/**
+ * Applies the standard headers for a successful retrieval response: the content
+ * security policy, the data set id, and the client cache policy.
+ *
+ * @param {Response} response
+ * @param {object} options
+ * @param {string} options.dataSetId
+ * @param {number} options.clientCacheTtl - `Cache-Control` max-age in seconds.
+ */
+function setRetrievalResponseHeaders(response, { dataSetId, clientCacheTtl }) {
+  setContentSecurityPolicy(response)
+  response.headers.set('X-Data-Set-ID', dataSetId)
+  response.headers.set('Cache-Control', `public, max-age=${clientCacheTtl}`)
 }
