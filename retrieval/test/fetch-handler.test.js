@@ -165,8 +165,10 @@ describe('handleFetchRequest', () => {
     const ctx = createExecutionContext()
     const dataSetId = 'fh-empty'
     const res = await handleFetchRequest(
-      new Request('https://example.com/'),
-      testEnv,
+      new Request('https://example.com/', {
+        headers: { 'CF-IPCountry': 'US', authorization: 'Bearer tok' },
+      }),
+      { ...testEnv, BOT_TOKENS: JSON.stringify({ tok: 'bot-1' }) },
       ctx,
       runYielding({
         dataSetId,
@@ -178,12 +180,23 @@ describe('handleFetchRequest', () => {
     expect(res.status).toBe(404)
     expect(res.body).toBeNull()
     expect(res.headers.get('X-Data-Set-ID')).toBe(dataSetId)
+    expect(res.headers.get('Cache-Control')).toBe(
+      `public, max-age=${testEnv.CLIENT_CACHE_TTL}`,
+    )
     const log = await env.DB.prepare(
-      'SELECT response_status, egress_bytes FROM retrieval_logs WHERE data_set_id = ?',
+      `SELECT response_status, egress_bytes, cache_miss_egress_bytes, cache_miss, cache_miss_response_valid, bot_name
+       FROM retrieval_logs WHERE data_set_id = ?`,
     )
       .bind(dataSetId)
       .first()
-    expect(log).toEqual({ response_status: 404, egress_bytes: 0 })
+    expect(log).toEqual({
+      response_status: 404,
+      egress_bytes: 0,
+      cache_miss_egress_bytes: 0,
+      cache_miss: 1,
+      cache_miss_response_valid: null,
+      bot_name: 'bot-1',
+    })
   })
 
   it('logs a 900 result when streaming the body errors', async () => {
