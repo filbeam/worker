@@ -2,15 +2,10 @@ import { describe, it, expect } from 'vitest'
 import {
   updateDataSetStats,
   logRetrievalResult,
-  logRetrievalError,
   recordRetrieval,
 } from '../lib/stats'
 import { withDataSet } from './test-helpers'
-import {
-  env,
-  createExecutionContext,
-  waitOnExecutionContext,
-} from 'cloudflare:test'
+import { env } from 'cloudflare:test'
 
 describe('updateDataSetStats', () => {
   it('updates egress stats', async () => {
@@ -363,39 +358,6 @@ describe('logRetrievalResult', () => {
       .first()
 
     expect(result).toEqual({ egress_bytes: 999, cache_miss_egress_bytes: 999 })
-  })
-})
-
-describe('logRetrievalError', () => {
-  it('logs the error status with no egress and no data set', async () => {
-    const ctx = createExecutionContext()
-
-    logRetrievalError(
-      env,
-      ctx,
-      Object.assign(new Error('Not Found'), { status: 404 }),
-      {
-        requestCountryCode: 'US',
-        timestamp: new Date().toISOString(),
-        botName: undefined,
-      },
-    )
-    await waitOnExecutionContext(ctx)
-
-    const result = await env.DB.prepare(
-      `SELECT response_status, egress_bytes, cache_miss, data_set_id
-       FROM retrieval_logs
-       WHERE response_status = 404 AND request_country_code = 'US'`,
-    ).all()
-
-    expect(result.results).toEqual([
-      {
-        response_status: 404,
-        egress_bytes: null,
-        cache_miss: null,
-        data_set_id: null,
-      },
-    ])
   })
 })
 

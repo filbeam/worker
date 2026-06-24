@@ -1,5 +1,3 @@
-import { getErrorHttpStatusMessage } from './http-error.js'
-
 /**
  * @param {{ DB: D1Database }} env - Worker environment (contains D1 binding).
  * @param {object} params - Parameters for the data set update.
@@ -145,41 +143,6 @@ export async function logRetrievalResult(env, params) {
     // TODO: Handle specific SQL error codes if needed
     throw error
   }
-}
-
-/**
- * Records a failed retrieval: logs the resolved HTTP status with no egress and
- * no data set, scheduled on the execution context. Intended for a worker's
- * request error handler.
- *
- * @param {{ DB: D1Database }} env - Worker environment (contains D1 binding).
- * @param {ExecutionContext} ctx
- * @param {unknown} error - The error thrown while handling the request.
- * @param {object} context
- * @param {string | null} context.requestCountryCode
- * @param {string} context.timestamp
- * @param {string | undefined} context.botName
- */
-export function logRetrievalError(
-  env,
-  ctx,
-  error,
-  { requestCountryCode, timestamp, botName },
-) {
-  const { status } = getErrorHttpStatusMessage(error)
-
-  ctx.waitUntil(
-    logRetrievalResult(env, {
-      cacheMiss: null,
-      cacheMissResponseValid: null,
-      responseStatus: status,
-      egressBytes: null,
-      requestCountryCode,
-      timestamp,
-      dataSetId: null,
-      botName,
-    }),
-  )
 }
 
 /**

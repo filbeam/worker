@@ -1,12 +1,8 @@
-import { handleError } from './http-error.js'
+import { handleError, getErrorHttpStatusMessage } from './http-error.js'
 import { httpAssert } from './http-assert.js'
 import { checkBotAuthorization } from './bot-auth.js'
 import { setContentSecurityPolicy } from './content-security-policy.js'
-import {
-  recordRetrieval,
-  logRetrievalResult,
-  logRetrievalError,
-} from './stats.js'
+import { recordRetrieval, logRetrievalResult } from './stats.js'
 
 /**
  * The successful retrieval outcome a worker hands back to
@@ -310,4 +306,39 @@ function setRetrievalResponseHeaders(response, { dataSetId, clientCacheTtl }) {
   setContentSecurityPolicy(response)
   response.headers.set('X-Data-Set-ID', dataSetId)
   response.headers.set('Cache-Control', `public, max-age=${clientCacheTtl}`)
+}
+
+/**
+ * Records a failed retrieval: logs the resolved HTTP status with no egress and
+ * no data set, scheduled on the execution context. Intended for a worker's
+ * request error handler.
+ *
+ * @param {{ DB: D1Database }} env - Worker environment (contains D1 binding).
+ * @param {ExecutionContext} ctx
+ * @param {unknown} error - The error thrown while handling the request.
+ * @param {object} context
+ * @param {string | null} context.requestCountryCode
+ * @param {string} context.timestamp
+ * @param {string | undefined} context.botName
+ */
+function logRetrievalError(
+  env,
+  ctx,
+  error,
+  { requestCountryCode, timestamp, botName },
+) {
+  const { status } = getErrorHttpStatusMessage(error)
+
+  ctx.waitUntil(
+    logRetrievalResult(env, {
+      cacheMiss: null,
+      cacheMissResponseValid: null,
+      responseStatus: status,
+      egressBytes: null,
+      requestCountryCode,
+      timestamp,
+      dataSetId: null,
+      botName,
+    }),
+  )
 }

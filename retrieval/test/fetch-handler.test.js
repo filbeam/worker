@@ -123,6 +123,33 @@ describe('handleFetchRequest', () => {
     expect(await res.text()).toBe('Internal Server Error')
   })
 
+  it('logs the error status with no egress and no data set when the retrieval throws', async () => {
+    const ctx = createExecutionContext()
+    const res = await handleFetchRequest(
+      new Request('https://example.com/', {
+        headers: { 'CF-IPCountry': 'US' },
+      }),
+      testEnv,
+      ctx,
+      async () => async () => {
+        throw Object.assign(new Error("I'm a teapot"), { status: 418 })
+      },
+    )
+    expect(res.status).toBe(418)
+    await waitOnExecutionContext(ctx)
+
+    const log = await env.DB.prepare(
+      `SELECT response_status, egress_bytes, cache_miss, data_set_id
+       FROM retrieval_logs WHERE response_status = 418`,
+    ).first()
+    expect(log).toEqual({
+      response_status: 418,
+      egress_bytes: null,
+      cache_miss: null,
+      data_set_id: null,
+    })
+  })
+
   it('streams a retrieval result, measuring egress and logging it', async () => {
     const ctx = createExecutionContext()
     const dataSetId = 'fh-stream'
