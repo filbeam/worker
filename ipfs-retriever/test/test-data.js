@@ -10,21 +10,21 @@
 export const CONTENT_STORED_ON_CALIBRATION = [
   {
     // This Piece must have IPFS RootCID set and IPFS Indexing enabled at the dataset level
-    serviceProviderId: '23',
-    serviceUrl: 'https://pdp.oplian.com/',
+    serviceProviderId: '2',
+    serviceUrl: 'https://calib2.ezpdpz.net/',
     pieceCid:
-      'bafkzcibe2g5acdgp624n6qglofslq4dl2aixoeecjsqiqzcbk4ji6vpmyvcr2pytaq',
-    ipfsRootCid: 'bafybeidt6ugk5xeoeeumev3eexamnjxvexbfpfajx4kgzgsa5hkrwlhavu',
-    dataSetId: 845,
+      'bafkzcibdzabqtx4ovk72zspicej5vmbjse2237cfzduljnevpmd4kfvccb5h44y4',
+    ipfsRootCid: 'bafkreiheygfzn22dfeos3xoay5cxnfb464znd2rszieyzcinlsgu2z7kau',
+    dataSetId: 14578,
     pieceId: '0',
   },
   {
-    serviceProviderId: '3',
-    serviceUrl: 'https://calib.ezpdpz.net/',
+    serviceProviderId: '4',
+    serviceUrl: 'https://caliberation-pdp.infrafolio.com/',
     pieceCid:
-      'bafkzcibdtrjavqxb56hzzq2tyayggqtujzamyf227cg4evbillgsfcdurht3cwyb',
-    ipfsRootCid: null,
-    dataSetId: 12,
-    pieceId: '2',
+      'bafkzcibd7r7avok5z3tdn4uq6shuqghxm75e5jgirvdzsdmrkly2u5dldodic4jb',
+    ipfsRootCid: 'bafkreigo55ody3xm4g6mbkitgdytcshanhluzywpi25f3qalfypc7bpna4',
+    dataSetId: 14577,
+    pieceId: '1',
   },
 ]

@@ -351,11 +351,11 @@ describe('retriever.fetch', () => {
     expect(csp).toContain('https://*.filbeam.io')
   })
 
-  // FIXME - re-enable once a calibnet SP serves IPFS CAR blocks (Curio) and
-  // the test data set is reachable from CI.
-  it.skip('fetches the file from calibration service provider', async () => {
+  it('fetches the file from calibration service provider', async () => {
+    // The default request format is `car`, so the worker serves the CAR file
+    // unchanged. This is the sha256 of the CAR served for the dataset above.
     const expectedHash =
-      '804edafec384735102b5e9bd99a0bc57922381bdc8685221f7e30ab865176f13'
+      'd895b1ec0e1fbde5ba2ad3b927e4ea43dcd126e11ddfd9930027a0f594bbe002'
     const ctx = createExecutionContext()
     const req = withRequest(realDataSetId, realPieceId)
     const res = await fetchAndRead(req, env, ctx, { retrieveIpfsContent })
@@ -582,18 +582,16 @@ describe('retriever.fetch', () => {
     expect(log).toEqual({ response_status: 900, egress_bytes: 0 })
   })
 
-  // FIXME - update the test to retrieve real IPFS content
-  // This is blocked by Curio not indexing CAR files inside PDP deals yet
-  it.skip(
+  it(
     'measures egress correctly from real service provider',
     { timeout: 10000 },
     async () => {
       const tasks = CONTENT_STORED_ON_CALIBRATION.map(
-        ({ dataSetId, pieceCid, ipfsRootCid, serviceProviderId }) => {
+        ({ dataSetId, pieceId, serviceProviderId }) => {
           return (async () => {
             try {
               const ctx = createExecutionContext()
-              const req = withRequest(dataSetId, pieceCid)
+              const req = withRequest(String(dataSetId), pieceId)
               const res = await fetchAndRead(req, env, ctx, {
                 retrieveIpfsContent,
               })
@@ -604,14 +602,13 @@ describe('retriever.fetch', () => {
               const content = await res.arrayBuffer()
               const actualBytes = content.byteLength
 
-              const { results } = await env.DB.prepare(
-                'SELECT egress_bytes FROM retrieval_logs WHERE data_set_id = ?',
+              const log = await env.DB.prepare(
+                'SELECT egress_bytes FROM retrieval_logs WHERE data_set_id = ? ORDER BY id DESC LIMIT 1',
               )
                 .bind(String(dataSetId))
-                .all()
+                .first()
 
-              assert.strictEqual(results.length, 1)
-              assert.strictEqual(results[0].egress_bytes, actualBytes)
+              assert.strictEqual(log.egress_bytes, actualBytes)
 
               return { serviceProviderId, success: true }
             } catch (err) {
@@ -1230,23 +1227,18 @@ describe('retriever.fetch', () => {
     expect(countAfter).toBe(countBefore)
   })
 
-  // FIXME - re-enable once a calibnet SP serves IPFS CAR blocks (Curio) and
-  // the test data set is reachable from CI.
-  it.skip('converts CAR to RAW by default (no format parameter)', async () => {
+  it('converts CAR to RAW by default (no format parameter)', async () => {
+    // CONTENT_STORED_ON_CALIBRATION[1] is a single raw block holding a PNG.
+    const { dataSetId, pieceId } = CONTENT_STORED_ON_CALIBRATION[1]
     const ctx = createExecutionContext()
 
-    // Hard-coded in the retrieval worker for testing
-    const testDataSetId = '9999'
-    const testPieceId = '9999'
-
-    const url = withRequest(
-      testDataSetId,
-      testPieceId,
+    const req = withRequest(
+      String(dataSetId),
+      pieceId,
       'GET',
       {},
-      { subpath: '/rusty-lassie.png', format: null },
+      { format: null },
     )
-    const req = new Request(url)
 
     const res = await fetchAndRead(req, env, ctx, { retrieveIpfsContent })
     await waitOnExecutionContext(ctx)
