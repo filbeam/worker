@@ -1,7 +1,9 @@
 import { getChainClient as defaultGetChainClient } from '../lib/chain.js'
 import {
   getDataSetsForSettlement,
-  settleCDNPaymentRails,
+  getCDNRailsForSettlement,
+  settleCacheMissPaymentRails,
+  settleCDNBandwidthRails,
 } from '../lib/rail-settlement.js'
 import { TransactionMonitorWorkflow } from '@filbeam/workflows'
 import {
@@ -13,7 +15,8 @@ import {
  * @typedef {{
  *   type: 'transaction-retry'
  *   transactionHash: `0x${string}`
- *   dataSetIds: string[]
+ *   settlementType: 'cache-miss' | 'bandwidth'
+ *   ids: string[]
  * }} TransactionRetryMessage
  */
 
@@ -22,9 +25,63 @@ import {
  *   type: 'settlement-confirmed'
  *   transactionHash: `0x${string}`
  *   blockNumber: string
- *   dataSetIds: string[]
+ *   settlementType: 'cache-miss' | 'bandwidth'
+ *   ids: string[]
  * }} SettlementConfirmedMessage
  */
+
+/**
+ * Splits ids into batches, settles each batch, and returns metadata for the
+ * batches that succeeded.
+ *
+ * @param {object} args
+ * @param {Env} args.env
+ * @param {string[]} args.ids
+ * @param {(batch: string[], batchId: string) => Promise<`0x${string}`>} args.settle
+ * @param {'cache-miss' | 'bandwidth'} args.settlementType
+ * @returns {Promise<
+ *   {
+ *     transactionHash: `0x${string}`
+ *     settlementType: 'cache-miss' | 'bandwidth'
+ *     ids: string[]
+ *   }[]
+ * >}
+ */
+async function settleInBatches({ env, ids, settle, settlementType }) {
+  if (ids.length === 0) return []
+
+  const batches = []
+  for (let i = 0; i < ids.length; i += env.SETTLEMENT_BATCH_SIZE) {
+    batches.push(ids.slice(i, i + env.SETTLEMENT_BATCH_SIZE))
+  }
+
+  console.log(
+    `Prepared ${batches.length} ${settlementType} batches for settlement`,
+  )
+
+  const results = await Promise.allSettled(
+    batches.map((batch, ix) => settle(batch, `${settlementType}-batch-${ix}`)),
+  )
+
+  const successfulBatches = []
+  for (let i = 0; i < results.length; i++) {
+    const result = results[i]
+    if (result.status === 'fulfilled') {
+      successfulBatches.push({
+        transactionHash: result.value,
+        settlementType,
+        ids: batches[i],
+      })
+    } else {
+      console.error(
+        `Failed to settle ${settlementType} batch ${i + 1} (${batches[i].join(', ')}):`,
+        result.reason,
+      )
+    }
+  }
+
+  return successfulBatches
+}
 
 export default {
   /**
@@ -42,74 +99,70 @@ export default {
     console.log('Starting rail settlement worker')
 
     try {
-      const dataSetIds = await getDataSetsForSettlement(env.DB)
+      const chainClient = getChainClient(env)
 
-      if (dataSetIds.length === 0) {
+      const [dataSetIds, cdnRailIds] = await Promise.all([
+        getDataSetsForSettlement(env.DB),
+        getCDNRailsForSettlement(env.DB),
+      ])
+
+      if (dataSetIds.length === 0 && cdnRailIds.length === 0) {
         console.log('No active data sets found for settlement')
         return
       }
 
       console.log(
-        `Found ${dataSetIds.length} data sets for settlement:`,
-        dataSetIds,
+        `Found ${dataSetIds.length} data sets and ${cdnRailIds.length} bandwidth rails for settlement`,
       )
 
-      const batches = []
-      for (let i = 0; i < dataSetIds.length; i += env.SETTLEMENT_BATCH_SIZE) {
-        batches.push(dataSetIds.slice(i, i + env.SETTLEMENT_BATCH_SIZE))
-      }
+      const [cacheMissBatches, bandwidthBatches] = await Promise.all([
+        // Cache-miss settlement: once per data set.
+        settleInBatches({
+          env,
+          ids: dataSetIds,
+          settle: (batch, batchId) =>
+            settleCacheMissPaymentRails({
+              env,
+              batchId,
+              dataSetIds: batch,
+              ...chainClient,
+            }),
+          settlementType: 'cache-miss',
+        }),
+        // Bandwidth settlement: once per shared cdn_rail_id.
+        settleInBatches({
+          env,
+          ids: cdnRailIds,
+          settle: (batch, batchId) =>
+            settleCDNBandwidthRails({
+              env,
+              batchId,
+              cdnRailIds: batch,
+              ...chainClient,
+            }),
+          settlementType: 'bandwidth',
+        }),
+      ])
 
-      console.log(`Prepared ${batches.length} batches for settlement`)
+      const workflows = [...cacheMissBatches, ...bandwidthBatches]
 
-      const chainClient = getChainClient(env)
-
-      const results = await Promise.allSettled(
-        batches.map((batch, ix) =>
-          settleCDNPaymentRails({
-            env,
-            batchId: `batch-${ix}`,
-            dataSetIds: batch,
-            ...chainClient,
-          }),
-        ),
-      )
-
-      /** @type {{ transactionHash: `0x${string}`; dataSetIds: string[] }[]} */
-      const successfulBatches = []
-      for (let i = 0; i < results.length; i++) {
-        const result = results[i]
-        if (result.status === 'fulfilled') {
-          successfulBatches.push({
-            transactionHash: result.value,
-            dataSetIds: batches[i],
-          })
-        } else {
-          console.error(
-            `Failed to settle batch ${i + 1} (data sets: ${batches[i].join(', ')}):`,
-            result.reason,
-          )
-        }
-      }
-
-      if (successfulBatches.length > 0) {
+      if (workflows.length > 0) {
         await env.TRANSACTION_MONITOR_WORKFLOW.createBatch(
-          successfulBatches.map(({ transactionHash, dataSetIds }) => ({
+          workflows.map(({ transactionHash, settlementType, ids }) => ({
             id: `payment-settler-${transactionHash}-${Date.now()}`,
             params: {
               transactionHash,
               metadata: {
                 onSuccess: 'settlement-confirmed',
-                successData: { dataSetIds },
-                retryData: { dataSetIds },
+                successData: { settlementType, ids },
+                retryData: { settlementType, ids },
               },
             },
           })),
         )
       }
 
-      console.log(
-        `Settled ${successfulBatches.length} of ${batches.length} batches`,
-      )
+      console.log(`Created ${workflows.length} settlement monitor workflows`)
     } catch (error) {
       console.error('Settlement process failed:', error)
       throw error

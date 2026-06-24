@@ -18,6 +18,10 @@ export async function withDataSet(
     terminateServiceTxHash = null,
     lockupUnlocksAt = null,
     usageReportedUntil = null,
+    // Rail ids are uint256 on-chain, so keep fixtures numeric (the settler
+    // converts them with BigInt).
+    cdnRailId = String(Number(id) + 1000),
+    cacheMissRailId = String(Number(id) + 2000),
   },
 ) {
   // Ensure service provider exists
@@ -33,7 +37,7 @@ export async function withDataSet(
   const lockupUnlocksAtValue = lockupUnlocksAt
 
   await env.DB.prepare(
-    `INSERT INTO data_sets (id, service_provider_id, payer_address, with_cdn, terminate_service_tx_hash, lockup_unlocks_at, usage_reported_until) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO data_sets (id, service_provider_id, payer_address, with_cdn, terminate_service_tx_hash, lockup_unlocks_at, usage_reported_until, cdn_rail_id, cache_miss_rail_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   )
     .bind(
       String(id),
@@ -43,6 +47,8 @@ export async function withDataSet(
       terminateServiceTxHash,
       lockupUnlocksAtValue,
       usageReportedUntilValue,
+      cdnRailId,
+      cacheMissRailId,
     )
     .run()
 }

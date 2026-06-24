@@ -1,10 +1,23 @@
 [
   {
     "type": "function",
-    "name": "settleCDNPaymentRails",
+    "name": "settleCacheMissPaymentRails",
     "inputs": [
       {
         "name": "dataSetIds",
+        "type": "uint256[]",
+        "internalType": "uint256[]"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "settleCDNBandwidthRails",
+    "inputs": [
+      {
+        "name": "cdnRailIds",
         "type": "uint256[]",
         "internalType": "uint256[]"
       }

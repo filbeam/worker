@@ -62,6 +62,8 @@ export async function withDataSet(
     terminateServiceTxHash = null,
     usageReportedUntil = '1970-01-01T00:00:00.000Z',
     pendingUsageReportTxHash = null,
+    cdnRailId = `rail-${id}`,
+    cacheMissRailId = `cache-miss-rail-${id}`,
   },
 ) {
   // Ensure service provider exists
@@ -72,7 +74,7 @@ export async function withDataSet(
     .run()
 
   await env.DB.prepare(
-    `INSERT INTO data_sets (id, service_provider_id, payer_address, with_cdn, terminate_service_tx_hash, usage_reported_until, pending_usage_report_tx_hash) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO data_sets (id, service_provider_id, payer_address, with_cdn, terminate_service_tx_hash, usage_reported_until, pending_usage_report_tx_hash, cdn_rail_id, cache_miss_rail_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   )
     .bind(
       String(id),
@@ -82,6 +84,8 @@ export async function withDataSet(
       terminateServiceTxHash,
       usageReportedUntil,
       pendingUsageReportTxHash,
+      cdnRailId,
+      cacheMissRailId,
     )
     .run()
 }
