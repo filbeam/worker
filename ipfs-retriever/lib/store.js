@@ -74,11 +74,24 @@ function validateQueryResultsAndGetCandidates(params) {
     ipfsRootCid: row.ipfs_root_cid,
   }))
 
+  // Under sharding, one IPFS root CID maps to many pieces on the same service
+  // provider, producing candidates that differ only by piece. Retrieval is by
+  // root CID and never uses the piece, so those are identical requests. Keep
+  // one candidate per service provider, so a failing provider is attempted once
+  // rather than once per shard, while still retrying across distinct providers.
+  const candidatesByServiceProvider = new Map()
+  for (const candidate of candidates) {
+    if (!candidatesByServiceProvider.has(candidate.serviceProviderId)) {
+      candidatesByServiceProvider.set(candidate.serviceProviderId, candidate)
+    }
+  }
+  const dedupedCandidates = [...candidatesByServiceProvider.values()]
+
   console.log(
-    `Validated ${candidates.length} retrieval candidate(s) for ${lookupKey} and payer '${payerAddress}'`,
+    `Validated ${dedupedCandidates.length} retrieval candidate(s) for ${lookupKey} and payer '${payerAddress}'`,
   )
 
-  return candidates
+  return dedupedCandidates
 }
 
 /**
