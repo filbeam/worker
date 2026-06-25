@@ -176,7 +176,7 @@ describe('processIpfsResponse', () => {
     const { carBytes, rootCid } = await buildRawBlockCar(fileBytes)
     expect(carBytes.length).toBeGreaterThan(fileBytes.length)
 
-    const { body, originEgressBytes, headers } = await processIpfsResponse(
+    const { body, getOriginEgressBytes, headers } = await processIpfsResponse(
       new Response(carBytes, {
         status: 200,
         headers: {
@@ -189,8 +189,10 @@ describe('processIpfsResponse', () => {
 
     const served = new Uint8Array(await new Response(body).arrayBuffer())
     expect(served).toEqual(fileBytes)
-    // originEgressBytes is the full CAR fetched from the SP, not the raw bytes.
-    expect(originEgressBytes).toBe(carBytes.length)
+    // The CAR is streamed lazily, so the count is only final once the body has
+    // been consumed. It reports the full CAR fetched from the SP, not the raw
+    // bytes.
+    expect(getOriginEgressBytes()).toBe(carBytes.length)
     // The browser should display the raw content and sniff its type.
     expect(headers.get('content-disposition')).toBe('inline')
     expect(headers.get('content-type')).toBe(null)
@@ -204,7 +206,7 @@ describe('processIpfsResponse', () => {
       headers: { 'content-type': 'application/vnd.ipld.car' },
     })
 
-    const { body, originEgressBytes, headers } = await processIpfsResponse(
+    const { body, getOriginEgressBytes, headers } = await processIpfsResponse(
       response,
       {
         ipfsRootCid: 'bafyroot',
@@ -213,7 +215,7 @@ describe('processIpfsResponse', () => {
       },
     )
 
-    expect(originEgressBytes).toBe(null)
+    expect(getOriginEgressBytes()).toBe(null)
     expect(new Uint8Array(await new Response(body).arrayBuffer())).toEqual(
       carBytes,
     )
@@ -225,13 +227,13 @@ describe('processIpfsResponse', () => {
   it('passes the body through unchanged for non-ok responses with null originEgressBytes', async () => {
     const response = new Response('not found', { status: 404 })
 
-    const { body, originEgressBytes } = await processIpfsResponse(response, {
+    const { body, getOriginEgressBytes } = await processIpfsResponse(response, {
       ipfsRootCid: 'bafyroot',
       ipfsSubpath: '/',
       ipfsFormat: null,
     })
 
-    expect(originEgressBytes).toBe(null)
+    expect(getOriginEgressBytes()).toBe(null)
     expect(await new Response(body).text()).toBe('not found')
   })
 })

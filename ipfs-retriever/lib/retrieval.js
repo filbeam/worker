@@ -1,11 +1,11 @@
-import { CarReader } from '@ipld/car'
+import { CarBlockIterator } from '@ipld/car'
 // @ts-ignore - Types exist but package.json exports configuration prevents resolution
 import * as carBlockValidator from '@web3-storage/car-block-validator'
 import { recursive as exporter } from 'ipfs-unixfs-exporter'
 import { httpAssert, originCacheOptions } from '@filbeam/retrieval'
 
 /** @import {UnixFSBasicEntry} from 'ipfs-unixfs-exporter' */
-/** @typedef {CarReader['_blocks'][0]} Block */
+/** @typedef {{ cid: import('multiformats').CID; bytes: Uint8Array }} Block */
 
 /** @type {(block: Block) => Promise<void> | undefined} */
 const validateBlock = carBlockValidator.validateBlock
@@ -83,14 +83,16 @@ export function getRetrievalUrl(serviceUrl, rootCid, subpath) {
  * @param {AbortSignal} [options.signal]
  * @returns {Promise<{
  *   body: ReadableStream<Uint8Array> | null
- *   originEgressBytes: number | null
+ *   getOriginEgressBytes: () => number | null
  *   headers: Headers
  * }>}
  *   - `body` is the stream to serve to the client: raw bytes when converting from
  *       CAR, the original body when serving CAR or passing through.
- *   - `originEgressBytes` is the number of CAR bytes read from the service
+ *   - `getOriginEgressBytes` returns the number of CAR bytes read from the service
  *       provider, or `null` when the body is passed through unchanged (in that
- *       case the bytes served equal the bytes fetched).
+ *       case the bytes served equal the bytes fetched). Because the CAR is
+ *       streamed lazily, the count is only final once `body` has been fully
+ *       consumed, so call this after streaming the response.
  *   - `headers` are the response headers to serve, with the CAR-to-raw adjustments
  *       applied when converting.
  */
@@ -100,7 +102,11 @@ export async function processIpfsResponse(
 ) {
   const body = response.body
   if (!response.ok || !body || ipfsFormat === 'car') {
-    return { body, originEgressBytes: null, headers: response.headers }
+    return {
+      body,
+      getOriginEgressBytes: () => null,
+      headers: response.headers,
+    }
   }
 
   httpAssert(
@@ -117,9 +123,11 @@ export async function processIpfsResponse(
   headers.delete('content-type')
   headers.delete('x-content-type-options')
 
-  // Count the CAR bytes fetched from the service provider as we read them.
-  // `CarReader.fromIterable` consumes the entire stream before returning, so
-  // `originEgressBytes` is final by the time we build the raw output stream.
+  // Count the CAR bytes fetched from the service provider as they stream
+  // through. `CarBlockIterator` decodes only the CAR header up front and yields
+  // blocks lazily, so the whole archive is never held in memory. The byte count
+  // is therefore only final once the caller has fully consumed the returned
+  // body, so it is exposed via `getOriginEgressBytes` rather than as a value.
   let originEgressBytes = 0
   const countingBody = (async function* () {
     for await (const chunk of body) {
@@ -128,8 +136,8 @@ export async function processIpfsResponse(
     }
   })()
 
-  const reader = await CarReader.fromIterable(countingBody)
-  const blocksReader = reader.blocks()
+  const blocks = await CarBlockIterator.fromIterable(countingBody)
+  const blocksReader = blocks[Symbol.asyncIterator]()
 
   const entries = exporter(
     `${ipfsRootCid}${ipfsSubpath}`,
@@ -204,7 +212,11 @@ export async function processIpfsResponse(
       },
     })
 
-    return { body: rawDataStream, originEgressBytes, headers }
+    return {
+      body: rawDataStream,
+      getOriginEgressBytes: () => originEgressBytes,
+      headers,
+    }
   }
 
   httpAssert(false, 404, 'Not Found')

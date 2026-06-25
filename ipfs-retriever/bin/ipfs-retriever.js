@@ -105,7 +105,7 @@ export default {
 
       const {
         body: responseBody,
-        originEgressBytes,
+        getOriginEgressBytes,
         headers: responseHeaders,
       } = await processIpfsResponse(originResponse, {
         ipfsRootCid,
@@ -135,8 +135,10 @@ export default {
         // are equal. Reaching here means the response streamed successfully (a
         // converted CAR is validated during conversion), so charge every cache
         // miss.
+        // The body has fully streamed by the time finalizeCacheMiss runs, so
+        // the lazily counted CAR byte total is final here.
         finalizeCacheMiss: async (egressBytes) => ({
-          cacheMissEgressBytes: originEgressBytes ?? egressBytes,
+          cacheMissEgressBytes: getOriginEgressBytes() ?? egressBytes,
           cacheMissResponseValid: cacheMiss ? true : null,
         }),
       }
