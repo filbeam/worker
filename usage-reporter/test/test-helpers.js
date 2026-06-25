@@ -100,7 +100,8 @@ export const randomId = () => String(Math.ceil(Math.random() * 1e10))
  * @param {number | null} params.cacheMissEgressBytes - CAR bytes fetched from
  *   the SP on a cache miss (default: null)
  * @param {number} params.cacheMiss - Cache miss flag (0 or 1, default: 0)
- * @param {boolena} params.cacheMissResponseValid
+ * @param {number} params.cacheMissResponseValid - Cache-miss response valid
+ *   flag (0 or 1, default: 0)
  */
 export async function withRetrievalLog(
   env,
