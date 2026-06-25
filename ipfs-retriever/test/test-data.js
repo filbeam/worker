@@ -2,6 +2,7 @@
  * @type {{
  *   serviceProviderId: string
  *   serviceUrl: string
+ *   pieceCid: string
  *   ipfsRootCid: string
  *   dataSetId: number
  *   pieceId: string
