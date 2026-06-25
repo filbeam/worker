@@ -45,7 +45,7 @@ id = "2f2e5486ea0c48e993f6dff87a4aa102"
 tail_consumers = [{ service = "filbeam-tail-handler-calibration" }]
 
 [env.calibration.vars]
-ENVIRONMENT = "calibration "
+ENVIRONMENT = "calibration"
 ORIGIN_CACHE_TTL = 86400
 CLIENT_CACHE_TTL = 31536000
 DNS_ROOT = ".ipfs.calibration.filbeam.io"
