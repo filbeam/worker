@@ -9,6 +9,11 @@ describe('checkBotAuthorization', () => {
     expect(checkBotAuthorization(request, { BOT_TOKENS })).toBeUndefined()
   })
 
+  it('returns undefined for anonymous requests even when BOT_TOKENS is empty', () => {
+    const request = new Request('https://example.com', { headers: {} })
+    expect(checkBotAuthorization(request, { BOT_TOKENS: '' })).toBeUndefined()
+  })
+
   it('throws 401 when the authorization header is not Bearer format', () => {
     const request = new Request('https://example.com', {
       headers: { authorization: 'Basic sometoken' },

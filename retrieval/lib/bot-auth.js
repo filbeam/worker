@@ -8,14 +8,15 @@ import { httpAssert } from './http-assert.js'
  * @param {Request} request
  * @param {object} args
  * @param {string} args.BOT_TOKENS - JSON object mapping access token to bot
- *   name.
- * @returns {string | undefined} Bot name or the access token
+ *   name. An empty or unset value is treated as an empty mapping.
+ * @returns {string | undefined} The resolved bot name, or `undefined` for
+ *   anonymous requests.
  */
 export function checkBotAuthorization(request, { BOT_TOKENS }) {
-  const botTokens = JSON.parse(BOT_TOKENS)
-
   const auth = request.headers.get('authorization')
   if (!auth) return undefined
+
+  const botTokens = BOT_TOKENS ? JSON.parse(BOT_TOKENS) : {}
 
   const [prefix, token, ...rest] = auth.split(' ')
 
