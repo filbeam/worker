@@ -139,87 +139,96 @@ export async function processIpfsResponse(
   const blocks = await CarBlockIterator.fromIterable(countingBody)
   const blocksReader = blocks[Symbol.asyncIterator]()
 
-  const entries = exporter(
-    `${ipfsRootCid}${ipfsSubpath}`,
-    {
-      async get(blockCid) {
-        const res = await blocksReader.next()
-        if (res.done || !res.value) {
-          throw new Error(`Block ${blockCid} not found in CAR ${ipfsRootCid}`)
-        }
-        const block = res.value
-
-        // Compare only the multihashes, so a block stored under an equivalent
-        // CID with a different codec or CID version still matches. validateBlock
-        // below verifies the block bytes hash to this multihash.
-        const actualMultihash = block.cid.multihash.bytes
-        const expectedMultihash = blockCid.multihash.bytes
-        if (
-          actualMultihash.length !== expectedMultihash.length ||
-          !actualMultihash.every((byte, i) => byte === expectedMultihash[i])
-        ) {
-          throw new Error(
-            `Unexpected block CID ${block.cid}, expected ${blockCid}`,
-          )
-        }
-
-        try {
-          await validateBlock(block)
-        } catch (err) {
-          throw new Error(`Invalid block ${blockCid} of root ${ipfsRootCid}`, {
-            cause: err,
-          })
-        }
-
-        return block.bytes
-      },
-    },
-    { signal, blockReadConcurrency: 1 },
-  )
-
-  // eslint-disable-next-line no-unreachable-loop
-  for await (const entry of entries) {
-    signal?.throwIfAborted()
-    console.log(`Entry: ${entry.path} (${entry.type})`)
-
-    const expectedPath =
-      ipfsSubpath === '/' ? ipfsRootCid : `${ipfsRootCid}${ipfsSubpath}`
-    if (entry.path !== expectedPath) {
-      throw new Error(
-        `Unexpected entry - wrong path: ${describeEntry(entry)} (expected: ${expectedPath})`,
-      )
-    }
-
-    if (entry.type !== 'file' && entry.type !== 'raw') {
-      console.log(`Unexpected entry - wrong type: ${describeEntry(entry)}`)
-      httpAssert(false, 404, 'Not Found')
-    }
-
-    const entryContent = entry.content()
-
-    // Convert AsyncGenerator to ReadableStream for Response body
-    const rawDataStream = new ReadableStream({
-      async start(controller) {
-        try {
-          for await (const chunk of entryContent) {
-            signal?.throwIfAborted()
-            controller.enqueue(chunk)
+  try {
+    const entries = exporter(
+      `${ipfsRootCid}${ipfsSubpath}`,
+      {
+        async get(blockCid) {
+          const res = await blocksReader.next()
+          if (res.done || !res.value) {
+            throw new Error(`Block ${blockCid} not found in CAR ${ipfsRootCid}`)
           }
-          controller.close()
-        } catch (error) {
-          controller.error(error)
-        }
+          const block = res.value
+
+          // Compare only the multihashes, so a block stored under an equivalent
+          // CID with a different codec or CID version still matches. validateBlock
+          // below verifies the block bytes hash to this multihash.
+          const actualMultihash = block.cid.multihash.bytes
+          const expectedMultihash = blockCid.multihash.bytes
+          if (
+            actualMultihash.length !== expectedMultihash.length ||
+            !actualMultihash.every((byte, i) => byte === expectedMultihash[i])
+          ) {
+            throw new Error(
+              `Unexpected block CID ${block.cid}, expected ${blockCid}`,
+            )
+          }
+
+          try {
+            await validateBlock(block)
+          } catch (err) {
+            throw new Error(
+              `Invalid block ${blockCid} of root ${ipfsRootCid}`,
+              {
+                cause: err,
+              },
+            )
+          }
+
+          return block.bytes
+        },
       },
-    })
+      { signal, blockReadConcurrency: 1 },
+    )
 
-    return {
-      body: rawDataStream,
-      getOriginEgressBytes: () => originEgressBytes,
-      headers,
+    // eslint-disable-next-line no-unreachable-loop
+    for await (const entry of entries) {
+      signal?.throwIfAborted()
+      console.log(`Entry: ${entry.path} (${entry.type})`)
+
+      const expectedPath =
+        ipfsSubpath === '/' ? ipfsRootCid : `${ipfsRootCid}${ipfsSubpath}`
+      if (entry.path !== expectedPath) {
+        throw new Error(
+          `Unexpected entry - wrong path: ${describeEntry(entry)} (expected: ${expectedPath})`,
+        )
+      }
+
+      if (entry.type !== 'file' && entry.type !== 'raw') {
+        console.log(`Unexpected entry - wrong type: ${describeEntry(entry)}`)
+        httpAssert(false, 404, 'Not Found')
+      }
+
+      const entryContent = entry.content()
+
+      // Convert AsyncGenerator to ReadableStream for Response body
+      const rawDataStream = new ReadableStream({
+        async start(controller) {
+          try {
+            for await (const chunk of entryContent) {
+              signal?.throwIfAborted()
+              controller.enqueue(chunk)
+            }
+            controller.close()
+          } catch (error) {
+            controller.error(error)
+          }
+        },
+      })
+
+      return {
+        body: rawDataStream,
+        getOriginEgressBytes: () => originEgressBytes,
+        headers,
+      }
     }
-  }
 
-  httpAssert(false, 404, 'Not Found')
+    httpAssert(false, 404, 'Not Found')
+  } catch (err) {
+    // Release the SP connection immediately on error
+    body.cancel().catch(() => {})
+    throw err
+  }
 }
 
 /** @param {UnixFSBasicEntry} entry */
