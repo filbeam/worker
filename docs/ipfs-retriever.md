@@ -131,17 +131,17 @@ Two D1 queries:
 1. Resolve `(dataSetId + pieceId)` → `ipfsRootCid + payerAddress`. Throws 404 if the piece doesn't exist, has no payer, or has no `ipfsRootCid`.
 2. Query all rows matching `pieces.ipfs_root_cid = ?` joined across `data_sets`, `service_providers`, `data_set_egress_quotas`, and `wallet_details`. Runs the authorization cascade over the results:
 
-| Check | Error if all rows fail |
-|-------|------------------------|
-| Any rows at all | 404 — not indexed |
-| SP exists and is not deleted | 404 — no SP |
-| `payer_address` matches wallet | 402 — no deal for this payer |
-| `with_cdn = 1` | 402 — CDN disabled |
-| `is_sanctioned` is false | 403 — payer is sanctioned |
-| `service_url` is set | 404 — SP not approved |
-| `with_ipfs_indexing = 1` | 402 — IPFS indexing disabled |
-| `ipfs_root_cid` is set | 404 — no CID on piece |
-| (if `enforceEgressQuota`) quota > 0 | 402 — quota exhausted |
+| Check                               | Error if all rows fail       |
+| ----------------------------------- | ---------------------------- |
+| Any rows at all                     | 404 — not indexed            |
+| SP exists and is not deleted        | 404 — no SP                  |
+| `payer_address` matches wallet      | 402 — no deal for this payer |
+| `with_cdn = 1`                      | 402 — CDN disabled           |
+| `is_sanctioned` is false            | 403 — payer is sanctioned    |
+| `service_url` is set                | 404 — SP not approved        |
+| `with_ipfs_indexing = 1`            | 402 — IPFS indexing disabled |
+| `ipfs_root_cid` is set              | 404 — no CID on piece        |
+| (if `enforceEgressQuota`) quota > 0 | 402 — quota exhausted        |
 
 Returns one candidate per authorized SP: `{ serviceUrl, serviceProviderId, dataSetId, pieceId, ipfsRootCid }`. Multiple candidates exist when the same dataset is served by more than one SP — the worker retries across them if one fails.
 
@@ -202,7 +202,7 @@ When converting CAR to raw for non-directories, the worker strips the upstream `
 
 - **No subpath** (e.g. `/{ipfsRootCid}/`) — the root CID resolves directly to a file or raw block with no filename. The browser has only magic-byte sniffing to determine the content type. Modern browsers handle this well for common formats (images, video, HTML) but it may fail for less common types.
 - **With subpath** (e.g. `/{ipfsRootCid}/path/to/file.jpg`) — The terminal path segment carries a filename and extension. Modern browsers can use the extension, together with magic-byte sniffing, to infer the content type.
-Currently, the worker does not set the Content-Type header based on the file extension, leaving that responsibility to the browser. Should we instead set a reasonable Content-Type ourselves? We should verify whether relying on the browser is sufficient for modern websites, including JavaScript, CSS, HTML, images, videos, and other assets. Is there any reason this approach could be risky or lead to compatibility or security issues?
+  Currently, the worker does not set the Content-Type header based on the file extension, leaving that responsibility to the browser. Should we instead set a reasonable Content-Type ourselves? We should verify whether relying on the browser is sufficient for modern websites, including JavaScript, CSS, HTML, images, videos, and other assets. Is there any reason this approach could be risky or lead to compatibility or security issues?
 
 ### Directory entries
 

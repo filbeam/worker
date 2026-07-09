@@ -9,14 +9,14 @@ All workers share a **single Cloudflare D1 database** (SQLite). Migrations live 
 
 ## Tables
 
-| Table | Description |
-|---|---|
-| `service_providers` | SP registry: service URL and deletion status, keyed by on-chain provider ID |
-| `data_sets` | CDN deals: links an SP to a payer, tracks CDN/IPFS flags, egress usage, usage reporting watermarks, and termination state |
-| `pieces` | Pieces per data set: piece CID, IPFS root CID (from chain metadata), and deletion flag |
-| `data_set_egress_quotas` | Remaining byte budgets for CDN delivery and cache-miss charges; only exists for data sets that have been topped up |
-| `wallet_details` | Payer addresses with sanction status and last Chainalysis screen timestamp |
-| `retrieval_logs` | Per-request audit log: egress bytes, cache hit/miss, performance timings, country code, and bot flag |
+| Table                    | Description                                                                                                               |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------- |
+| `service_providers`      | SP registry: service URL and deletion status, keyed by on-chain provider ID                                               |
+| `data_sets`              | CDN deals: links an SP to a payer, tracks CDN/IPFS flags, egress usage, usage reporting watermarks, and termination state |
+| `pieces`                 | Pieces per data set: piece CID, IPFS root CID (from chain metadata), and deletion flag                                    |
+| `data_set_egress_quotas` | Remaining byte budgets for CDN delivery and cache-miss charges; only exists for data sets that have been topped up        |
+| `wallet_details`         | Payer addresses with sanction status and last Chainalysis screen timestamp                                                |
+| `retrieval_logs`         | Per-request audit log: egress bytes, cache hit/miss, performance timings, country code, and bot flag                      |
 
 ---
 
@@ -91,48 +91,56 @@ erDiagram
 ## How Tables Are Populated
 
 ### `service_providers`
+
 Written by **indexer** in response to `ServiceProviderRegistry` on-chain events:
 
-| Event | Handler | Effect |
-|---|---|---|
-| `ProductAdded` / `ProductUpdated` | `handleProductAdded/Updated` | Upserts `id`, `service_url`, `block_number`; skips if stored `block_number` is newer (out-of-order guard) |
-| `ProductRemoved` / `ProviderRemoved` | `handleProductRemoved/ProviderRemoved` | Sets `is_deleted = true` |
+| Event                                | Handler                                | Effect                                                                                                    |
+| ------------------------------------ | -------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `ProductAdded` / `ProductUpdated`    | `handleProductAdded/Updated`           | Upserts `id`, `service_url`, `block_number`; skips if stored `block_number` is newer (out-of-order guard) |
+| `ProductRemoved` / `ProviderRemoved` | `handleProductRemoved/ProviderRemoved` | Sets `is_deleted = true`                                                                                  |
 
 ### `data_sets`
+
 Written by **indexer** in response to `FWSS` and `FilBeamOperator` events:
 
-| Event | Handler | Effect |
-|---|---|---|
-| `DataSetCreated` | `handleFWSSDataSetCreated` | Upserts `id`, `service_provider_id`, `payer_address`, `with_cdn`, `with_ipfs_indexing`; also creates/updates `wallet_details` with sanction screen result **only when `withCDN` is set** |
-| `ServiceTerminated` | `handleFWSSServiceTerminated` | Sets `with_cdn = false`, calculates and sets `lockup_unlocks_at` |
-| `CDNPaymentRailsToppedUp` | `handleFWSSCDNPaymentRailsToppedUp` | Increments `data_set_egress_quotas` (idempotent via KV event dedup) |
-| `CDNPaymentSettled` | `handleCdnPaymentSettled` | Advances `cdn_payments_settled_until` to the block timestamp |
+| Event                     | Handler                             | Effect                                                                                                                                                                                   |
+| ------------------------- | ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DataSetCreated`          | `handleFWSSDataSetCreated`          | Upserts `id`, `service_provider_id`, `payer_address`, `with_cdn`, `with_ipfs_indexing`; also creates/updates `wallet_details` with sanction screen result **only when `withCDN` is set** |
+| `ServiceTerminated`       | `handleFWSSServiceTerminated`       | Sets `with_cdn = false`, calculates and sets `lockup_unlocks_at`                                                                                                                         |
+| `CDNPaymentRailsToppedUp` | `handleFWSSCDNPaymentRailsToppedUp` | Increments `data_set_egress_quotas` (idempotent via KV event dedup)                                                                                                                      |
+| `CDNPaymentSettled`       | `handleCdnPaymentSettled`           | Advances `cdn_payments_settled_until` to the block timestamp                                                                                                                             |
 
 Written by **usage-reporter** after confirmed on-chain usage report:
+
 - Sets `usage_reported_until` watermark and clears `pending_usage_report_tx_hash`
 
 Written by **terminator** after confirmed termination transaction:
+
 - Sets `terminate_service_tx_hash`
 
 ### `pieces`
+
 Written by **indexer** in response to `PDPVerifier` on-chain events:
 
-| Event | Handler | Effect |
-|---|---|---|
-| `PieceAdded` / `addPiece` | `insertDataSetPiece` | Upserts `id`, `data_set_id`, `cid`, `ipfs_root_cid`, `x402_price`; `ipfs_root_cid` comes from on-chain metadata |
-| `PieceRemoved` | `removeDataSetPieces` | Sets `is_deleted = true` (batch, up to 50 per D1 statement) |
+| Event                     | Handler               | Effect                                                                                                          |
+| ------------------------- | --------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `PieceAdded` / `addPiece` | `insertDataSetPiece`  | Upserts `id`, `data_set_id`, `cid`, `ipfs_root_cid`, `x402_price`; `ipfs_root_cid` comes from on-chain metadata |
+| `PieceRemoved`            | `removeDataSetPieces` | Sets `is_deleted = true` (batch, up to 50 per D1 statement)                                                     |
 
 ### `data_set_egress_quotas`
+
 Written by **indexer** (`handleFWSSCDNPaymentRailsToppedUp`): converts top-up amounts to byte quotas using configured rates and increments both `cdn_egress_quota` and `cache_miss_egress_quota`.
 
 Decremented by **piece-retriever** / **ipfs-retriever** after each successful retrieval (only when `ENFORCE_EGRESS_QUOTA` is enabled): `cdn_egress_quota` is charged for all egress bytes served to the client; `cache_miss_egress_quota` is charged only on valid cache misses.
 
 ### `wallet_details`
+
 Created/updated by **indexer** on `DataSetCreated`, but **only when `withCDN` is true** (Chainalysis API call per new payer).
 
 Re-screened periodically by **indexer** scheduled task (`screenWallets`): re-screens wallets not checked within the configured stale threshold, ordered oldest-first.
 
 ### `retrieval_logs`
+
 Written by **piece-retriever** and **ipfs-retriever** after every request via `recordRetrieval` in `retrieval/lib/stats.js`. Written inside `ctx.waitUntil` so it does not block the response.
 
 ---
@@ -166,6 +174,7 @@ The result rows are then filtered by `filterAuthorizedRetrievalCandidates` (auth
 Two sequential queries in `ipfs-retriever/lib/store.js`:
 
 1. Resolve `(pieceId, dataSetId)` → `ipfs_root_cid` + `payer_address`:
+
 ```sql
 SELECT pieces.ipfs_root_cid, data_sets.payer_address
 FROM pieces LEFT OUTER JOIN data_sets ON pieces.data_set_id = data_sets.id
