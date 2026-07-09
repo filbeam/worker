@@ -25,9 +25,11 @@ Examples:
 - `https://1-abc123-def456.ipfs.calibration.filbeam.io/` — root of the piece
 - `https://1-abc123-def456.ipfs.calibration.filbeam.io/path/to/file.jpg` — specific file
 
-#### Why identifiers are in the subdomain
+#### Why the IPFS CID is not in the slug
 
-Static websites served over IPFS often load sub-resources at absolute paths (e.g. `<link href="/style.css">`). For these paths to resolve correctly, the dataset/piece identity must live in the subdomain, not the URL path, so that `/style.css` naturally maps to the right SP origin without any path rewriting. (see [original proposal comment, issue #297](https://github.com/filbeam/worker/issues/297#issuecomment-3346046091))
+The slug does not include the `ipfsRootCid`. The CID is looked up from D1 at request time: when an SP registers a piece on-chain via `addPiece`, it attaches `ipfsRootCID` as a metadata key. The indexer picks this up from the Goldsky webhook event and stores it in the `pieces` table keyed by `(dataSetId, pieceId)`. At retrieval time, the worker decodes the slug to get `dataSetId + pieceId`, queries D1 for the associated `ipfsRootCid`, and uses that CID to both find the right SP and construct the fetch URL. Encoding the CID in the slug itself would push the DNS label past the 63-character limit, and is unnecessary since the indexer already has it.
+
+ref.: [FIlBeam URL Format Doc](https://space-meridian.github.io/docs/Engineering/fefc0d538c414c8e96a56587e4ca75ce/FilBeam/FilBeam%20URL%20format%2027ecdd5cccdb806caeeaefad80cbf64d.html#27ecdd5c-ccdb-800e-ac46-de8a4a64f0a8)
 
 #### Why CID + wallet address can't both be in the subdomain
 
@@ -37,38 +39,132 @@ The initial design proposed combining the IPFS CID and wallet address into a sin
 
 The wallet address is not needed in the slug because `dataSetId` alone is sufficient to look it up in D1. Omitting it keeps the subdomain short enough to be valid. The worker resolves the wallet from the dataset record at query time. (see [review comment, PR #312](https://github.com/filbeam/worker/pull/312#issuecomment-4797500253))
 
+#### Why identifiers are in the subdomain
+
+Static websites served over IPFS often load sub-resources at absolute paths (e.g. `<link href="/style.css">`). For these paths to resolve correctly, the dataset/piece identity must live in the subdomain, not the URL path, so that `/style.css` naturally maps to the right SP origin without any path rewriting. (see [original proposal comment, issue #297](https://github.com/filbeam/worker/issues/297#issuecomment-3346046091))
+
 ### Bare domain redirect (convenience)
 
 ```
 https://ipfs.calibration.filbeam.io/{walletAddress}/{ipfsRootCid}/{subpath}
 ```
 
-Handled by `handleDnsRootRequest` in `ipfs-retriever/bin/ipfs-retriever.js`. Looks up the slug for the given wallet and CID in D1, then issues a 302 redirect to the slug subdomain URL. Useful for constructing shareable links without knowing the on-chain IDs upfront.
+Handled by `handleDnsRootRequest` in `ipfs-retriever/bin/ipfs-retriever.js`. Validates that `walletAddress` has an authorized deal for `ipfsRootCid` (running the full authorization cascade: payment rail, CDN flag, sanctions check), looks up the corresponding `dataSetId + pieceId` in D1, builds the slug, and issues a 302 redirect to the slug subdomain URL. If the wallet is not associated with that CID, the request is rejected with 402 before any redirect occurs. This validation is based entirely on indexed on-chain metadata — FilBeam does not verify that the `ipfsRootCid` actually corresponds to the piece data stored by the SP. Useful for constructing shareable links without knowing the on-chain IDs upfront.
 
-If no path is provided (`/`), redirects to `https://filbeam.com`.
+If the request is to the bare domain with no wallet or CID (i.e. `https://ipfs.calibration.filbeam.io/`), redirects to `https://filbeam.com`.
 
 ### Query parameters
 
-- `?format=car` — skip CAR-to-raw conversion and serve the raw CAR archive to the client
+- `?format=car` — serve the raw CAR archive to the client without conversion or block validation. The worker proxies the SP response as-is. Per the [IPFS Trustless Gateway spec](https://specs.ipfs.tech/http-gateways/trustless-gateway/), CAR is a client-validated transport, the caller is responsible for verifying block integrity.
 - `?format=raw` — not yet implemented (returns 400); tracked in [issue #295](https://github.com/filbeam/worker/issues/295)
-- No `?format` — default; converts CAR to raw file bytes
+- No `?format` — default; converts CAR to raw file bytes. The worker validates every block before streaming. Each block's bytes are hashed and compared to its CID multihash via `validateBlock()`. The client receives only bytes that have passed verification.
 
 ---
 
 ## Request flow
 
-```
-1. handleFetchRequest()       — shared fetch lifecycle (auth, error handling, egress logging)
-2. parseRequest()             — decode slug → dataSetId + pieceId + subpath + format
-3. getRetrievalCandidatesByDataSetAndPiece() — query D1 for SP candidates
-4. assertCidNotDenied()       — check Bad Bits denylist
-5. selectRetrievalCandidate() — try candidates in order, retry on failure
-6. retrieveIpfsContent()      — fetch CAR from SP (streaming, not buffered)
-7. processIpfsResponse()      — validate and convert CAR → raw bytes
-8. Return streaming response  — client receives raw file bytes
+There are two entry points — the bare domain redirect and the slug flow — both handled by the same worker.
+
+```mermaid
+  sequenceDiagram
+      participant C as Client
+      participant W as ipfs-retriever
+      participant D1 as D1
+      participant KV as Bad Bits KV
+      participant CF as CF Edge Cache
+      participant SP as Service Provider
+
+      C->>W: GET /wallet/cid or slug.ipfs...filbeam.io/path
+
+      W->>W: handleFetchRequest (lifecycle, bot auth)
+
+      alt Bare domain redirect
+          W->>D1: getRetrievalCandidatesByWalletAndCid(wallet, cid)
+          D1-->>W: dataSetId + pieceId
+          W-->>C: 302 → slug subdomain
+      else Slug request
+          W->>W: parseRequest — decode slug → dataSetId + pieceId + subpath
+          W->>D1: Query 1 — resolve (dataSetId + pieceId)
+          D1-->>W: ipfsRootCid, payerAddress
+          W->>D1: Query 2 — find all SPs for ipfsRootCid (auth cascade)
+          D1-->>W: candidates[]
+          W->>KV: assertCidNotDenied(ipfsRootCid)
+          KV-->>W: OK or 410
+
+          loop Retry across candidates (random order)
+              W->>CF: fetch {spUrl}/ipfs/{cid}{subpath}?format=car
+              alt Cache HIT
+                  CF-->>W: CAR stream
+              else Cache MISS
+                  CF->>SP: GET /ipfs/{cid}{subpath}?format=car
+                  SP-->>CF: CAR stream
+                  CF-->>W: CAR stream
+              end
+          end
+
+          alt format=car
+              W-->>C: CAR stream (no validation)
+          else default
+              W->>W: CarBlockIterator + validateBlock + unixfs-exporter
+              W-->>C: Raw file bytes
+          end
+          Note over W,C: Cache-Control: public, max-age=31536000
+      end
 ```
 
-Authorization (payment rail validity, egress quota, sanctions check) is handled inside `handleFetchRequest` via the shared `@filbeam/retrieval` library before any SP fetch occurs.
+### Step-by-step
+
+**① `handleFetchRequest` (shared lifecycle)**
+
+Sets up per-request context, registers an abort listener, rejects non-GET/HEAD with 405, redirects legacy `*.filcdn.io` domains to `*.filbeam.io` with 301, and runs `checkBotAuthorization` to validate the `Authorization` header against `BOT_TOKENS`. All errors thrown from here on are caught and converted to HTTP responses via `handleError`.
+
+**② Route detection**
+
+If the hostname matches the bare `DNS_ROOT` (e.g. `ipfs.calibration.filbeam.io`), the request is handled by `handleDnsRootRequest`: extracts `walletAddress` and `ipfsRootCid` from the URL path, runs the full authorization cascade to verify the wallet has a deal for that CID, looks up `dataSetId + pieceId` from D1, and issues a **302 redirect** to the slug subdomain. No content is served from this path.
+
+For slug requests, `parseRequest` strips the `DNS_ROOT` suffix from the hostname, splits the slug into `[version, encodedDataSetId, encodedPieceId]`, decodes each with `base32ToBigInt`, and extracts `ipfsSubpath` from `url.pathname` and `ipfsFormat` from `?format=`.
+
+**③ `getRetrievalCandidatesByDataSetAndPiece`**
+
+Two D1 queries:
+
+1. Resolve `(dataSetId + pieceId)` → `ipfsRootCid + payerAddress`. Throws 404 if the piece doesn't exist, has no payer, or has no `ipfsRootCid`.
+2. Query all rows matching `pieces.ipfs_root_cid = ?` joined across `data_sets`, `service_providers`, `data_set_egress_quotas`, and `wallet_details`. Runs the authorization cascade over the results:
+
+| Check | Error if all rows fail |
+|-------|------------------------|
+| Any rows at all | 404 — not indexed |
+| SP exists and is not deleted | 404 — no SP |
+| `payer_address` matches wallet | 402 — no deal for this payer |
+| `with_cdn = 1` | 402 — CDN disabled |
+| `is_sanctioned` is false | 403 — payer is sanctioned |
+| `service_url` is set | 404 — SP not approved |
+| `with_ipfs_indexing = 1` | 402 — IPFS indexing disabled |
+| `ipfs_root_cid` is set | 404 — no CID on piece |
+| (if `enforceEgressQuota`) quota > 0 | 402 — quota exhausted |
+
+Returns one candidate per authorized SP: `{ serviceUrl, serviceProviderId, dataSetId, pieceId, ipfsRootCid }`. Multiple candidates exist when the same dataset is served by more than one SP — the worker retries across them if one fails.
+
+**④ `assertCidNotDenied`**
+
+Checks `ipfsRootCid` against the Bad Bits denylist stored in KV. Returns 410 if blocked.
+
+**⑤ `selectRetrievalCandidate`**
+
+Shuffles candidates randomly (no fixed priority) and tries them one by one. A candidate is skipped if its retrieval throws or returns a 5xx. If all candidates fail, logs the failure and returns 502 listing all attempted SPs.
+
+**⑥ `retrieveIpfsContent`**
+
+Fetches `{serviceUrl}/ipfs/{ipfsRootCid}{subpath}?format=car` with Cloudflare cache options (`cacheEverything: true`, TTL 86400 for 2xx, 0 for 4xx/5xx). Reads `CF-Cache-Status`: anything other than `HIT` is a cache miss and drives egress quota billing.
+
+**⑦ `processIpfsResponse`**
+
+- **`?format=car`**: body passed through as-is, no validation (client's responsibility per the Trustless Gateway spec).
+- **Default**: wraps the body in a counting generator (`countingBody`) to track SP egress bytes, then runs the full streaming pipeline — `CarBlockIterator`, per-block multihash check, `validateBlock`, and `ipfs-unixfs-exporter` traversal. A directory entry returns 404. A file or raw entry's `entry.content()` is converted to a `ReadableStream` and returned.
+
+**⑧ `serveRetrievalOutcome`**
+
+Pipes the response body through a `TransformStream` that counts `egressBytes` chunk by chunk, preserving backpressure — the SP is pulled only as fast as the client reads. Once the stream ends, `ctx.waitUntil` runs `recordRetrieval` to log the result to D1. Sets `Cache-Control: public, max-age=31536000` and `X-Data-Set-ID` on the response.
 
 ---
 
@@ -124,6 +220,12 @@ The pipeline makes specific assumptions about how the SP delivers the CAR. These
 3. **Complete or fail loudly** — if any block is missing from SP storage, the traversal fails before any bytes are written to the CAR. The SP returns an HTTP error, not a partial CAR. The worker either gets a complete, valid CAR or an error response, never a silently truncated one.
 
 **If a non-frisbii SP is ever onboarded**, all three guarantees must be verified before integration (tracked in [issue #692](https://github.com/filbeam/worker/issues/692)). The CID mismatch error (`Unexpected block CID`) is the failure mode if ordering is violated, it is not obvious without this context.
+
+### Trust model
+
+FilBeam trusts the `ipfsRootCid` submitted by the SP as on-chain metadata at `addPiece` time. It is indexed as-is without verifying it corresponds to the actual piece data stored on Filecoin. An SP could submit any CID as metadata.
+
+The only integrity guarantee FilBeam provides is at the block level: `validateBlock()` hashes each block's bytes and confirms they match the block's CID. This proves the CAR is self-consistent. It does not prove the CAR represents the content of the underlying Filecoin piece, since both the CID claim and the CAR bytes originate from the same SP.
 
 ### Alternative: block-by-block retrieval (Discarded)
 
