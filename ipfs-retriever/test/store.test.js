@@ -275,6 +275,87 @@ describe('getRetrievalCandidatesByWalletAndCid', () => {
       ipfsRootCid,
     })
   })
+
+  it('returns one candidate per service provider when an ipfsRootCid is sharded across many pieces', async () => {
+    const dataSetId = 'sharded-data-set'
+    const ipfsRootCid = 'sharded-ipfs-cid'
+    const payerAddress = '0x1234567890abcdef1234567890abcdef12345678'
+    const serviceProviderId = 'sharded-provider'
+
+    await withApprovedProvider(env, {
+      id: serviceProviderId,
+      serviceUrl: 'https://sharded-provider.xyz',
+    })
+
+    await env.DB.prepare(
+      'INSERT INTO data_sets (id, service_provider_id, payer_address, with_cdn, with_ipfs_indexing) VALUES (?, ?, ?, ?, ?)',
+    )
+      .bind(dataSetId, serviceProviderId, payerAddress, true, true)
+      .run()
+
+    // The same root CID is stored as three pieces (shards) on one provider.
+    for (const pieceId of ['shard-0', 'shard-1', 'shard-2']) {
+      await env.DB.prepare(
+        'INSERT INTO pieces (id, data_set_id, cid, ipfs_root_cid) VALUES (?, ?, ?, ?)',
+      )
+        .bind(pieceId, dataSetId, `baga-${pieceId}`, ipfsRootCid)
+        .run()
+    }
+
+    const result = await getRetrievalCandidatesByWalletAndCid(
+      env,
+      payerAddress,
+      ipfsRootCid,
+    )
+
+    assert.strictEqual(result.length, 1)
+    assert.strictEqual(result[0].serviceProviderId, serviceProviderId)
+    assert.strictEqual(result[0].serviceUrl, 'https://sharded-provider.xyz')
+  })
+
+  it('returns one candidate per distinct service provider when shards span multiple providers', async () => {
+    const ipfsRootCid = 'multi-provider-sharded-cid'
+    const payerAddress = '0x1234567890abcdef1234567890abcdef12345678'
+    const providers = [
+      { id: 'multi-provider-a', serviceUrl: 'https://multi-provider-a.xyz' },
+      { id: 'multi-provider-b', serviceUrl: 'https://multi-provider-b.xyz' },
+    ]
+
+    for (const [i, provider] of providers.entries()) {
+      await withApprovedProvider(env, provider)
+      const dataSetId = `multi-provider-set-${i}`
+      await env.DB.prepare(
+        'INSERT INTO data_sets (id, service_provider_id, payer_address, with_cdn, with_ipfs_indexing) VALUES (?, ?, ?, ?, ?)',
+      )
+        .bind(dataSetId, provider.id, payerAddress, true, true)
+        .run()
+      // Two shards per provider.
+      for (const shard of ['0', '1']) {
+        await env.DB.prepare(
+          'INSERT INTO pieces (id, data_set_id, cid, ipfs_root_cid) VALUES (?, ?, ?, ?)',
+        )
+          .bind(
+            `${provider.id}-shard-${shard}`,
+            dataSetId,
+            `baga-${provider.id}-${shard}`,
+            ipfsRootCid,
+          )
+          .run()
+      }
+    }
+
+    const result = await getRetrievalCandidatesByWalletAndCid(
+      env,
+      payerAddress,
+      ipfsRootCid,
+    )
+
+    assert.strictEqual(result.length, 2)
+    assert.deepStrictEqual(result.map((c) => c.serviceUrl).sort(), [
+      'https://multi-provider-a.xyz',
+      'https://multi-provider-b.xyz',
+    ])
+  })
 })
 
 describe('getRetrievalCandidatesByDataSetAndPiece', () => {
