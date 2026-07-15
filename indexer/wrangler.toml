@@ -78,6 +78,10 @@ binding = "RETRY_QUEUE"
 binding = "PROCESSED_EVENTS"
 id = "b18c3c10-fake-dev-id"
 
+[env.calibration.route]
+pattern = "index.calibration.filbeam.io/*"
+zone_name = "filbeam.io"
+
 [env.calibration.vars]
 ENVIRONMENT = "calibration"
 WALLET_SCREENING_BATCH_SIZE = 1
@@ -118,6 +122,10 @@ max_batch_timeout = 30
 [[env.calibration.kv_namespaces]]
 binding = "PROCESSED_EVENTS"
 id = "86018fc9b60a462bbfd3a08c66680ffc"
+
+[env.mainnet.route]
+pattern = "index.filbeam.io/*"
+zone_name = "filbeam.io"
 
 [env.mainnet.vars]
 ENVIRONMENT = "mainnet"
