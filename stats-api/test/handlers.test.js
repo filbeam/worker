@@ -99,6 +99,41 @@ describe('stats-handlers', () => {
       })
     })
 
+    it('reports the origin CAR size as cache-miss egress and raw bytes as total egress', async () => {
+      const payerAddress = '0xcarpayer'
+      const dataSetId = '1'
+      await withDataSet(env, {
+        dataSetId,
+        serviceProviderId: '1',
+        payerAddress,
+        withCDN: true,
+        cdnEgressQuota: 3000,
+        cacheMissEgressQuota: 6000,
+      })
+      await withRetrievalLog(env, {
+        timestamp: new Date().toISOString(),
+        dataSetId,
+        egressBytes: 100,
+        cacheMissEgressBytes: 250,
+        cacheMiss: true,
+      })
+
+      const res = await handleGetPayerStats(env, payerAddress)
+
+      expect(res.status).toBe(200)
+      const data = await res.json()
+      expect(data).toStrictEqual({
+        // Total egress is the raw bytes served to the client.
+        totalEgressBytes: '100',
+        // Cache-miss egress is the larger CAR fetched from the SP.
+        cacheMissEgressBytes: '250',
+        cacheMissRequests: '1',
+        remainingCDNEgressBytes: '3000',
+        remainingCacheMissEgressBytes: '6000',
+        totalRequests: '1',
+      })
+    })
+
     it('returns 404 for non-existent payer', async () => {
       const res = await handleGetPayerStats(env, 'non-existent')
 

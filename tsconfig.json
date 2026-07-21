@@ -13,6 +13,9 @@
       "path": "indexer/tsconfig.json"
     },
     {
+      "path": "ipfs-retriever/tsconfig.json"
+    },
+    {
       "path": "piece-retriever/tsconfig.json"
     },
     {

@@ -2,10 +2,17 @@
  * @param {{ DB: D1Database }} env - Worker environment (contains D1 binding).
  * @param {object} params - Parameters for the data set update.
  * @param {string} params.dataSetId - The ID of the data set to update.
- * @param {number} params.egressBytes - The egress bytes used for the response.
+ * @param {number} params.egressBytes - The egress bytes sent to the client.
+ *   This is what the CDN egress quota is charged for.
+ * @param {number} [params.cacheMissEgressBytes] - The egress bytes fetched from
+ *   the service provider on a cache miss. This is what the cache-miss egress
+ *   quota is charged for. Defaults to `egressBytes`, which is correct whenever
+ *   the bytes served to the client equal the bytes fetched from the origin
+ *   (e.g. raw piece retrievals). For IPFS retrievals the origin response is a
+ *   CAR that is larger than the raw bytes served to the client.
  * @param {boolean} params.cacheMiss - Whether this was a cache miss (true) or
  *   cache hit (false).
- * @param {boolean} [params.cacheMissResponseValid]
+ * @param {boolean | null} [params.cacheMissResponseValid]
  * @param {boolean} [params.enforceEgressQuota=false] - Whether to decrement
  *   egress quotas. Default is `false`
  * @param {boolean} [params.isBotTraffic=false] - Whether the egress traffic
@@ -16,6 +23,7 @@ export async function updateDataSetStats(
   {
     dataSetId,
     egressBytes,
+    cacheMissEgressBytes = egressBytes,
     cacheMiss,
     cacheMissResponseValid,
     enforceEgressQuota = false,
@@ -42,7 +50,7 @@ export async function updateDataSetStats(
     )
       .bind(
         egressBytes,
-        cacheMiss && cacheMissResponseValid ? egressBytes : 0,
+        cacheMiss && cacheMissResponseValid ? cacheMissEgressBytes : 0,
         dataSetId,
       )
       .run()
@@ -54,7 +62,13 @@ export async function updateDataSetStats(
  *
  * @param {{ DB: D1Database }} env - Worker environment (contains D1 binding).
  * @param {object} params - Parameters for the retrieval log.
- * @param {number | null} params.egressBytes - The egress bytes of the response.
+ * @param {number | null} params.egressBytes - The egress bytes sent to the
+ *   client.
+ * @param {number | null} [params.cacheMissEgressBytes] - The egress bytes
+ *   fetched from the service provider on a cache miss. Defaults to
+ *   `egressBytes`, which is correct whenever the bytes served to the client
+ *   equal the bytes fetched from the origin (e.g. raw piece retrievals). For
+ *   IPFS retrievals the origin CAR is larger than the raw bytes served.
  * @param {number} params.responseStatus - The HTTP response status code.
  * @param {boolean | null} params.cacheMiss - Whether the retrieval was a cache
  *   miss.
@@ -80,6 +94,7 @@ export async function logRetrievalResult(env, params) {
     cacheMiss,
     cacheMissResponseValid,
     egressBytes,
+    cacheMissEgressBytes = egressBytes,
     responseStatus,
     timestamp,
     performanceStats,
@@ -95,6 +110,7 @@ export async function logRetrievalResult(env, params) {
         timestamp,
         response_status,
         egress_bytes,
+        cache_miss_egress_bytes,
         cache_miss,
         cache_miss_response_valid,
         fetch_ttfb,
@@ -104,13 +120,14 @@ export async function logRetrievalResult(env, params) {
         data_set_id,
         bot_name
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
     )
       .bind(
         timestamp,
         responseStatus,
         egressBytes,
+        cacheMissEgressBytes,
         cacheMiss,
         cacheMissResponseValid,
         performanceStats?.fetchTtfb ?? null,
@@ -126,4 +143,40 @@ export async function logRetrievalResult(env, params) {
     // TODO: Handle specific SQL error codes if needed
     throw error
   }
+}
+
+/**
+ * Records a completed retrieval: writes the retrieval log and updates the data
+ * set egress stats and quotas. These are always performed together for a
+ * successful streamed response.
+ *
+ * @param {{ DB: D1Database }} env - Worker environment (contains D1 binding).
+ * @param {object} params - Combined parameters for {@link logRetrievalResult}
+ *   and {@link updateDataSetStats}.
+ * @param {string} params.dataSetId
+ * @param {number} params.egressBytes
+ * @param {number} [params.cacheMissEgressBytes]
+ * @param {boolean} params.cacheMiss
+ * @param {boolean | null} params.cacheMissResponseValid
+ * @param {number} params.responseStatus
+ * @param {string | null} params.requestCountryCode
+ * @param {string} params.timestamp
+ * @param {{
+ *   fetchTtfb: number
+ *   fetchTtlb: number
+ *   workerTtfb: number
+ * }} [params.performanceStats]
+ * @param {string | undefined} params.botName
+ * @param {boolean} [params.enforceEgressQuota]
+ */
+export async function recordRetrieval(env, params) {
+  await logRetrievalResult(env, params)
+  await updateDataSetStats(env, {
+    dataSetId: params.dataSetId,
+    egressBytes: params.egressBytes,
+    cacheMissEgressBytes: params.cacheMissEgressBytes,
+    cacheMiss: params.cacheMiss,
+    cacheMissResponseValid: params.cacheMissResponseValid,
+    enforceEgressQuota: params.enforceEgressQuota,
+  })
 }

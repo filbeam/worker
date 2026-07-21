@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { originCacheOptions } from '@filbeam/retrieval'
 import { createPieceCIDStream } from './piece.js'
 
 /**
@@ -41,14 +42,7 @@ export async function retrieveFile(
     cacheMiss = false
   } else {
     response = await fetch(url, {
-      cf: {
-        cacheTtlByStatus: {
-          '200-299': cacheTtl,
-          404: 0,
-          '500-599': 0,
-        },
-        cacheEverything: true,
-      },
+      cf: originCacheOptions(cacheTtl),
       signal,
     })
     if (response.ok) {

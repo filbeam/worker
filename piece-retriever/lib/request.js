@@ -1,4 +1,4 @@
-import { httpAssert } from '@filbeam/retrieval'
+import { httpAssert, isValidEthereumAddress } from '@filbeam/retrieval'
 
 /**
  * Parse params found in path of the request URL
@@ -6,15 +6,13 @@ import { httpAssert } from '@filbeam/retrieval'
  * @param {Request} request
  * @param {object} options
  * @param {string} options.DNS_ROOT
- * @param {string} options.BOT_TOKENS
  * @returns {{
- *   payerWalletAddress?: string
- *   pieceCid?: string
- *   botName?: string
+ *   payerWalletAddress: string
+ *   pieceCid: string
  *   validateCacheMissResponse: boolean
  * }}
  */
-export function parseRequest(request, { DNS_ROOT, BOT_TOKENS }) {
+export function parseRequest(request, { DNS_ROOT }) {
   const url = new URL(request.url)
   console.log('retrieval request', { DNS_ROOT, url })
 
@@ -34,37 +32,14 @@ export function parseRequest(request, { DNS_ROOT, BOT_TOKENS }) {
     `Invalid CID: ${pieceCid}. It is not a valid CommP (v1 or v2).`,
   )
 
-  const botName = checkBotAuthorization(request, { BOT_TOKENS })
+  httpAssert(payerWalletAddress && pieceCid, 400, 'Missing required fields')
+  httpAssert(
+    isValidEthereumAddress(payerWalletAddress),
+    400,
+    `Invalid address: ${payerWalletAddress}. Address must be a valid ethereum address.`,
+  )
+
   const validateCacheMissResponse = url.searchParams.has('validate')
 
-  return { payerWalletAddress, pieceCid, botName, validateCacheMissResponse }
-}
-
-/**
- * @param {Request} request
- * @param {object} args
- * @param {string} args.BOT_TOKENS
- * @returns {string | undefined} Bot name or the access token
- */
-export function checkBotAuthorization(request, { BOT_TOKENS }) {
-  const botTokens = JSON.parse(BOT_TOKENS)
-
-  const auth = request.headers.get('authorization')
-  if (!auth) return undefined
-
-  const [prefix, token, ...rest] = auth.split(' ')
-
-  httpAssert(
-    prefix === 'Bearer' && token && rest.length === 0,
-    401,
-    'Unauthorized: Authorization header must use Bearer scheme',
-  )
-
-  httpAssert(
-    token in botTokens,
-    401,
-    `Unauthorized: Invalid Access Token ${token.slice(0, 1)}...${token.slice(-1)}`,
-  )
-
-  return botTokens[token]
+  return { payerWalletAddress, pieceCid, validateCacheMissResponse }
 }

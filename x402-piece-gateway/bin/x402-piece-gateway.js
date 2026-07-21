@@ -1,4 +1,4 @@
-import { httpAssert } from '@filbeam/retrieval'
+import { httpAssert, handleError } from '@filbeam/retrieval'
 import { buildForwardUrl, parseRequest } from '../lib/request.js'
 import { useFacilitator as defaultUseFacilitator } from 'x402/verify'
 import { settleResponseHeader } from 'x402/types'
@@ -32,7 +32,7 @@ export default {
     try {
       return await this._fetch(request, env, ctx, { useFacilitator })
     } catch (error) {
-      return this._handleError(error)
+      return handleError(error)
     }
   },
 
@@ -164,45 +164,4 @@ export default {
       )
     }
   },
-
-  /**
-   * @param {unknown} error
-   * @returns {Response}
-   */
-  _handleError(error) {
-    const { status, message } = getErrorHttpStatusMessage(error)
-
-    if (status >= 500) {
-      console.error(error)
-    }
-    return new Response(message, { status })
-  },
-}
-
-/**
- * Extracts status and message from an error object.
- *
- * - If the error has a numeric `status`, it is used; otherwise, defaults to 500.
- * - If the status is < 500 and a string `message` exists, it's used; otherwise, a
- *   generic message is returned.
- *
- * @param {unknown} error - The error object to extract from.
- * @returns {{ status: number; message: string }}
- */
-function getErrorHttpStatusMessage(error) {
-  const isObject = typeof error === 'object' && error !== null
-  const status =
-    isObject && 'status' in error && typeof error.status === 'number'
-      ? error.status
-      : 500
-
-  const message =
-    isObject &&
-    status < 500 &&
-    'message' in error &&
-    typeof error.message === 'string'
-      ? error.message
-      : 'Internal Server Error'
-
-  return { status, message }
 }
