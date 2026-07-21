@@ -14,9 +14,8 @@ export const HEALTH_HTTP_STATUS = {
  * this worker (via Goldsky pipeline webhooks) and written to D1.
  *
  * The newest PieceAdded event that is older than the buffer period must have a
- * matching row in the `pieces` table. Piece removals upsert rows with
- * is_deleted=TRUE, so row presence proves webhook delivery even for pieces that
- * were removed later.
+ * matching row with a CID in the `pieces` table. Piece removals can create
+ * tombstones without a CID, while PieceAdded delivery always populates it.
  *
  * Statuses:
  *
@@ -110,7 +109,8 @@ export async function checkDeliveryHealth(
   let row
   try {
     row = await env.DB.prepare(
-      'SELECT 1 FROM pieces WHERE id = ? AND data_set_id = ?',
+      `SELECT 1 FROM pieces
+       WHERE id = ? AND data_set_id = ? AND cid IS NOT NULL`,
     )
       .bind(piece.pieceId, piece.dataSetId)
       .first()

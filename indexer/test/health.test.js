@@ -21,17 +21,20 @@ function mockSubgraphFetch(pieceAddeds) {
  * @param {object} [options]
  * @param {string} [options.dataSetId]
  * @param {string} [options.pieceId]
+ * @param {string | null} [options.cid]
  * @param {boolean} [options.isDeleted]
  */
 async function givenPiece({
   dataSetId = randomId(),
   pieceId = randomId(),
+  cid = 'bafkqaaa',
   isDeleted = false,
 } = {}) {
   await env.DB.prepare(
-    'INSERT INTO pieces (id, data_set_id, is_deleted) VALUES (?, ?, ?)',
+    `INSERT INTO pieces (id, data_set_id, cid, is_deleted)
+     VALUES (?, ?, ?, ?)`,
   )
-    .bind(pieceId, dataSetId, isDeleted)
+    .bind(pieceId, dataSetId, cid, isDeleted)
     .run()
   return { dataSetId, pieceId }
 }
@@ -72,7 +75,21 @@ describe('checkDeliveryHealth', () => {
       fetch: mockSubgraphFetch([piece]),
     })
 
-    expect(result.status).toBe('healthy')
+    expect(result).toEqual({ status: 'healthy', checked: piece })
+  })
+
+  it('returns delivery_lagging for a removal-only tombstone', async () => {
+    const { dataSetId, pieceId } = await givenPiece({
+      cid: null,
+      isDeleted: true,
+    })
+    const piece = onchainPiece({ dataSetId, pieceId })
+
+    const result = await checkDeliveryHealth(env, {
+      fetch: mockSubgraphFetch([piece]),
+    })
+
+    expect(result).toEqual({ status: 'delivery_lagging', checked: piece })
   })
 
   it('returns delivery_lagging when the newest eligible piece is missing from D1', async () => {
