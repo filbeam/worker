@@ -41,6 +41,9 @@ WALLET_SCREENING_BATCH_SIZE = 1
 WALLET_SCREENING_STALE_THRESHOLD_MS = 86400000
 DEFAULT_LOCKUP_PERIOD_DAYS = 30
 FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS = 1667326380000
+# How old (in seconds) an on-chain event must be before /health treats its
+# absence from D1 as a delivery problem
+DELIVERY_LAG_BUFFER_SECONDS = 1800
 
 [env.dev.vars]
 ENVIRONMENT = "dev"
@@ -52,6 +55,7 @@ FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS = 1667326380000 # Calibration network genesi
 # 7 USDFC per TiB (in 1e18 units)
 CDN_RATE_PER_TIB = "7000000000000000000"
 CACHE_MISS_RATE_PER_TIB = "7000000000000000000"
+DELIVERY_LAG_BUFFER_SECONDS = 1800
 
 [[env.dev.d1_databases]]
 binding = "DB"
@@ -88,6 +92,7 @@ GOLDSKY_SUBGRAPH_URL="https://api.goldsky.com/api/public/project_cmb91qc80slyu01
 # 7 USDFC per TiB (in 1e18 units)
 CDN_RATE_PER_TIB = "7000000000000000000"
 CACHE_MISS_RATE_PER_TIB = "7000000000000000000"
+DELIVERY_LAG_BUFFER_SECONDS = 1800
 
 [[env.calibration.d1_databases]]
 binding = "DB"
@@ -132,6 +137,7 @@ FILECOIN_GENESIS_BLOCK_TIMESTAMP_MS = 1598306400000 # Mainnet genesis timestamp 
 # 7 USDFC per TiB (in 1e18 units)
 CDN_RATE_PER_TIB = "7000000000000000000"
 CACHE_MISS_RATE_PER_TIB = "7000000000000000000"
+DELIVERY_LAG_BUFFER_SECONDS = 1800
 
 [[env.mainnet.d1_databases]]
 binding = "DB"

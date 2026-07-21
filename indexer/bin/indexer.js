@@ -15,6 +15,7 @@ import {
   insertDataSetPiece,
 } from '../lib/pdp-verifier-handlers.js'
 import { handleCdnPaymentSettled } from '../lib/filbeam-operator-handlers.js'
+import { checkDeliveryHealth, HEALTH_HTTP_STATUS } from '../lib/health.js'
 import { screenWallets } from '../lib/wallet-screener.js'
 import { epochToTimestampMs } from '../lib/epoch.js'
 import { CID } from 'multiformats/cid'
@@ -26,14 +27,30 @@ export default {
    * @param {ExecutionContext} ctx
    * @param {object} options
    * @param {typeof defaultCheckIfAddressIsSanctioned} [options.checkIfAddressIsSanctioned]
+   * @param {typeof globalThis.fetch} [options.fetch]
    * @returns {Promise<Response>}
    */
   async fetch(
     request,
     env,
     ctx,
-    { checkIfAddressIsSanctioned = defaultCheckIfAddressIsSanctioned } = {},
+    {
+      checkIfAddressIsSanctioned = defaultCheckIfAddressIsSanctioned,
+      fetch = globalThis.fetch,
+    } = {},
   ) {
+    // Unauthenticated read-only health check; everything else requires the
+    // webhook secret.
+    if (
+      request.method === 'GET' &&
+      new URL(request.url).pathname === '/health'
+    ) {
+      const health = await checkDeliveryHealth(env, { fetch })
+      return Response.json(health, {
+        status: HEALTH_HTTP_STATUS[health.status],
+      })
+    }
+
     // TypeScript setup is broken in our monorepo
     // There are multiple global Env interfaces defined (one per worker),
     // TypeScript merges them in a way that breaks our code.
