@@ -103,6 +103,7 @@ export default {
       let retrievalCandidate
       let retrievalResult
       const retrievalAttempts = []
+      const allCandidates = [...retrievalCandidates]
 
       while (retrievalCandidates.length > 0) {
         const retrievalCandidateIndex = Math.floor(
@@ -200,7 +201,7 @@ export default {
           retrievalResult.response,
         )
         setContentSecurityPolicy(response)
-        response.headers.set('X-Data-Set-ID', retrievalCandidate.dataSetId)
+        setDiagnosticHeaders(response, retrievalCandidate, allCandidates)
         response.headers.set(
           'Cache-Control',
           `public, max-age=${env.CLIENT_CACHE_TTL}`,
@@ -335,7 +336,7 @@ export default {
         headers: retrievalResult.response.headers,
       })
       setContentSecurityPolicy(response)
-      response.headers.set('X-Data-Set-ID', retrievalCandidate.dataSetId)
+      setDiagnosticHeaders(response, retrievalCandidate, allCandidates)
       response.headers.set(
         'Cache-Control',
         `public, max-age=${env.CLIENT_CACHE_TTL}`,
@@ -401,4 +402,46 @@ function getErrorHttpStatusMessage(error) {
       : 'Internal Server Error'
 
   return { status, message }
+}
+
+/**
+ * Sets diagnostic headers on the response.
+ *
+ * @param {Response} response - The response to set headers on.
+ * @param {any} selectedCandidate - The candidate that was used for retrieval.
+ * @param {any[]} allCandidates - All retrieval candidates.
+ */
+function setDiagnosticHeaders(response, selectedCandidate, allCandidates) {
+  response.headers.set('X-Data-Set-ID', selectedCandidate.dataSetId)
+
+  const totalCdnEgressQuota = allCandidates.reduce(
+    (acc, curr) => acc + curr.cdnEgressQuota,
+    0n,
+  )
+  const totalCacheMissEgressQuota = allCandidates.reduce(
+    (acc, curr) => acc + curr.cacheMissEgressQuota,
+    0n,
+  )
+
+  const datasetCdnEgressQuota = allCandidates
+    .filter((c) => c.dataSetId === selectedCandidate.dataSetId)
+    .reduce((acc, curr) => acc + curr.cdnEgressQuota, 0n)
+
+  const datasetCacheMissEgressQuota = allCandidates
+    .filter((c) => c.dataSetId === selectedCandidate.dataSetId)
+    .reduce((acc, curr) => acc + curr.cacheMissEgressQuota, 0n)
+
+  response.headers.set('X-Cdn-Egress-Remaining', String(datasetCdnEgressQuota))
+  response.headers.set(
+    'X-Cache-Miss-Egress-Remaining',
+    String(datasetCacheMissEgressQuota),
+  )
+  response.headers.set(
+    'X-Total-Cdn-Egress-Remaining',
+    String(totalCdnEgressQuota),
+  )
+  response.headers.set(
+    'X-Total-Cache-Miss-Egress-Remaining',
+    String(totalCacheMissEgressQuota),
+  )
 }
