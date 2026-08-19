@@ -48,13 +48,17 @@ export async function handleFWSSDataSetCreated(
         service_provider_id,
         payer_address,
         with_cdn,
-        with_ipfs_indexing
+        with_ipfs_indexing,
+        cdn_rail_id,
+        cache_miss_rail_id
       )
-      VALUES (?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT DO UPDATE SET
         service_provider_id = excluded.service_provider_id,
         payer_address = excluded.payer_address,
-        with_ipfs_indexing = excluded.with_ipfs_indexing
+        with_ipfs_indexing = excluded.with_ipfs_indexing,
+        cdn_rail_id = excluded.cdn_rail_id,
+        cache_miss_rail_id = excluded.cache_miss_rail_id
     `,
   )
     .bind(
@@ -63,6 +67,10 @@ export async function handleFWSSDataSetCreated(
       payload.payer.toLowerCase(),
       withCDN,
       withIPFSIndexing,
+      payload.cdn_rail_id != null ? String(payload.cdn_rail_id) : null,
+      payload.cache_miss_rail_id != null
+        ? String(payload.cache_miss_rail_id)
+        : null,
     )
     .run()
 }

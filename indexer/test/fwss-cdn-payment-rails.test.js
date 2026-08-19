@@ -366,6 +366,8 @@ describe('webhook ordering scenarios', () => {
       usage_reported_until: '1970-01-01T00:00:00.000Z',
       cdn_payments_settled_until: '1970-01-01T00:00:00.000Z',
       pending_usage_report_tx_hash: null,
+      cdn_rail_id: null,
+      cache_miss_rail_id: null,
     })
 
     // Verify quotas remain unchanged in the egress quotas table
@@ -469,6 +471,8 @@ describe('webhook ordering scenarios', () => {
       usage_reported_until: '1970-01-01T00:00:00.000Z',
       cdn_payments_settled_until: '1970-01-01T00:00:00.000Z',
       pending_usage_report_tx_hash: null,
+      cdn_rail_id: null,
+      cache_miss_rail_id: null,
     })
 
     // Verify accumulated quotas preserved in egress quotas table
@@ -529,6 +533,8 @@ describe('webhook ordering scenarios', () => {
       usage_reported_until: '1970-01-01T00:00:00.000Z',
       cdn_payments_settled_until: '1970-01-01T00:00:00.000Z',
       pending_usage_report_tx_hash: null,
+      cdn_rail_id: null,
+      cache_miss_rail_id: null,
     })
 
     // Verify no quotas exist yet
@@ -586,6 +592,8 @@ describe('webhook ordering scenarios', () => {
       usage_reported_until: '1970-01-01T00:00:00.000Z',
       cdn_payments_settled_until: '1970-01-01T00:00:00.000Z',
       pending_usage_report_tx_hash: null,
+      cdn_rail_id: null,
+      cache_miss_rail_id: null,
     })
   })
 })

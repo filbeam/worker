@@ -22,20 +22,22 @@ describe('handleSettlementConfirmedQueueMessage', () => {
     vi.useFakeTimers()
     vi.setSystemTime(date)
     await env.DB.exec('DELETE FROM data_sets')
+    await env.DB.exec('DELETE FROM cdn_rail_settlement_state')
   })
 
   afterEach(() => {
     vi.useRealTimers()
   })
 
-  it('updates single dataset', async () => {
+  it('updates cache-miss watermark for a single dataset', async () => {
     const dataSetId = nextId()
     const transactionHash = '0xTest'
     const message = {
       type: 'settlement-confirmed',
       transactionHash,
       blockNumber: BLOCK_NUMBER_2000,
-      dataSetIds: [dataSetId],
+      settlementType: 'cache-miss',
+      ids: [dataSetId],
     }
 
     await withDataSet(env, {
@@ -57,17 +59,18 @@ describe('handleSettlementConfirmedQueueMessage', () => {
     })
   })
 
-  it('updates multiple datasets', async () => {
+  it('updates cache-miss watermark for multiple datasets', async () => {
     const transactionHash = '0xTest'
-    const dataSetIds = [nextId(), nextId(), nextId()]
+    const ids = [nextId(), nextId(), nextId()]
     const message = {
       type: 'settlement-confirmed',
       transactionHash,
       blockNumber: BLOCK_NUMBER_2000,
-      dataSetIds,
+      settlementType: 'cache-miss',
+      ids,
     }
 
-    for (const id of dataSetIds) {
+    for (const id of ids) {
       await withDataSet(env, {
         id,
         withCDN: true,
@@ -82,21 +85,80 @@ describe('handleSettlementConfirmedQueueMessage', () => {
     ).all()
 
     expect(results).toStrictEqual(
-      dataSetIds.sort().map((id) => ({
+      ids.sort().map((id) => ({
         id,
         cdn_payments_settled_until: TIMESTAMP_AT_BLOCK_2000,
       })),
     )
   })
 
-  it('does not regress if timestamp is already newer (idempotency)', async () => {
+  it('updates bandwidth watermark per cdn_rail_id', async () => {
+    const transactionHash = '0xTest'
+    const cdnRailIds = ['rail-a', 'rail-b']
+    const message = {
+      type: 'settlement-confirmed',
+      transactionHash,
+      blockNumber: BLOCK_NUMBER_2000,
+      settlementType: 'bandwidth',
+      ids: cdnRailIds,
+    }
+
+    await handleSettlementConfirmedQueueMessage(message, testEnv)
+
+    const { results } = await env.DB.prepare(
+      'SELECT cdn_rail_id, cdn_payments_settled_until FROM cdn_rail_settlement_state ORDER BY cdn_rail_id',
+    ).all()
+
+    expect(results).toStrictEqual([
+      {
+        cdn_rail_id: 'rail-a',
+        cdn_payments_settled_until: TIMESTAMP_AT_BLOCK_2000,
+      },
+      {
+        cdn_rail_id: 'rail-b',
+        cdn_payments_settled_until: TIMESTAMP_AT_BLOCK_2000,
+      },
+    ])
+  })
+
+  it('does not regress the bandwidth watermark (idempotency)', async () => {
+    const transactionHash = '0xTest'
+    const message = {
+      type: 'settlement-confirmed',
+      transactionHash,
+      blockNumber: BLOCK_NUMBER_2000,
+      settlementType: 'bandwidth',
+      ids: ['rail-a'],
+    }
+
+    await env.DB.prepare(
+      'INSERT INTO cdn_rail_settlement_state (cdn_rail_id, cdn_payments_settled_until) VALUES (?, ?)',
+    )
+      .bind('rail-a', TIMESTAMP_AT_BLOCK_3000)
+      .run()
+
+    await handleSettlementConfirmedQueueMessage(message, testEnv)
+
+    const railState = await env.DB.prepare(
+      'SELECT cdn_payments_settled_until FROM cdn_rail_settlement_state WHERE cdn_rail_id = ?',
+    )
+      .bind('rail-a')
+      .first()
+
+    expect(railState).toStrictEqual({
+      cdn_payments_settled_until: TIMESTAMP_AT_BLOCK_3000,
+    })
+  })
+
+  it('does not regress the cache-miss watermark (idempotency)', async () => {
     const dataSetId = nextId()
     const transactionHash = '0xTest'
     const message = {
       type: 'settlement-confirmed',
       transactionHash,
       blockNumber: BLOCK_NUMBER_2000,
-      dataSetIds: [dataSetId],
+      settlementType: 'cache-miss',
+      ids: [dataSetId],
     }
 
     await withDataSet(env, {
@@ -133,7 +195,8 @@ describe('handleSettlementConfirmedQueueMessage', () => {
       type: 'settlement-confirmed',
       transactionHash,
       blockNumber: BLOCK_NUMBER_2000,
-      dataSetIds: [dataSetId],
+      settlementType: 'cache-miss',
+      ids: [dataSetId],
     }
 
     await withDataSet(env, {
@@ -161,7 +224,8 @@ describe('handleSettlementConfirmedQueueMessage', () => {
     const message = {
       type: 'settlement-confirmed',
       blockNumber: BLOCK_NUMBER_2000,
-      dataSetIds: ['1'],
+      settlementType: 'cache-miss',
+      ids: ['1'],
     }
 
     await expect(
@@ -173,7 +237,8 @@ describe('handleSettlementConfirmedQueueMessage', () => {
     const message = {
       type: 'settlement-confirmed',
       transactionHash: '0xTest',
-      dataSetIds: ['1'],
+      settlementType: 'cache-miss',
+      ids: ['1'],
     }
 
     await expect(
@@ -181,16 +246,17 @@ describe('handleSettlementConfirmedQueueMessage', () => {
     ).rejects.toThrow('blockNumber')
   })
 
-  it('throws on missing dataSetIds', async () => {
+  it('throws on missing ids', async () => {
     const message = {
       type: 'settlement-confirmed',
       transactionHash: '0xTest',
       blockNumber: BLOCK_NUMBER_2000,
+      settlementType: 'cache-miss',
     }
 
     await expect(
       handleSettlementConfirmedQueueMessage(message, testEnv),
-    ).rejects.toThrow('dataSetIds')
+    ).rejects.toThrow('ids')
   })
 })
 
@@ -254,12 +320,13 @@ describe('handleTransactionRetryQueueMessage', () => {
   })
 
   it('sends settlement-confirmed message when original TX is already confirmed', async () => {
-    const dataSetIds = ['1', '2']
+    const ids = ['1', '2']
     const transactionHash = '0xOriginalHash'
     const message = {
       type: 'transaction-retry',
       transactionHash,
-      dataSetIds,
+      settlementType: 'cache-miss',
+      ids,
     }
 
     const { mock: mockGetChainClient } = createMockGetChainClient({
@@ -284,17 +351,19 @@ describe('handleTransactionRetryQueueMessage', () => {
       type: 'settlement-confirmed',
       transactionHash,
       blockNumber: '12345',
-      dataSetIds,
+      settlementType: 'cache-miss',
+      ids,
     })
   })
 
   it('passes metadata to new workflow when retrying', async () => {
-    const dataSetIds = ['1', '2']
+    const ids = ['1', '2']
     const transactionHash = '0xOriginalHash'
     const message = {
       type: 'transaction-retry',
       transactionHash,
-      dataSetIds,
+      settlementType: 'bandwidth',
+      ids,
     }
 
     const { mock: mockGetChainClient } = createMockGetChainClient({
@@ -321,8 +390,8 @@ describe('handleTransactionRetryQueueMessage', () => {
         transactionHash: '0xNewRetryHash',
         metadata: {
           onSuccess: 'settlement-confirmed',
-          successData: { dataSetIds },
-          retryData: { dataSetIds },
+          successData: { settlementType: 'bandwidth', ids },
+          retryData: { settlementType: 'bandwidth', ids },
         },
       },
     })

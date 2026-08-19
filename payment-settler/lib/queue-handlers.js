@@ -7,7 +7,8 @@ import { epochToTimestampMs } from './epoch.js'
  * @typedef {{
  *   type: 'transaction-retry'
  *   transactionHash: `0x${string}`
- *   dataSetIds: string[]
+ *   settlementType: 'cache-miss' | 'bandwidth'
+ *   ids: string[]
  * }} TransactionRetryMessage
  */
 
@@ -16,21 +17,27 @@ import { epochToTimestampMs } from './epoch.js'
  *   type: 'settlement-confirmed'
  *   transactionHash: `0x${string}`
  *   blockNumber: string
- *   dataSetIds: string[]
+ *   settlementType: 'cache-miss' | 'bandwidth'
+ *   ids: string[]
  * }} SettlementConfirmedMessage
  */
 
 /**
- * Handles settlement confirmed queue messages
+ * Handles settlement confirmed queue messages.
+ *
+ * Cache-miss settlement advances the per-data-set watermark
+ * (data_sets.cdn_payments_settled_until), bandwidth settlement advances the
+ * per-rail watermark (cdn_rail_settlement_state.cdn_payments_settled_until).
  *
  * @param {SettlementConfirmedMessage} message
  * @param {Env} env
  */
 export async function handleSettlementConfirmedQueueMessage(message, env) {
-  const { transactionHash, blockNumber, dataSetIds } = message
+  const { transactionHash, blockNumber, settlementType, ids } = message
   assert(transactionHash, 'transactionHash is required')
   assert(blockNumber, 'blockNumber is required')
-  assert(dataSetIds, 'dataSetIds is required')
+  assert(settlementType, 'settlementType is required')
+  assert(ids, 'ids is required')
 
   console.log(`Processing settlement confirmation for hash: ${transactionHash}`)
 
@@ -42,21 +49,43 @@ export async function handleSettlementConfirmedQueueMessage(message, env) {
       ),
     ).toISOString()
 
-    const placeholders = dataSetIds.map(() => '?').join(', ')
-    await env.DB.prepare(
-      `
-      UPDATE data_sets
-      SET cdn_payments_settled_until = ?
-      WHERE id IN (${placeholders})
-        AND cdn_payments_settled_until < ?
-      `,
-    )
-      .bind(settledUntil, ...dataSetIds, settledUntil)
-      .run()
+    if (settlementType === 'bandwidth') {
+      const valuePlaceholders = ids.map(() => '(?, ?)').join(', ')
+      const bindings = ids.flatMap((id) => [id, settledUntil])
+      await env.DB.prepare(
+        `
+        INSERT INTO cdn_rail_settlement_state (cdn_rail_id, cdn_payments_settled_until)
+        VALUES ${valuePlaceholders}
+        ON CONFLICT (cdn_rail_id) DO UPDATE SET
+          cdn_payments_settled_until = MAX(
+            cdn_rail_settlement_state.cdn_payments_settled_until,
+            excluded.cdn_payments_settled_until
+          )
+        `,
+      )
+        .bind(...bindings)
+        .run()
 
-    console.log(
-      `Updated cdn_payments_settled_until to ${settledUntil} for ${dataSetIds.length} data sets`,
-    )
+      console.log(
+        `Updated bandwidth cdn_payments_settled_until to ${settledUntil} for ${ids.length} rails`,
+      )
+    } else {
+      const placeholders = ids.map(() => '?').join(', ')
+      await env.DB.prepare(
+        `
+        UPDATE data_sets
+        SET cdn_payments_settled_until = ?
+        WHERE id IN (${placeholders})
+          AND cdn_payments_settled_until < ?
+        `,
+      )
+        .bind(settledUntil, ...ids, settledUntil)
+        .run()
+
+      console.log(
+        `Updated cache-miss cdn_payments_settled_until to ${settledUntil} for ${ids.length} data sets`,
+      )
+    }
   } catch (error) {
     console.error(
       `Failed to process settlement confirmation for hash: ${transactionHash}`,
@@ -80,9 +109,10 @@ export async function handleTransactionRetryQueueMessage(
     getRecentSendMessage = defaultGetRecentSendMessage,
   } = {},
 ) {
-  const { transactionHash, dataSetIds } = message
+  const { transactionHash, settlementType, ids } = message
   assert(transactionHash, 'transactionHash is required')
-  assert(dataSetIds, 'dataSetIds is required')
+  assert(settlementType, 'settlementType is required')
+  assert(ids, 'ids is required')
 
   console.log(`Processing transaction retry for hash: ${transactionHash}`)
 
@@ -105,7 +135,8 @@ export async function handleTransactionRetryQueueMessage(
           type: 'settlement-confirmed',
           transactionHash,
           blockNumber: receipt.blockNumber.toString(),
-          dataSetIds,
+          settlementType,
+          ids,
         })
         console.log(
           `Sent confirmation message to queue for already confirmed transaction ${transactionHash}`,
@@ -179,8 +210,8 @@ export async function handleTransactionRetryQueueMessage(
         transactionHash: retryHash,
         metadata: {
           onSuccess: 'settlement-confirmed',
-          successData: { dataSetIds },
-          retryData: { dataSetIds },
+          successData: { settlementType, ids },
+          retryData: { settlementType, ids },
         },
       },
     })

@@ -96,70 +96,97 @@ describe('payment settler scheduled handler', () => {
 
     expect(mockGetChainClient).toHaveBeenCalledWith(mockEnv)
 
-    expect(simulateContractCalls).toStrictEqual([
-      {
+    // Two data sets -> two cache-miss batches (by data set) and two bandwidth
+    // batches (by rail), with SETTLEMENT_BATCH_SIZE = 1.
+    const cacheMissCalls = simulateContractCalls.filter(
+      (call) => call.functionName === 'settleCacheMissPaymentRails',
+    )
+    const bandwidthCalls = simulateContractCalls.filter(
+      (call) => call.functionName === 'settleCDNBandwidthRails',
+    )
+    expect(cacheMissCalls).toHaveLength(2)
+    expect(bandwidthCalls).toHaveLength(2)
+    expect(simulateContractCalls).toHaveLength(4)
+    for (const call of simulateContractCalls) {
+      expect(call).toStrictEqual({
         account: mockAccount,
         abi: expect.any(Array),
         address: '0xTestContractAddress',
-        functionName: 'settleCDNPaymentRails',
+        functionName: expect.any(String),
         args: [[expect.any(BigInt)]],
-      },
-      {
-        account: mockAccount,
-        abi: expect.any(Array),
-        address: '0xTestContractAddress',
-        functionName: 'settleCDNPaymentRails',
-        args: [[expect.any(BigInt)]],
-      },
-    ])
+      })
+    }
 
-    expect(writeContractCalls).toStrictEqual([
-      {
-        account: mockAccount,
-        abi: expect.any(Array),
-        address: '0xTestContractAddress',
-        functionName: 'settleCDNPaymentRails',
-        args: [[expect.any(BigInt)]],
-        mockedRequest: true,
-      },
-      {
-        account: mockAccount,
-        abi: expect.any(Array),
-        address: '0xTestContractAddress',
-        functionName: 'settleCDNPaymentRails',
-        args: [[expect.any(BigInt)]],
-        mockedRequest: true,
-      },
-    ])
+    expect(writeContractCalls).toHaveLength(4)
 
-    expect(mockWorkflow.createBatch).toHaveBeenCalledWith([
-      {
-        id: expect.stringMatching(
-          /^payment-settler-0xMockTransactionHash-\d+$/,
-        ),
-        params: {
-          transactionHash: '0xMockTransactionHash',
-          metadata: {
-            onSuccess: 'settlement-confirmed',
-            successData: { dataSetIds: [id1] },
-            retryData: { dataSetIds: [id1] },
+    expect(mockWorkflow.createBatch).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        {
+          id: expect.stringMatching(
+            /^payment-settler-0xMockTransactionHash-\d+$/,
+          ),
+          params: {
+            transactionHash: '0xMockTransactionHash',
+            metadata: {
+              onSuccess: 'settlement-confirmed',
+              successData: { settlementType: 'cache-miss', ids: [id1] },
+              retryData: { settlementType: 'cache-miss', ids: [id1] },
+            },
           },
         },
-      },
-      {
-        id: expect.stringMatching(
-          /^payment-settler-0xMockTransactionHash-\d+$/,
-        ),
-        params: {
-          transactionHash: '0xMockTransactionHash',
-          metadata: {
-            onSuccess: 'settlement-confirmed',
-            successData: { dataSetIds: [id2] },
-            retryData: { dataSetIds: [id2] },
+        {
+          id: expect.stringMatching(
+            /^payment-settler-0xMockTransactionHash-\d+$/,
+          ),
+          params: {
+            transactionHash: '0xMockTransactionHash',
+            metadata: {
+              onSuccess: 'settlement-confirmed',
+              successData: { settlementType: 'cache-miss', ids: [id2] },
+              retryData: { settlementType: 'cache-miss', ids: [id2] },
+            },
           },
         },
-      },
-    ])
+        {
+          id: expect.stringMatching(
+            /^payment-settler-0xMockTransactionHash-\d+$/,
+          ),
+          params: {
+            transactionHash: '0xMockTransactionHash',
+            metadata: {
+              onSuccess: 'settlement-confirmed',
+              successData: {
+                settlementType: 'bandwidth',
+                ids: [String(Number(id1) + 1000)],
+              },
+              retryData: {
+                settlementType: 'bandwidth',
+                ids: [String(Number(id1) + 1000)],
+              },
+            },
+          },
+        },
+        {
+          id: expect.stringMatching(
+            /^payment-settler-0xMockTransactionHash-\d+$/,
+          ),
+          params: {
+            transactionHash: '0xMockTransactionHash',
+            metadata: {
+              onSuccess: 'settlement-confirmed',
+              successData: {
+                settlementType: 'bandwidth',
+                ids: [String(Number(id2) + 1000)],
+              },
+              retryData: {
+                settlementType: 'bandwidth',
+                ids: [String(Number(id2) + 1000)],
+              },
+            },
+          },
+        },
+      ]),
+    )
   })
 
   it('should handle no active data sets gracefully', async () => {
@@ -204,40 +231,15 @@ describe('payment settler scheduled handler', () => {
       { getChainClient: mockGetChainClient },
     )
 
-    expect(simulateContractCalls).toStrictEqual([
-      {
-        account: mockAccount,
-        abi: expect.any(Array),
-        address: '0xTestContractAddress',
-        functionName: 'settleCDNPaymentRails',
-        args: [[expect.any(BigInt)]],
-      },
-      {
-        account: mockAccount,
-        abi: expect.any(Array),
-        address: '0xTestContractAddress',
-        functionName: 'settleCDNPaymentRails',
-        args: [[expect.any(BigInt)]],
-      },
-    ])
-    expect(writeContractCalls).toStrictEqual([
-      {
-        account: mockAccount,
-        abi: expect.any(Array),
-        address: '0xTestContractAddress',
-        functionName: 'settleCDNPaymentRails',
-        args: [[expect.any(BigInt)]],
-        mockedRequest: true,
-      },
-      {
-        account: mockAccount,
-        abi: expect.any(Array),
-        address: '0xTestContractAddress',
-        functionName: 'settleCDNPaymentRails',
-        args: [[expect.any(BigInt)]],
-        mockedRequest: true,
-      },
-    ])
+    const cacheMissCalls = simulateContractCalls.filter(
+      (call) => call.functionName === 'settleCacheMissPaymentRails',
+    )
+    const bandwidthCalls = simulateContractCalls.filter(
+      (call) => call.functionName === 'settleCDNBandwidthRails',
+    )
+    expect(cacheMissCalls).toHaveLength(2)
+    expect(bandwidthCalls).toHaveLength(2)
+    expect(writeContractCalls).toHaveLength(4)
   })
 
   it('should log error and continue when contract simulation fails', async () => {
@@ -293,8 +295,8 @@ describe('payment settler scheduled handler', () => {
       { getChainClient: mockGetChainClient },
     )
 
-    // Simulation was attempted
-    expect(simulateContractCalls).toHaveLength(1)
+    // Simulation was attempted for both cache-miss and bandwidth
+    expect(simulateContractCalls).toHaveLength(2)
     // No workflow should have been created since write failed
     expect(mockWorkflow.createBatch).not.toHaveBeenCalled()
   })
@@ -383,15 +385,17 @@ describe('payment settler scheduled handler', () => {
       { getChainClient: mockGetChainClient },
     )
 
-    // All three simulations were attempted
-    expect(simulateContractCalls).toHaveLength(3)
+    // Three data sets -> three cache-miss and three bandwidth simulations
+    expect(simulateContractCalls).toHaveLength(6)
 
-    // Only two successful batches were written
-    expect(writeContractCalls).toHaveLength(2)
+    // One failed simulation -> the other five batches were still written
+    expect(writeContractCalls).toHaveLength(5)
 
-    // Only two successful transactions were monitored
-    expect(mockWorkflow.createBatch).toHaveBeenCalledWith([
-      {
+    // Only the successful batches were monitored
+    const [workflows] = mockWorkflow.createBatch.mock.calls[0]
+    expect(workflows).toHaveLength(5)
+    for (const workflow of workflows) {
+      expect(workflow).toStrictEqual({
         id: expect.stringMatching(
           /^payment-settler-0xMockTransactionHash-\d+$/,
         ),
@@ -399,24 +403,17 @@ describe('payment settler scheduled handler', () => {
           transactionHash: '0xMockTransactionHash',
           metadata: {
             onSuccess: 'settlement-confirmed',
-            successData: { dataSetIds: [id1] },
-            retryData: { dataSetIds: [id1] },
+            successData: {
+              settlementType: expect.stringMatching(/^(cache-miss|bandwidth)$/),
+              ids: [expect.any(String)],
+            },
+            retryData: {
+              settlementType: expect.stringMatching(/^(cache-miss|bandwidth)$/),
+              ids: [expect.any(String)],
+            },
           },
         },
-      },
-      {
-        id: expect.stringMatching(
-          /^payment-settler-0xMockTransactionHash-\d+$/,
-        ),
-        params: {
-          transactionHash: '0xMockTransactionHash',
-          metadata: {
-            onSuccess: 'settlement-confirmed',
-            successData: { dataSetIds: [id3] },
-            retryData: { dataSetIds: [id3] },
-          },
-        },
-      },
-    ])
+      })
+    }
   })
 })

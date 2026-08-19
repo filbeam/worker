@@ -82,6 +82,8 @@ describe('piece-retriever.indexer', () => {
           data_set_id: dataSetId,
           payer: '0xPayerAddress',
           provider_id: providerId,
+          cdn_rail_id: '42',
+          cache_miss_rail_id: '43',
           metadata_keys: ['withCDN'],
           metadata_values: [''],
         }),
@@ -111,6 +113,8 @@ describe('piece-retriever.indexer', () => {
       expect(dataSets[0].service_provider_id).toBe(providerId)
       expect(dataSets[0].payer_address).toBe('0xPayerAddress'.toLowerCase())
       expect(dataSets[0].with_cdn).toBe(1)
+      expect(dataSets[0].cdn_rail_id).toBe('42')
+      expect(dataSets[0].cache_miss_rail_id).toBe('43')
 
       expect(walletDetails.length).toBe(1)
       expect(walletDetails[0].is_sanctioned).toBe(0)

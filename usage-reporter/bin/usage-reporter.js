@@ -56,15 +56,18 @@ export default {
       )
       console.log(`Aggregating usage data up to timestamp: ${upToTimestampMs}`)
 
-      // Aggregate usage data for all datasets that need reporting
+      // Aggregate usage data per data set. The contract resolves each data set
+      // to its shared cdn_rail_id and aggregates bandwidth onto that rail.
       const usageData = await aggregateUsageData(env.DB, upToTimestampMs)
 
-      if (usageData.length === 0) {
+      if (usageData.dataSetIds.length === 0) {
         console.log('No usage data found')
         return
       }
 
-      console.log(`Found usage data for ${usageData.length} data sets`)
+      console.log(
+        `Found usage data for ${usageData.dataSetIds.length} data sets`,
+      )
 
       // Prepare usage report data for contract call
       const usageReportData = prepareUsageReportData(usageData)
@@ -90,7 +93,7 @@ export default {
       })
 
       console.log(
-        `Sending recordUsageRollups transaction for ${usageReportData.dataSetIds.length} data sets`,
+        `Sending recordUsageRollups transaction for ${usageData.dataSetIds.length} data sets`,
       )
 
       // Send transaction
@@ -98,9 +101,9 @@ export default {
 
       console.log(`Transaction sent: ${hash}`)
 
-      // Store transaction hash to prevent double-counting
+      // Store transaction hash for every contributing data set to prevent double-counting
       await env.DB.batch(
-        usageReportData.dataSetIds.map((dataSetId) =>
+        usageData.dataSetIds.map((dataSetId) =>
           env.DB.prepare(
             `UPDATE data_sets SET pending_usage_report_tx_hash = ? WHERE id = ?`,
           ).bind(hash, dataSetId),
@@ -108,7 +111,7 @@ export default {
       )
 
       console.log(
-        `Stored pending transaction hash for ${usageReportData.dataSetIds.length} data sets`,
+        `Stored pending transaction hash for ${usageData.dataSetIds.length} data sets`,
       )
 
       const upToTimestamp = new Date(upToTimestampMs).toISOString()
